@@ -1361,20 +1361,6 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
     return p;
   }
   //---------------------------------------------------------------
-  bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height)
-  {
-    // block 202612 bug workaround
-    blobdata bd = get_block_hashing_blob(b);
-    const int cn_variant = 1;
-    const int light = 1;
-    if(b.major_version <= 6)
-        crypto::cn_slow_hash(bd.data(), bd.size(), res, light, cn_variant, height);
-    else
-        crypto::cn_slow_hash(bd.data(), bd.size(), res, light, 4, height);
-
-    return true;
-  }
-  //---------------------------------------------------------------
   std::vector<uint64_t> relative_output_offsets_to_absolute(const std::vector<uint64_t>& off)
   {
     std::vector<uint64_t> res = off;
@@ -1395,14 +1381,7 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
     return res;
   }
   //---------------------------------------------------------------
-  crypto::hash get_block_longhash(const block& b, uint64_t height)
-  {
-    crypto::hash p = null_hash;
-    get_block_longhash(b, p, height);
-    return p;
-  }
-  //---------------------------------------------------------------
-  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b)
+  bool parse_and_validate_block_from_blob(const blobdata& b_blob, block& b, crypto::hash *block_hash)
   {
     std::stringstream ss;
     ss << b_blob;
