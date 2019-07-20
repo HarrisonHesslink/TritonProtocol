@@ -180,6 +180,32 @@ namespace cryptonote
     "service-node"
   , "Run as a service node"
   };
+  static const command_line::arg_descriptor<std::string> arg_reorg_notify = {
+    "reorg-notify"
+  , "Run a program for each reorg, '%s' will be replaced by the split height, "
+    "'%h' will be replaced by the new blockchain height, '%n' will be "
+    "replaced by the number of new blocks in the new chain, and '%d' will be "
+    "replaced by the number of blocks discarded from the old chain"
+  , ""
+  };
+  static const command_line::arg_descriptor<std::string> arg_block_rate_notify = {
+    "block-rate-notify"
+  , "Run a program when the block rate undergoes large fluctuations. This might "
+    "be a sign of large amounts of hash rate going on and off the Monero network, "
+    "and thus be of potential interest in predicting attacks. %t will be replaced "
+    "by the number of minutes for the observation window, %b by the number of "
+    "blocks observed within that window, and %e by the number of blocks that was "
+    "expected in that window. It is suggested that this notification is used to "
+    "automatically increase the number of confirmations required before a payment "
+    "is acted upon."
+  , ""
+  };
+  static const command_line::arg_descriptor<bool> arg_keep_alt_blocks  = {
+    "keep-alt-blocks"
+  , "Keep alternative blocks on restart"
+  , false
+  };
+
   //-----------------------------------------------------------------------------------------------
   core::core(i_cryptonote_protocol* pprotocol):
               m_mempool(m_blockchain_storage),
@@ -291,7 +317,8 @@ namespace cryptonote
     command_line::add_arg(desc, arg_disable_dns_checkpoints);
     command_line::add_arg(desc, arg_max_txpool_weight);
     command_line::add_arg(desc, arg_block_notify);
-    command_line::add_arg(desc, arg_service_node);
+    command_line::add_arg(desc, arg_reorg_notify);
+    command_line::add_arg(desc, arg_block_rate_notify);
 
     miner::init_options(desc);
     BlockchainDB::init_options(desc);
@@ -422,6 +449,7 @@ namespace cryptonote
     uint64_t blocks_threads = command_line::get_arg(vm, arg_prep_blocks_threads);
     std::string check_updates_string = command_line::get_arg(vm, arg_check_updates);
     size_t max_txpool_weight = command_line::get_arg(vm, arg_max_txpool_weight);
+    bool keep_alt_blocks = command_line::get_arg(vm, arg_keep_alt_blocks);
     if (m_service_node)
     {
       r = init_service_node_key();
@@ -628,6 +656,9 @@ namespace cryptonote
 
     r = m_miner.init(vm, m_nettype);
     CHECK_AND_ASSERT_MES(r, false, "Failed to initialize miner instance");
+    
+    if (!keep_alt_blocks && !m_blockchain_storage.get_db().is_read_only())
+      m_blockchain_storage.get_db().drop_alt_blocks();
 
     return load_state_data();
   }
