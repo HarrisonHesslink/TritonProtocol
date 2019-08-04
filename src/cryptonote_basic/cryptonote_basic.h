@@ -386,6 +386,7 @@ namespace cryptonote
     uint8_t minor_version;  // now used as a voting mechanism, rather than how this particular block is built
     uint64_t timestamp;
     crypto::hash  prev_id;
+    uint64_t nonce8;
     uint32_t nonce;
     uint32_t cycle01,cycle02,cycle03,cycle04,cycle05,cycle06,cycle07,cycle08,cycle09,cycle10,cycle11,cycle12,cycle13,cycle14,cycle15,cycle16,cycle17,cycle18,cycle19,cycle20,cycle21,cycle22,cycle23,cycle24,cycle25,cycle26,cycle27,cycle28,cycle29,cycle30,cycle31,cycle32;
 
@@ -394,6 +395,7 @@ namespace cryptonote
       VARINT_FIELD(minor_version)
       VARINT_FIELD(timestamp)
       FIELD(prev_id)
+      if (major_version >= HF_VERSION_NONCE8) FIELD(nonce8)
       FIELD(nonce)
       if (major_version >= HF_VERSION_CUCKOO)
       {

@@ -257,6 +257,7 @@ void toJsonValue(rapidjson::Document& doc, const cryptonote::block& b, rapidjson
   INSERT_INTO_JSON_OBJECT(val, doc, minor_version, b.minor_version);
   INSERT_INTO_JSON_OBJECT(val, doc, timestamp, b.timestamp);
   INSERT_INTO_JSON_OBJECT(val, doc, prev_id, b.prev_id);
+  INSERT_INTO_JSON_OBJECT(val, doc, nonce8, b.nonce8);
   INSERT_INTO_JSON_OBJECT(val, doc, nonce, b.nonce);
   INSERT_INTO_JSON_OBJECT(val, doc, cycle01, b.cycle01);
   INSERT_INTO_JSON_OBJECT(val, doc, cycle02, b.cycle02);
@@ -306,6 +307,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::block& b)
   GET_FROM_JSON_OBJECT(val, b.minor_version, minor_version);
   GET_FROM_JSON_OBJECT(val, b.timestamp, timestamp);
   GET_FROM_JSON_OBJECT(val, b.prev_id, prev_id);
+  GET_FROM_JSON_OBJECT(val, b.nonce8, nonce8);
   GET_FROM_JSON_OBJECT(val, b.nonce, nonce);
   GET_FROM_JSON_OBJECT(val, b.cycle01, cycle01);
   GET_FROM_JSON_OBJECT(val, b.cycle02, cycle02);
