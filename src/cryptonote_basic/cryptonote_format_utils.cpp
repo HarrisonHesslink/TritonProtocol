@@ -42,9 +42,7 @@ using namespace epee;
 #include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "ringct/rctSigs.h"
-extern "C" {
 #include "crypto/cuckaroo/cuckaroo29s.h"
-}
 #include "cryptonote_basic/verification_context.h"
 #include "cryptonote_core/service_node_deregister.h"
 
@@ -1419,7 +1417,8 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
       edges[30]=b.cycle31;
       edges[31]=b.cycle32;
 
-      cuckaroo29s(bd.data(), bd.size(),b.nonce, edges, res.data);
+		Cuckaroo29S* cu = new Cuckaroo29S();
+		cu->hash(bd.data(), bd.size(),b.nonce, edges, res.data);
     }
     else
     {
