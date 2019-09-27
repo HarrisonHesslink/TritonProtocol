@@ -291,8 +291,6 @@ uint64_t get_volume_for_block(std::vector<exchange_trade> trades){
   for(size_t i = 0; i < trades.size();i++){
     volume += (trades[i].price * trades[i].quantity);
   }
-  std::cout << volume << std::endl;
-
   return convert_btc_to_usd(volume);
 }
 
