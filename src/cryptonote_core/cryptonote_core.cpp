@@ -57,6 +57,7 @@ using namespace epee;
 #include "version.h"
 #include "wipeable_string.h"
 #include "common/i18n.h"
+#include "delphi/delphi_protocol.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -1814,6 +1815,11 @@ namespace cryptonote
 	{
 		do_uptime_proof_call();
 	}
+
+  uint64_t price;
+  bool r = delphi_protocol::getCoinbasePrice(price, std::make_pair("USD", "BTC"));
+  if(!r)
+    MGINFO_YELLOW("yah");
 
 	m_uptime_proof_pruner.do_call(boost::bind(&service_nodes::quorum_cop::prune_uptime_proof, &m_quorum_cop));
     m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));

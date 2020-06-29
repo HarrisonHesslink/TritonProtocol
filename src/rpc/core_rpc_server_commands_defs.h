@@ -3307,5 +3307,206 @@ namespace cryptonote
     };
     typedef epee::misc_utils::struct_init<response_t> response;
   };
+  struct COMMAND_RPC_COINBASE
+  {
+    struct request_t: public rpc_request_base
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
 
+    struct response_t: public rpc_response_base
+    {
+      std::string open;
+      std::string high;
+      std::string low;
+      std::string volume;
+      std::string last;
+      std::string volume_30day;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(open)
+        KV_SERIALIZE(high)
+        KV_SERIALIZE(low)
+        KV_SERIALIZE(volume)
+        KV_SERIALIZE(last)
+        KV_SERIALIZE(volume_30day)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+   struct COMMAND_RPC_NANCE
+  {
+    struct request_t: public rpc_request_base
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      std::string symbol;
+      std::string priceChange;
+      std::string priceChangePercent;
+      std::string weightedAvgPrice;
+      std::string prevClosePrice;
+      std::string lastPrice;
+      std::string lastQty;
+      std::string bidPrice;
+      std::string askPrice;
+      std::string openPrice;
+      std::string highPrice;
+      std::string lowPrice;
+      std::string volume;
+      std::string quoteVolume;
+      uint64_t openTime;
+      uint64_t close_time;
+      std::string firstID;
+      std::string lastID;
+      uint64_t count;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(symbol)
+        KV_SERIALIZE(priceChange)
+        KV_SERIALIZE(priceChangePercent)
+        KV_SERIALIZE(weightedAvgPrice)
+        KV_SERIALIZE(prevClosePrice)
+        KV_SERIALIZE(lastPrice)
+        KV_SERIALIZE(lastQty)
+        KV_SERIALIZE(bidPrice)
+        KV_SERIALIZE(askPrice)
+        KV_SERIALIZE(openPrice)
+        KV_SERIALIZE(highPrice)
+        KV_SERIALIZE(lowPrice)
+        KV_SERIALIZE(volume)
+        KV_SERIALIZE(quoteVolume)
+        KV_SERIALIZE(openTime)
+        KV_SERIALIZE(close_time)
+        KV_SERIALIZE(firstID)
+        KV_SERIALIZE(lastID)
+        KV_SERIALIZE(count)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+  struct COMMAND_RPC_BITTREX
+  {
+    struct request_t: public rpc_request_base
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      std::string symbol;
+      std::string lastTradeRate;
+      std::string bidRate;
+      std::string askRate;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(symbol)
+        KV_SERIALIZE(lastTradeRate)
+        KV_SERIALIZE(bidRate)
+        KV_SERIALIZE(askRate)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+  struct COMMAND_RPC_TRADEOGRE
+  {
+    struct request_t: public rpc_request_base
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      std::string success;
+      std::string initialprice;
+      std::string price;
+      std::string high;
+      std::string low;
+      std::string volume;
+      std::string bid;
+      std::string ask;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(success)
+        KV_SERIALIZE(initialprice)
+        KV_SERIALIZE(price)
+        KV_SERIALIZE(high)
+        KV_SERIALIZE(low)
+        KV_SERIALIZE(volume)
+        KV_SERIALIZE(bid)
+        KV_SERIALIZE(ask)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+  struct COMMAND_RPC_KUCOIN
+  {
+    struct request_t: public rpc_request_base
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      std::string symbol;
+      std::string high;
+      std::string vol;
+      std::string volValue;
+      std::string last;
+      std::string low;
+      std::string buy;
+      std::string sell;
+      std::string changeRate;
+      std::string averagePrice;
+      std::string changePrice;
+      uint64_t time;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(symbol)
+        KV_SERIALIZE(high)
+        KV_SERIALIZE(vol)
+        KV_SERIALIZE(volValue)
+        KV_SERIALIZE(last)
+        KV_SERIALIZE(low)
+        KV_SERIALIZE(buy)
+        KV_SERIALIZE(sell)
+        KV_SERIALIZE(changeRate)
+        KV_SERIALIZE(averagePrice)
+        KV_SERIALIZE(changePrice)
+        KV_SERIALIZE(time)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+  struct COMMAND_RPC_METALS_FOREX
+  {
+    struct request_t: public rpc_request_base
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      std::vector<std::string> metals_forex;
+      
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(metals_forex)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
 }

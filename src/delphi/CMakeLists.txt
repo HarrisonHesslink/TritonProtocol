@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2020 Harrison Hesslink (Equilibria.Network)
 #
 # All rights reserved.
 #
@@ -26,38 +26,21 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(cryptonote_core_sources
-  blockchain.cpp
-  cryptonote_core.cpp
-  service_node_rules.cpp
-  service_node_list.cpp
-  service_node_deregister.cpp
-  quorum_cop.cpp
-  tx_pool.cpp
-  tx_sanity_check.cpp
-  cryptonote_tx_utils.cpp)
+set(delphi_sources
+  delphi_protocol.cpp)
 
-set(cryptonote_core_headers)
+set(delphi_headers)
 
-set(cryptonote_core_private_headers
-  blockchain_storage_boost_serialization.h
-  blockchain.h
-  cryptonote_core.h
-  service_node_rules.h
-  service_node_list.h
-  service_node_deregister.h
-  quorum_cop.h
-  tx_pool.h
-  tx_sanity_check.h
-  cryptonote_tx_utils.h)
+set(delphi_private_headers
+  delphi_protocol.h)
 
-monero_private_headers(cryptonote_core
-  ${cryptonote_core_private_headers})
-monero_add_library(cryptonote_core
-  ${cryptonote_core_sources}
-  ${cryptonote_core_headers}
-  ${cryptonote_core_private_headers})
-target_link_libraries(cryptonote_core
+monero_private_headers(delphi
+  ${delphi_private_headers})
+monero_add_library(delphi
+  ${delphi_sources}
+  ${delphi_headers}
+  ${delphi_private_headers})
+target_link_libraries(delphi
   PUBLIC
     version
     common
@@ -66,8 +49,6 @@ target_link_libraries(cryptonote_core
     multisig
     ringct
     device
-    hardforks
-    delphi
     ${Boost_DATE_TIME_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_SERIALIZATION_LIBRARY}
