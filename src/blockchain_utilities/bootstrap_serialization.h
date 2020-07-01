@@ -29,8 +29,6 @@
 #pragma once
 
 #include "cryptonote_basic/cryptonote_boost_serialization.h"
-#include "serialization/difficulty_type.h"
-
 
 namespace cryptonote
 {

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2018, The Monero Project
 //
 // All rights reserved.
 //
@@ -103,8 +103,7 @@ namespace cryptonote {
     return a + b < a || (c && a + b == (uint64_t) -1);
   }
 
-  bool check_hash_64(const crypto::hash &hash, uint64_t difficulty) {
-
+  bool check_hash(const crypto::hash &hash, difficulty_type difficulty) {
     uint64_t low, high, top, cur;
     // First check the highest word, this will most likely fail for a random hash.
     mul(swap64le(((const uint64_t *) &hash)[3]), difficulty, top, high);
@@ -121,9 +120,8 @@ namespace cryptonote {
     return !carry;
   }
 
-
-
- uint64_t next_difficulty_64(std::vector<std::uint64_t> timestamps, std::vector<std::uint64_t> cumulative_difficulties, size_t target_seconds) {
+  difficulty_type next_difficulty(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds)
+   {
     // LWMA difficulty algorithm
         // Background:  https://github.com/zawy12/difficulty-algorithms/issues/3
         // Copyright (c) 2017-2018 Zawy (pseudocode)
@@ -191,55 +189,5 @@ namespace cryptonote {
         next_difficulty = static_cast<uint64_t>(nextDifficulty);
         return next_difficulty;
     }
-
-  #if defined(_MSC_VER)
-#ifdef max
-#undef max
-#endif
-#endif
-
-  const difficulty_type max64bit(std::numeric_limits<std::uint64_t>::max());
-  const boost::multiprecision::uint256_t max128bit(std::numeric_limits<boost::multiprecision::uint128_t>::max());
-  const boost::multiprecision::uint512_t max256bit(std::numeric_limits<boost::multiprecision::uint256_t>::max());
-
-#define FORCE_FULL_128_BITS
-
-  bool check_hash_128(const crypto::hash &hash, difficulty_type difficulty) {
-#ifndef FORCE_FULL_128_BITS
-    // fast check
-    if (difficulty >= max64bit && ((const uint64_t *) &hash)[3] > 0)
-      return false;
-#endif
-    // usual slow check
-    boost::multiprecision::uint512_t hashVal = 0;
-#ifdef FORCE_FULL_128_BITS
-    for(int i = 0; i < 4; i++) { // highest word is zero
-#else
-    for(int i = 1; i < 4; i++) { // highest word is zero
-#endif
-      hashVal <<= 64;
-      hashVal |= swap64le(((const uint64_t *) &hash)[3 - i]);
-    }
-    return hashVal * difficulty <= max256bit;
-  }
-
-  bool check_hash(const crypto::hash &hash, uint64_t difficulty) {
-      return check_hash_64(hash, difficulty);
-  }
-  
-  std::string hex(difficulty_type v)
-  {
-    static const char chars[] = "0123456789abcdef";
-    std::string s;
-    while (v > 0)
-    {
-      s.push_back(chars[(v & 0xf).convert_to<unsigned>()]);
-      v >>= 4;
-    }
-    if (s.empty())
-      s += "0";
-    std::reverse(s.begin(), s.end());
-    return "0x" + s;
-  }
 
 }

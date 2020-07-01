@@ -934,7 +934,7 @@ start:
 	  D = 1000;
   }
   else {
-	  D = next_difficulty_64(timestamps, difficulties, get_difficulty_target());
+	  D = next_difficulty(timestamps, difficulties, get_difficulty_target());
   }
   return D;
 }
@@ -1023,7 +1023,8 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<block_extended_info>
   }
 
   auto split_height = m_db->height();
-
+  for (BlockchainDetachedHook* hook : m_blockchain_detached_hooks)
+    hook->blockchain_detached(split_height);
   //connecting new alternative chain
   for(auto alt_ch_iter = alt_chain.begin(); alt_ch_iter != alt_chain.end(); alt_ch_iter++)
   {
@@ -1177,7 +1178,7 @@ uint64_t Blockchain::get_next_difficulty_for_alternative_chain(const std::list<b
   if(version < 4 && m_db->height() < 235){
     diff = 1000;
   }else{
-    diff = next_difficulty_64(timestamps, cumulative_difficulties,target);
+    diff = next_difficulty(timestamps, cumulative_difficulties,target);
   }
   return diff;
 }
