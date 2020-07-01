@@ -471,7 +471,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
           }
 
           size_t block_weight;
-          difficulty_type cumulative_difficulty;
+          uint64_t cumulative_difficulty;
           uint64_t coins_generated;
 
           block_weight = bp.block_weight;

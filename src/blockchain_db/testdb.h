@@ -80,8 +80,8 @@ public:
   virtual uint64_t get_top_block_timestamp() const override { return 0; }
   virtual size_t get_block_weight(const uint64_t& height) const override { return 128; }
   virtual std::vector<uint64_t> get_block_weights(uint64_t start_height, size_t count) const override { return {}; }
-  virtual cryptonote::difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const override { return 10; }
-  virtual cryptonote::difficulty_type get_block_difficulty(const uint64_t& height) const override { return 0; }
+  virtual uint64_t get_block_cumulative_difficulty(const uint64_t& height) const override { return 10; }
+  virtual uint64_t get_block_difficulty(const uint64_t& height) const override { return 0; }
   virtual uint64_t get_block_already_generated_coins(const uint64_t& height) const override { return 10000000000; }
   virtual uint64_t get_block_long_term_weight(const uint64_t& height) const override { return 128; }
   virtual std::vector<uint64_t> get_long_term_block_weights(uint64_t start_height, size_t count) const override { return {}; }
@@ -140,7 +140,7 @@ public:
   virtual void add_block( const cryptonote::block& blk
                         , size_t block_weight
                         , uint64_t long_term_block_weight
-                        , const cryptonote::difficulty_type& cumulative_difficulty
+                        , const uint64_t& cumulative_difficulty
                         , const uint64_t& coins_generated
                         , uint64_t num_rct_outs
                         , const crypto::hash& blk_hash

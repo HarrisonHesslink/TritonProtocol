@@ -143,8 +143,7 @@ struct alt_block_data_t
 {
   uint64_t height;
   uint64_t cumulative_weight;
-  uint64_t cumulative_difficulty_low;
-  uint64_t cumulative_difficulty_high;
+  uint64_t cumulative_difficulty;
   uint64_t already_generated_coins;
 };
 
@@ -402,7 +401,7 @@ private:
   virtual void add_block( const block& blk
                 , size_t block_weight
                 , uint64_t long_term_block_weight
-                , const difficulty_type& cumulative_difficulty
+                , const uint64_t& cumulative_difficulty
                 , const uint64_t& coins_generated
                 , uint64_t num_rct_outs
                 , const crypto::hash& blk_hash
@@ -855,7 +854,7 @@ public:
  virtual uint64_t add_block( const std::pair<block, blobdata>& blk
                             , size_t block_weight
                             , uint64_t long_term_block_weight
-                            , const difficulty_type& cumulative_difficulty
+                            , const uint64_t& cumulative_difficulty
                             , const uint64_t& coins_generated
                             , const std::vector<std::pair<transaction, blobdata>>& txs
                             );
@@ -1023,7 +1022,7 @@ public:
    *
    * @return the cumulative difficulty
    */
-  virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const = 0;
+  virtual uint64_t get_block_cumulative_difficulty(const uint64_t& height) const = 0;
 
   /**
    * @brief fetch a block's difficulty
@@ -1037,7 +1036,7 @@ public:
    *
    * @return the difficulty
    */
-  virtual difficulty_type get_block_difficulty(const uint64_t& height) const = 0;
+  virtual uint64_t get_block_difficulty(const uint64_t& height) const = 0;
 
   /**
    * @brief fetch a block's already generated coins

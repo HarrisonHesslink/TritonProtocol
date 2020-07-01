@@ -88,7 +88,7 @@ namespace cryptonote
       cryptonote::block block;
       std::vector<transaction> txs;
       size_t block_weight;
-      difficulty_type cumulative_difficulty;
+      uint64_t cumulative_difficulty;
       uint64_t coins_generated;
 
       BEGIN_SERIALIZE()

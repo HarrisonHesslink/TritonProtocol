@@ -1545,7 +1545,7 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
     }
     else
     {
-		  ctx.hash(bd.data(), bd.size(), res.data);
+		  ctx.hash(bd.data(),bd.size(), res.data);
     }
 
     return true;
