@@ -1858,7 +1858,6 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     uint64_t current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     CHECK_AND_ASSERT_MES(current_diff, false, "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!");
     crypto::hash proof_of_work = crypto::null_hash;
-    memset(proof_of_work.data, 0xff, sizeof(proof_of_work.data));
 
     get_block_longhash(bei.bl, proof_of_work, m_pow_ctx);
     
@@ -4168,7 +4167,6 @@ leave:
   TIME_MEASURE_START(longhash_calculating_time);
 
   crypto::hash proof_of_work = crypto::null_hash;
-  memset(proof_of_work.data, 0xff, sizeof(proof_of_work.data));
 
   // Formerly the code below contained an if loop with the following condition
   // !m_checkpoints.is_in_checkpoint_zone(get_current_blockchain_height())
