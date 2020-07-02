@@ -37,6 +37,7 @@
 #include "generic-ops.h"
 #include "hex.h"
 #include "span.h"
+#include <boost/utility/value_init.hpp>
 
 namespace crypto {
 
