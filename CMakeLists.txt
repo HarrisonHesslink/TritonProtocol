@@ -46,7 +46,7 @@ endif()
 cmake_minimum_required(VERSION 2.8.7)
 message(STATUS "CMake version ${CMAKE_VERSION}")
 
-project(monero)
+project(equilibria)
 
 include(FindCcache) # Has to be included after the project() macro, to be able to read the CXX variable.
 
@@ -171,10 +171,10 @@ if(ARCH_ID STREQUAL "s390x")
   set(S390X 1)
 endif()
 
-if(WIN32 OR ARM OR PPC64LE OR PPC64 OR PPC)
-  set(OPT_FLAGS_RELEASE "-O2")
+if(WIN32 OR ARM)
+  add_compile_options("$<$<CONFIG:RELEASE>:-O2>")
 else()
-  set(OPT_FLAGS_RELEASE "-Ofast")
+  add_compile_options("$<$<CONFIG:RELEASE>:-O3>")
 endif()
 
 # BUILD_TAG is used to select the build type to check for a new version
