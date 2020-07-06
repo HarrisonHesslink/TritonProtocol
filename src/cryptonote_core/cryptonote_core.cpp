@@ -486,7 +486,7 @@ namespace cryptonote
 	    m_service_node_list.set_my_service_node_keys(&m_service_node_pubkey);
 
     }
-    
+
     //Pruning
     bool prune_blockchain = command_line::get_arg(vm, arg_prune_blockchain);
     bool keep_alt_blocks = command_line::get_arg(vm, arg_keep_alt_blocks);
@@ -728,6 +728,19 @@ namespace cryptonote
         CHECK_AND_ASSERT_MES(m_blockchain_storage.update_blockchain_pruning(), false, "Failed to update blockchain pruning");
       }
     }
+
+      uint64_t xeq_price = delphi_protocol::getTradeOgrePrice(std::make_pair("BTC", "XEQ"));
+      MGINFO_YELLOW("XEQ TradeOgre Price: " << xeq_price);
+
+      uint64_t xhv_price = delphi_protocol::getBittrexPrice(std::make_pair("BTC", "XHV"));
+      MGINFO_YELLOW("XHV Bittrex Price: " << xhv_price);
+
+      uint64_t loki_price = delphi_protocol::getKucoinPrice(std::make_pair("LOKI", "BTC"));
+      MGINFO_YELLOW("LOKI Kucoin Price: " << loki_price);
+
+      uint64_t doge_price = delphi_protocol::getNancePrice(std::make_pair("BTC", "DOGE"));
+      MGINFO_YELLOW("DOGE Binance Price: " << doge_price);
+
 
     return load_state_data();
   }
@@ -1815,11 +1828,6 @@ namespace cryptonote
 	{
 		do_uptime_proof_call();
 	}
-
-  uint64_t price;
-  bool r = delphi_protocol::getCoinbasePrice(price, std::make_pair("USD", "BTC"));
-  if(!r)
-    MGINFO_YELLOW("yah");
 
 	m_uptime_proof_pruner.do_call(boost::bind(&service_nodes::quorum_cop::prune_uptime_proof, &m_quorum_cop));
     m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));

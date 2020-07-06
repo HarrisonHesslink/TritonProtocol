@@ -4,11 +4,13 @@
 namespace delphi_protocol {
     class Delphi {
 
-        struct task {
+        struct task 
+        {
+            crypto::hash taskHash;
             std::pair<std::string, std::string> pair;
             std::vector<std::string> exchanges;
 
-            cryptonote::transaction registrationTX;
+            crypto::hash reg_tx_hash;
 
             uint64_t block_rate;
             uint64_t blocks_til_finished;
@@ -25,9 +27,9 @@ namespace delphi_protocol {
 
     };
 
-    bool getCoinbasePrice(uint64_t& price, std::pair<std::string, std::string> pair /*  BTCUSD  */);
-    bool getTradeOgrePrice(uint64_t& price, std::pair<std::string, std::string> pair /*  BTC-XEQ  */);
-    bool getBittrexPrice(uint64_t& price, std::pair<std::string, std::string> pair /*  XHV-BTC  */);
-    bool getNancePrice(uint64_t& price, std::pair<std::string, std::string> pair /*  BTCUSDT  */);
-    bool getKucoinPrice(uint64_t& price, std::pair<std::string, std::string> pair /*  BTC-XEQ  */);
+    uint64_t getCoinbasePrice(std::pair<std::string, std::string> pair /*  BTCUSD  */);
+    uint64_t getTradeOgrePrice(std::pair<std::string, std::string> pair /*  BTC-XEQ  */);
+    uint64_t getBittrexPrice(std::pair<std::string, std::string> pair /*  XHV-BTC  */);
+    uint64_t getNancePrice(std::pair<std::string, std::string> pair /*  BTCUSDT  */);
+    uint64_t getKucoinPrice(std::pair<std::string, std::string> pair /*  BTC-XEQ  */);
 }
