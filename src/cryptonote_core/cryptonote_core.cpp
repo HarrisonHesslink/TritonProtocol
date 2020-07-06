@@ -57,7 +57,7 @@ using namespace epee;
 #include "version.h"
 #include "wipeable_string.h"
 #include "common/i18n.h"
-#include "delphi/delphi_protocol.h"
+#include "delfi/delfi_protocol.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
@@ -729,16 +729,16 @@ namespace cryptonote
       }
     }
 
-      uint64_t xeq_price = delphi_protocol::getTradeOgrePrice(std::make_pair("BTC", "XEQ"));
+      uint64_t xeq_price = delfi_protocol::getTradeOgrePrice(std::make_pair("BTC", "XEQ"));
       MGINFO_YELLOW("XEQ TradeOgre Price: " << xeq_price);
 
-      uint64_t xhv_price = delphi_protocol::getBittrexPrice(std::make_pair("BTC", "XHV"));
+      uint64_t xhv_price = delfi_protocol::getBittrexPrice(std::make_pair("BTC", "XHV"));
       MGINFO_YELLOW("XHV Bittrex Price: " << xhv_price);
 
-      uint64_t loki_price = delphi_protocol::getKucoinPrice(std::make_pair("LOKI", "BTC"));
+      uint64_t loki_price = delfi_protocol::getKucoinPrice(std::make_pair("LOKI", "BTC"));
       MGINFO_YELLOW("LOKI Kucoin Price: " << loki_price);
 
-      uint64_t doge_price = delphi_protocol::getNancePrice(std::make_pair("BTC", "DOGE"));
+      uint64_t doge_price = delfi_protocol::getNancePrice(std::make_pair("BTC", "DOGE"));
       MGINFO_YELLOW("DOGE Binance Price: " << doge_price);
 
 

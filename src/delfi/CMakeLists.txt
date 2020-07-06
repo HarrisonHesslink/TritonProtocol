@@ -26,21 +26,21 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(delphi_sources
-  delphi_protocol.cpp)
+set(delfi_sources
+  delfi_protocol.cpp)
 
-set(delphi_headers)
+set(delfi_headers)
 
-set(delphi_private_headers
-  delphi_protocol.h)
+set(delfi_private_headers
+  delfi_protocol.h)
 
-monero_private_headers(delphi
-  ${delphi_private_headers})
-monero_add_library(delphi
-  ${delphi_sources}
-  ${delphi_headers}
-  ${delphi_private_headers})
-target_link_libraries(delphi
+monero_private_headers(delfi
+  ${delfi_private_headers})
+monero_add_library(delfi
+  ${delfi_sources}
+  ${delfi_headers}
+  ${delfi_private_headers})
+target_link_libraries(delfi
   PUBLIC
     version
     common

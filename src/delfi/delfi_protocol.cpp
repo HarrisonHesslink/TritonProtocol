@@ -3,20 +3,20 @@
 
 #include "rapidjson/document.h"
 #include "net/http_client.h"
-#include "delphi_protocol.h"
+#include "delfi_protocol.h"
 #include "int-util.h"
 
-namespace delphi_protocol {
+namespace delfi_protocol {
 
 
 
-    Delphi::Delphi(){
+    Delfi::Delfi(){
         if(!scanTasks()){
             LOG_PRINT_L1("Unable to scan tasks!");
         }
     }
 
-    bool Delphi::scanTasks(){}   
+    bool Delfi::scanTasks(){}   
 
     uint64_t getCoinbasePrice(std::pair<std::string, std::string> pair)
     {

@@ -1,8 +1,8 @@
 #include "int-util.h"
 #include "rpc/core_rpc_server_commands_defs.h"
 
-namespace delphi_protocol {
-    class Delphi {
+namespace delfi_protocol {
+    class Delfi {
 
         struct task 
         {
@@ -17,9 +17,9 @@ namespace delphi_protocol {
         };
 
         public:
-            Delphi();
+            Delfi();
 
-            std::queue<Delphi::task> m_tasks;
+            std::queue<Delfi::task> m_tasks;
 
         private:
             bool scanTasks();
