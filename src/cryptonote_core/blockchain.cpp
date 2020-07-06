@@ -3177,6 +3177,64 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
     }
   }
 
+  bool is_burntx = false;
+  get_is_burn_tx_tag_from_tx_extra(tx.extra, is_burntx);
+  if (hf_version > 8) {
+    if(is_burntx){
+      crypto::public_key burn_pubkey;
+      crypto::secret_key burn_seckey;
+      get_burn_keys(burn_pubkey, burn_seckey);
+
+      std::vector<tx_extra_field> tx_extra_fields;
+      crypto::public_key txkey_pub_i_zero = get_tx_pub_key_from_extra(tx.extra, 0); // require index in transaction to be zero for simplicity
+
+      if(txkey_pub_i_zero == null_pkey)
+      {
+        MERROR_VER("Could not get tx pubkey from extra to verify burn transaction");
+        tvc.m_invalid_output = true;
+        return false;
+      }
+      crypto::public_key index_zero_pubkey = boost::get<txout_to_key>(tx.vout[0].target).key;
+      crypto::key_derivation derivation;
+
+      if (!crypto::generate_key_derivation(txkey_pub_i_zero, burn_seckey, derivation))
+      {
+        MERROR_VER("Failed to calculate burn transaction key derivation");
+        tvc.m_invalid_output = true;
+        return false;
+      }
+
+      crypto::public_key derived_pubkey;
+      crypto::derive_public_key(derivation, 0, burn_pubkey, derived_pubkey);
+
+      if (index_zero_pubkey != derived_pubkey)
+      {
+        MERROR_VER("Burn transaction output at index zero does not match expected derived public key" << std::endl << "fetched: " << index_zero_pubkey << " derived: " << derived_pubkey);
+        tvc.m_invalid_output = true;
+        return false;
+      }
+
+      crypto::secret_key shared_secret;
+      crypto::derivation_to_scalar(derivation, 0, shared_secret);
+      rct::ecdhTuple ecdh_info = tx.rct_signatures.ecdhInfo[0];
+      rct::ecdhDecode(ecdh_info, rct::sk2rct(shared_secret));
+      uint64_t decrypted_amount = rct::h2d(ecdh_info.amount);
+
+      if (decrypted_amount != tx.vout[0].amount)
+      {
+        MERROR_VER("Burn transaction's decrypted amount does not match vout amount");
+        tvc.m_invalid_output = true;
+        return false;
+      }
+    }
+    else
+    {
+      MERROR_VER("Burn TXES are not allowed until v8");
+      tvc.m_invalid_output = true;
+      return false;
+    }
+  }
+
   return true;
 }
 //------------------------------------------------------------------
@@ -3285,13 +3343,16 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 
 	const uint8_t hf_version = m_hardfork->get_current_version();
 
+  bool is_burn_tx;
+  get_is_burn_tx_tag_from_tx_extra(tx.extra, is_burn_tx);
+
 	// from hard fork 2, we require mixin at least 2 unless one output cannot mix with 2 others
 	// if one output cannot mix with 2 others, we accept at most 1 output that can mix
 	if (hf_version >= 2 && !tx.is_deregister_tx())
 	{
 		size_t n_unmixable = 0, n_mixable = 0;
 		size_t mixin = std::numeric_limits<size_t>::max();
-		const size_t min_mixin = hf_version >= HF_VERSION_MIN_MIXIN_15 ? 15 : hf_version >= HF_VERSION_MIN_MIXIN_4 ? 4 : 2;
+		const size_t min_mixin = is_burn_tx ? 0 : (hf_version >= HF_VERSION_MIN_MIXIN_15 ? 15 : hf_version >= HF_VERSION_MIN_MIXIN_4 ? 4 : 2);
 		for (const auto& txin : tx.vin)
 		{
 			// non txin_to_key inputs will be rejected below
@@ -3320,7 +3381,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 				// TODO(jcktm) - remove branch if safe after fork
 				if (in_to_key.key_offsets.size() - 1 < mixin)
 					mixin = in_to_key.key_offsets.size() - 1;
-				if (hf_version >= SERVICE_NODE_VERSION && in_to_key.key_offsets.size() - 1 != min_mixin && n_unmixable == 0)
+				if (hf_version >= SERVICE_NODE_VERSION && in_to_key.key_offsets.size() - 1 != min_mixin && n_unmixable == 0 && !is_burn_tx)
 				{
 					MERROR_VER("Tx " << get_transaction_hash(tx) << " has incorrect ring size (" << in_to_key.key_offsets.size() - 1 << ")");
 					tvc.m_low_mixin = true;

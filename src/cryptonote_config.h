@@ -50,7 +50,7 @@
 
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW               60
 
-//Service nodes
+//Oracle nodes
 
 #define SERVICE_NODE_VERSION                            5
 
@@ -72,6 +72,9 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 #define UPTIME_PROOF_BUFFER_IN_SECONDS                  (5*60)
 #define UPTIME_PROOF_FREQUENCY_IN_SECONDS               (60*60)
 #define UPTIME_PROOF_MAX_TIME_IN_SECONDS                (UPTIME_PROOF_FREQUENCY_IN_SECONDS * 2 + UPTIME_PROOF_BUFFER_IN_SECONDS)
+
+#define XEQ_PER_BLOCK_FEE                               10000 // XEQ
+
 
 
 // MONEY_SUPPLY - total number coins to be generated
@@ -220,6 +223,9 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 #define DEFAULT_TXPOOL_MAX_WEIGHT               648000000ull // 3 days at 300000, in bytes
 
 #define BULLETPROOF_MAX_OUTPUTS                 16
+
+#define BURN_SECKEY                            "b93a07a922a4bc9ebfa3c0dcb1354bb39df811b7a7fb7041562a287439c7340b" // hash_to_scalar("Equilibria")
+#define BURN_PUBKEY                            "5c3cfb3b9b4ae92ce2396303190b8fbd6ab80ecf8d4425951ab1c13712fe5eec" // BURN_SECKEY*G
 
 #define CRYPTONOTE_PRUNING_STRIPE_SIZE          4096 // the smaller, the smoother the increase
 #define CRYPTONOTE_PRUNING_LOG_STRIPES          3 // the higher, the more space saved

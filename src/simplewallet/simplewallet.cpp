@@ -3153,6 +3153,10 @@ simple_wallet::simple_wallet()
                            boost::bind(&simple_wallet::on_command, this, &simple_wallet::locked_sweep_all,_1),
                            tr(USAGE_LOCKED_SWEEP_ALL),
                            tr("Send all unlocked balance to an address and lock it for <lockblocks> (max. 1000000). If the parameter \"index=<N1>[,<N2>,...]\" or \"index=all\" is specified, the wallet sweeps outputs received by those or all address indices, respectively. If omitted, the wallet randomly chooses an address index to be used. <priority> is the priority of the sweep. The higher the priority, the higher the transaction fee. Valid values in priority order (from lowest to highest) are: unimportant, normal, elevated, priority. If omitted, the default value (see the command \"set priority\") is used. <ring_size> is the number of inputs to include for untraceability."));
+ m_cmd_binder.set_handler("pay_for_task",
+                           boost::bind(&simple_wallet::pay_for_task, this, _1),
+                           tr("pay_for_task <request every n block> <pair1> <pair2> <exchange1> <exchange2> <exchange3> <exchange4>"),
+                           tr("Pay for a task which you can later enable on the daemon!"));
  m_cmd_binder.set_handler("register_service_node",
                            boost::bind(&simple_wallet::register_service_node, this, _1),
                            tr("register_service_node [index=<N1>[,<N2>,...]] [priority] [auto] [<address1> <fraction1> [<address2> <fraction2> [...]]] <expiration timestamp> <pubkey> <signature> <amount>"),
@@ -6827,6 +6831,94 @@ bool simple_wallet::locked_transfer(const std::vector<std::string> &args_)
 bool simple_wallet::locked_sweep_all(const std::vector<std::string> &args_)
 {
   sweep_main(m_current_subaddress_account, 0, true, args_);
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
+bool simple_wallet::pay_for_task(const std::vector<std::string> &args_)
+{
+
+  if (!try_connect_to_daemon())
+    return true;
+
+  if(args_.size() < 4)
+  {
+    fail_msg_writer() << tr("wrong number of arguments");
+    return true;
+  }
+
+  uint64_t nth_block = args_[0];
+  if(nth_block < 1)
+  {
+    fail_msg_writer() << "Needs to be greated than 1";
+    return true;
+  }
+
+  std::pair<std::string,std::string> pairs = {args_[1],args_[2]};
+  if(pairs.first == "" || pairs.second == "")
+  {
+    fail_msg_writer() << "Pairs must not be empty";
+    return true;
+  }
+
+  uint64_t days = args_[3];
+  if(days < 1)
+  {
+    fail_msg_writer() << "Needs to be greated than 1";
+    return true;
+  }
+
+  //check pair on exchanges
+
+  uint64_t XEQ_AMOUNT = days * (720 / nth_block);
+
+  std::string prompt = std::string("You will pay ") + XEQ_AMOUNT + std::string(" XEQ for DELFI data on these pairs: ") + pairs.first + "/" + pairs.second + std::string(" @ the rate of 1 XEQ per request. You will do a request every ") + std::string(nth_block) +  " blocks." + std::string("\nIs this okay?  (Y/Yes/N/No): ");
+  std::string accepted = input_line(prompt);
+  if (std::cin.eof())
+  return true;
+  if (!command_line::is_yes(accepted))
+  {
+   fail_msg_writer() << tr("Task Payment Cancelled.");
+   return true;
+  }
+
+  SCOPED_WALLET_UNLOCK();
+  try
+  {
+    crypto::public_key burn_pubkey;
+    cryptonote::get_burn_pubkey(burn_pubkey);
+
+    std::vector<uint8_t> extra;
+    std::set<uint32_t> subaddr_indices;
+    std::vector<cryptonote::tx_destination_entry> dsts;
+    cryptonote::tx_destination_entry burn_dst;
+    
+    burn_dst.original = ""; //not needed
+    burn_dst.addr.m_spend_public_key = burn_pubkey;
+    burn_dst.addr.m_view_public_key = burn_pubkey;
+    burn_dst.amount = amount;
+    burn_dst.is_subaddress = false;
+    burn_dst.is_integrated = false;
+    dsts.push_back(burn_dst);
+
+    cryptonote::task task = {};
+    task.nth_block = nth_block;
+    task.pair = pairs;
+    task.blocks = days * 720;
+    std::vector<tools::wallet2::pending_tx> ptx_vector = m_wallet->create_transactions_2(dsts, 1, 0, 1, extra, m_current_subaddress_account, subaddr_indices, false, true, task);
+
+    commit_or_save(ptx_vector, m_do_not_relay);
+
+  }
+  catch (const std::exception &e)
+  {
+    handle_transfer_exception(std::current_exception(), m_wallet->is_trusted_daemon());
+  }
+  catch (...)
+  {
+    LOG_ERROR("unknown error");
+    fail_msg_writer() << tr("unknown error");
+  }
+  //m_wallet->save_mint_key(ptx_vector[0], mint_seckey);
   return true;
 }
 //----------------------------------------------------------------------------------------------------

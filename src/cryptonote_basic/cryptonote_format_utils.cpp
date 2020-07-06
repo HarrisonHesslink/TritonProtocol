@@ -161,6 +161,47 @@ namespace cryptonote
     get_transaction_prefix_hash(tx, h);
     return h;
   }
+    void get_burn_keys(crypto::public_key& burn_pubkey, crypto::secret_key& burn_seckey)
+  {
+    cryptonote::blobdata parse_blob;
+
+    string_tools::parse_hexstr_to_binbuff(std::string(BURN_PUBKEY), parse_blob);
+    burn_pubkey = *reinterpret_cast<const crypto::public_key*>(parse_blob.data());
+
+    string_tools::parse_hexstr_to_binbuff(std::string(BURN_SECKEY), parse_blob);
+    burn_seckey = *reinterpret_cast<const crypto::secret_key*>(parse_blob.data());
+  }
+  //---------------------------------------------------------------
+  void get_burn_pubkey(crypto::public_key& pubkey)
+  {
+    cryptonote::blobdata parse_blob;
+    string_tools::parse_hexstr_to_binbuff(std::string(BURN_PUBKEY), parse_blob);
+    pubkey = *reinterpret_cast<const crypto::public_key*>(parse_blob.data());
+  }
+  //---------------------------------------------------------------
+  uint64_t coins_burned_in_tx(cryptonote::transaction tx)
+  {
+    crypto::public_key mint_key;
+    bool mint_key_found = get_mint_key_from_tx_extra(tx.extra, mint_key);
+    if (mint_key_found)
+    {
+      return tx.vout[0].amount;
+    }
+    else
+    {
+      return 0;
+    }
+  }
+  //---------------------------------------------------------------
+  uint64_t coins_burned_in_txs(std::vector<cryptonote::transaction> txs)
+  {
+    uint64_t total_burned = 0;
+    for (cryptonote::transaction tx : txs)
+    {
+      total_burned += coins_burned_in_tx(tx);
+    }
+    return total_burned;
+  }
   //---------------------------------------------------------------
   bool expand_transaction_1(transaction &tx, bool base_only)
   {
@@ -626,12 +667,14 @@ namespace cryptonote
     if (!pick<tx_extra_mysterious_minergate>(nar, tx_extra_fields, TX_EXTRA_MYSTERIOUS_MINERGATE_TAG)) return false;
     if (!pick<tx_extra_padding>(nar, tx_extra_fields, TX_EXTRA_TAG_PADDING)) return false;
 
-	if (!pick<tx_extra_service_node_register>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_REGISTER)) return false;
-	if (!pick<tx_extra_service_node_deregister>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_DEREGISTER)) return false;
-	if (!pick<tx_extra_service_node_winner>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_WINNER)) return false;
-	if (!pick<tx_extra_service_node_contributor>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR)) return false;
-	if (!pick<tx_extra_service_node_pubkey>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY)) return false;
-	if (!pick<tx_extra_tx_secret_key>(nar, tx_extra_fields, TX_EXTRA_TAG_TX_SECRET_KEY)) return false;
+    if (!pick<tx_extra_service_node_register>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_REGISTER)) return false;
+    if (!pick<tx_extra_service_node_deregister>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_DEREGISTER)) return false;
+    if (!pick<tx_extra_service_node_winner>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_WINNER)) return false;
+    if (!pick<tx_extra_service_node_contributor>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR)) return false;
+    if (!pick<tx_extra_service_node_pubkey>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY)) return false;
+    if (!pick<tx_extra_tx_secret_key>(nar, tx_extra_fields, TX_EXTRA_TAG_TX_SECRET_KEY)) return false;
+    if (!pick<tx_extra_is_burn_tx>(nar, tx_extra_fields, TX_EXTRA_TAG_IS_BURN_TX)) return false;
+
     // if not empty, someone added a new type and did not add a case above
     if (!tx_extra_fields.empty())
     {
@@ -792,10 +835,43 @@ namespace cryptonote
   key = seckey.key;
   return true;
 }
+bool get_task_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::task& task)
+{
+  std::vector<tx_extra_field> tx_extra_fields;
+  parse_tx_extra(tx_extra, tx_extra_fields);
+  cryptonote::task extra_task;x
+  bool result = find_tx_extra_field_by_type(tx_extra_fields, extra_task);
+  if (!result)
+    return false;
+  tax = extra_task.task;
+  return true;
+}
+//---------------------------------------------------------------
+bool get_is_burn_tx_tag_from_tx_extra(const std::vector<uint8_t>& tx_extra, bool& is_burn_tx)
+{
+  std::vector<tx_extra_field> tx_extra_fields;
+  parse_tx_extra(tx_extra, tx_extra_fields);
+  tx_extra_is_burn_tx is_burn;
+  bool result = find_tx_extra_field_by_type(tx_extra_fields, is_burn);
+  if (!result)
+    return false;
+  is_burn_tx = is_burn.is_burn_tx;
+  return true;
+}
+//---------------------------------------------------------------
+void add_is_burn_tx_tag_to_tx_extra(std::vector<uint8_t>& tx_extra, bool is_burn_tx)
+{
+  add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&is_burn_tx), sizeof(bool), TX_EXTRA_TAG_IS_BURN_TX);
+}
 //---------------------------------------------------------------
 void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::secret_key& key)
 {
   add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&key), sizeof(key), TX_EXTRA_TAG_TX_SECRET_KEY);
+}
+//---------------------------------------------------------------
+void add_task_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::task& task)
+{
+  add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&task), sizeof(task), TX_EXTRA_TAG_REGISTER_TASK;
 }
 //---------------------------------------------------------------
  bool get_service_node_contributor_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::account_public_address& address)

@@ -46,6 +46,7 @@
 #define TX_EXTRA_TAG_SERVICE_NODE_PUBKEY      0x74
 #define TX_EXTRA_TAG_TX_SECRET_KEY            0x75
 #define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG     0xDE
+#define TX_EXTRA_TAG_IS_BURN_TX               0x76
 
 #define TX_EXTRA_NONCE_PAYMENT_ID             0x00
 #define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID   0x01
@@ -97,6 +98,15 @@ namespace cryptonote
       }
       return true;
     }
+  };
+
+  struct tx_extra_is_burn_tx
+  {
+    bool is_burn_tx;
+
+    BEGIN_SERIALIZE()
+      FIELD(is_burn_tx)
+    END_SERIALIZE()
   };
 
   struct tx_extra_pub_key
@@ -254,6 +264,18 @@ struct tx_extra_service_node_deregister
     FIELD(key)
   END_SERIALIZE()
 };
+
+struct tx_extra_register_task
+{
+  std::pair<std::string,std::string> pair;
+  uint64_t nth_block;
+
+  BEGIN_SERIALIZE()
+    FIELD(pair)
+    FIELD(nth_block)
+  END_SERIALIZE()
+};
+
   // tx_extra_field format, except tx_extra_padding and tx_extra_pub_key:
   //   varint tag;
   //   varint size;
@@ -269,8 +291,10 @@ struct tx_extra_service_node_deregister
 	 tx_extra_service_node_contributor,
 	 tx_extra_service_node_winner,
 	 tx_extra_service_node_deregister,
-	 tx_extra_tx_secret_key> tx_extra_field;
-  }
+	 tx_extra_tx_secret_key,
+   tx_extra_is_burn_tx,
+   tx_extra_register_task> tx_extra_field;
+   
   BLOB_SERIALIZER(cryptonote::tx_extra_service_node_deregister::vote);
 
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_padding, TX_EXTRA_TAG_PADDING);
@@ -285,3 +309,6 @@ struct tx_extra_service_node_deregister
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_winner, TX_EXTRA_TAG_SERVICE_NODE_WINNER);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_pubkey, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_tx_secret_key, TX_EXTRA_TAG_TX_SECRET_KEY);
+  VARIANT_TAG(binary_archive, cryptonote::tx_extra_is_burn_tx, TX_EXTRA_TAG_IS_BURN_TX);
+  VARIANT_TAG(binary_archive, cryptonote::tx_extra_register_task, TX_EXTRA_TAG_REGISTER_TASK);
+
