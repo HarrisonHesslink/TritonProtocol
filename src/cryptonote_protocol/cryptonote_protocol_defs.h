@@ -401,13 +401,37 @@ namespace cryptonote
     };
     typedef epee::misc_utils::struct_init<request_t> request;
   }; 
+  /************************************************************************/
+  /*                                                                      */
+  /************************************************************************/
+  struct NOTIFY_TASK_UPDATE
+  {
+    const static int ID = BC_COMMANDS_POOL_BASE + 12;
+
+    struct request_t
+    {
+      std::vector<delfi_protocol::task_update> task_updates;
+
+      uint64_t timestamp;
+      crypto::public_key pubkey;
+      crypto::signature sig;
+
+      BEGIN_KV_SERIALIZE_MAP()
+		    KV_SERIALIZE(task_updates)
+        KV_SERIALIZE(timestamp)
+        KV_SERIALIZE_VAL_POD_AS_BLOB(pubkey)
+        KV_SERIALIZE_VAL_POD_AS_BLOB(sig)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+  }; 
 
   /************************************************************************/
   /*                                                                      */
   /************************************************************************/
   struct NOTIFY_GET_TXPOOL_COMPLEMENT
   {
-    const static int ID = BC_COMMANDS_POOL_BASE + 10;
+    const static int ID = BC_COMMANDS_POOL_BASE + 13;
 
     struct request_t
     {

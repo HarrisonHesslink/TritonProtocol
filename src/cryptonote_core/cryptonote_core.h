@@ -873,6 +873,8 @@ namespace cryptonote
     * @return true
     */
    bool submit_uptime_proof();
+   bool submit_task_update(cryptonote::NOTIFY_TASK_UPDATE::request& req);
+
    /**
    * @brief Try find the uptime proof from the service node.
    *

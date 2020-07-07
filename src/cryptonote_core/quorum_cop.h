@@ -30,6 +30,7 @@
 
 #include "blockchain.h"
 #include "cryptonote_protocol/cryptonote_protocol_handler_common.h"
+#include "delfi/delfi_protocol.h"
 
 namespace triton
 {
@@ -55,24 +56,34 @@ namespace service_nodes
 		void block_added(const cryptonote::block& block, const std::vector<std::pair<cryptonote::transaction, cryptonote::blobdata>>& txs) override;
 		void blockchain_detached(uint64_t height) override;
 
+		void quorum_cop::process_tasks();
+
 		bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof);
+		bool handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &task);
 
 		static const uint64_t REORG_SAFETY_BUFFER_IN_BLOCKS = 20;
 		static_assert(REORG_SAFETY_BUFFER_IN_BLOCKS < triton::service_node_deregister::VOTE_LIFETIME_BY_HEIGHT,
 			"Safety buffer should always be less than the vote lifetime");
+		
 		bool prune_uptime_proof();
+		bool prune_task_updates();
 
 		uint64_t get_uptime_proof(const crypto::public_key &pubkey) const;
+		delfi_protocol::task_update get_task_update(const crypto::public_key &pubkey) const;
 
 	private:
 
 		cryptonote::core& m_core;
 		uint64_t m_last_height;
+		delfi_protocol::Delfi m_delfi;
 
 		using timestamp = uint64_t;
 		std::unordered_map<crypto::public_key, timestamp> m_uptime_proof_seen;
+		std::unordered_map<crypto::public_key, timestamp> m_task_update_seen;
+		std::unordered_map<crypto::public_key, std::vector<delfi_protocol::task_update>> m_valid_tasks;
+
 		mutable epee::critical_section m_lock;
 	};
 	void generate_uptime_proof_request(const crypto::public_key& pubkey, const crypto::secret_key& seckey, cryptonote::NOTIFY_UPTIME_PROOF::request& req);
-
+	void generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req);
 }

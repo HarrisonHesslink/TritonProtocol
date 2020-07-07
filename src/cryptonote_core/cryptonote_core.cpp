@@ -1407,6 +1407,33 @@ namespace cryptonote
   {
 	  return m_quorum_cop.handle_uptime_proof(proof);
   }
+   //-----------------------------------------------------------------------------------------------
+  bool core::submit_task_update(cryptonote::NOTIFY_TASK_UPDATE::request& req)
+  {
+    if (m_service_node)
+    {
+      cryptonote_connection_context fake_context = AUTO_VAL_INIT(fake_context);
+
+      bool relayed = get_protocol()->relay_task_update(req, fake_context);
+      if (!relayed)
+      {
+        MERROR("Failed to relay ribbon data");
+        return false;
+      }else{
+		    MGINFO("Submitted ribbon-data at Height: " << r.height << "for service node (yours): " << m_service_node_pubkey << std::endl << 
+        "Ribbon Green Price: " << r.ribbon_green << std::endl << 
+        "Ribbon Blue Price: " << r.ribbon_blue << std::endl <<
+        "Volume: " << r.ribbon_volume << std::endl);
+        return true;
+      }
+    }
+    return true;
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::handle_task_update(const NOTIFY_TASK_UPDATE::request &data)
+  {
+    return m_quorum_cop.handle_task_update(data);
+  }
   //-----------------------------------------------------------------------------------------------
   void core::on_transactions_relayed(const epee::span<const cryptonote::blobdata> tx_blobs, const relay_method tx_relay)
   {

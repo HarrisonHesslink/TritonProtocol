@@ -18,6 +18,44 @@ namespace delfi_protocol {
 
     bool Delfi::scanTasks(){}   
 
+    uint64_t Delfi::getTaskLastHeight(const crypto::hash& task_hash){}
+
+    std::vector<task> Delfi::getTasks(){
+        return m_tasks;
+    }
+
+    uint64_t task::completeTask()
+    {
+        for (std::string exchange :: exchanges)
+        {
+            if(exchange == "Coinbase")
+            {
+                return getCoinbasePrice(task.pair);
+            }
+            else if(exchange == "Kucoin")
+            {
+                return getKucoinPrice(task.pair);
+
+            }
+            else if(exchange == "TradeOgre")
+            {
+                return getTradeOgrePrice(task.pair);
+
+            }
+            else if(exchange == "Bittrex")
+            {
+                return getBittrexPrice(task.pair);
+            }
+            else 
+            {
+                //this should never happen
+                MERROR("Exchange give not supported");
+                return 0;
+            }
+        }
+    }
+
+
     uint64_t getCoinbasePrice(std::pair<std::string, std::string> pair)
     {
         std::string url = "api.pro.coinbase.com";
@@ -35,11 +73,6 @@ namespace delfi_protocol {
         r = http_client.invoke_get(uri, std::chrono::milliseconds(1000000), "", &res_info, fields);
 
         if(res_info){
-            MDEBUG("response code: " << res_info->m_response_code);
-            MDEBUG("response length: " << res_info->m_header_info.m_content_length);
-            MDEBUG("response comment: " << res_info->m_response_comment);
-            MDEBUG("response body: " << res_info->m_body);
-
             rapidjson::Document d;
             d.Parse(res_info->m_body.c_str());
             if(d.Size() < 0)
@@ -74,11 +107,6 @@ namespace delfi_protocol {
 
         if(res_info){
             body = res_info->m_body;
-            MDEBUG("response code: " << res_info->m_response_code);
-            MDEBUG("response length: " << res_info->m_header_info.m_content_length);
-            MDEBUG("response comment: " << res_info->m_response_comment);
-            MDEBUG("response body: " << body);
-
             rapidjson::Document d;
             d.Parse(body.c_str());
             if(d.Size() < 0)
@@ -116,12 +144,8 @@ namespace delfi_protocol {
         http_client.connect(std::chrono::seconds(10));
         bool r = true;
         r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
-        if(res_info){
-            MDEBUG("response code: " << res_info->m_response_code);
-            MDEBUG("response length: " << res_info->m_header_info.m_content_length);
-            MDEBUG("response comment: " << res_info->m_response_comment);
-            MDEBUG("response body: " << res_info->m_body);
-
+        if(res_info)
+        {
             rapidjson::Document d;
             d.Parse(res_info->m_body.c_str());
             if(d.Size() < 0)
@@ -156,12 +180,8 @@ namespace delfi_protocol {
         http_client.connect(std::chrono::seconds(10));
         bool r = true;
         r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
-        if(res_info){
-            MDEBUG("response code: " << res_info->m_response_code);
-            MDEBUG("response length: " << res_info->m_header_info.m_content_length);
-            MDEBUG("response comment: " << res_info->m_response_comment);
-            MDEBUG("response body: " << res_info->m_body);
-
+        if(res_info)
+        {
             rapidjson::Document d;
             d.Parse(res_info->m_body.c_str());
             if(d.Size() < 0)
@@ -190,12 +210,8 @@ namespace delfi_protocol {
         http_client.connect(std::chrono::seconds(10));
         bool r = true;
         r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
-        if(res_info){
-            MDEBUG("response code: " << res_info->m_response_code);
-            MDEBUG("response length: " << res_info->m_header_info.m_content_length);
-            MDEBUG("response comment: " << res_info->m_response_comment);
-            MDEBUG("response body: " << res_info->m_body);
-
+        if(res_info)
+        {
             rapidjson::Document d;
             d.Parse(res_info->m_body.c_str());
         

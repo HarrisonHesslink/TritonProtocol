@@ -32,6 +32,7 @@
 #include "cryptonote_core.h"
 #include "version.h"
 #include "quorum_cop.h"
+#include "delfi/delfi_protocol.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "quorum_cop"
@@ -48,6 +49,7 @@ namespace service_nodes
 	{
 		m_last_height = 0;
 		m_uptime_proof_seen.clear();
+		m_delfi = delfi_protocol::Delfi();
 	}
 
 	void quorum_cop::blockchain_detached(uint64_t height)
@@ -93,6 +95,15 @@ namespace service_nodes
 			m_last_height = execute_justice_from_height;
 
 
+		if (m_core.get_hard_fork_version >= 8)
+		{
+			//Create consensus on current tasks
+			census_tasks();
+
+			//Process tasks for next block
+			process_tasks();
+		}
+			
 		for (; m_last_height < (height - REORG_SAFETY_BUFFER_IN_BLOCKS); m_last_height++)
 		{
 			if (m_core.get_hard_fork_version(m_last_height) < 5)
@@ -146,6 +157,113 @@ namespace service_nodes
 
 		return result;
 	}
+	static crypto::hash make_hash(crypto::public_key const &pubkey, uint64_t timestamp, delfi_protocol::task_update tu)
+	{
+		char buf[44] = "SUP"; // Meaningless magic bytes
+		crypto::hash result;
+		memcpy(buf + 4, reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
+		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
+		memcpy(buf + 4 + sizeof(timestamp), reinterpret_cast<const void *>(&tu.price), sizeof(tu.price));
+		memcpy(buf + 4 + sizeof(tu.price), reinterpret_cast<const void *>(&tu.taskHash), sizeof(tu.taskHash));
+		crypto::cn_fast_hash(buf, sizeof(buf), result);
+
+		return result;
+	}
+
+	void quorum_cop::census_tasks()
+	{
+		std::vector<delfi_protocol::task_update> task_updates = m_task_update_seen;
+		auto it = std::find(state->quorum_nodes.begin(), state->quorum_nodes.end(), my_pubkey);
+
+		if (it == state->quorum_nodes.end())
+			continue;
+
+		size_t my_index_in_quorum = it - state->quorum_nodes.begin();
+
+		for (auto task : task_updates)
+		{
+			//Pick task
+			crypto::hash task_hash = task.taskHash;
+			double stdev = 0;
+			sizet_t N = 0;
+			//Mean
+			uint64_t m = 0;
+			for (auto t1 : task_updates)
+			{
+				if(t1.taskHash != task_hash)
+					continue;
+
+				m += ti.price;
+				N++;
+			}
+
+			m = m / N;
+
+			//stdev
+			for (auto t1 : task_updates)
+			{
+				if(t1.taskHash != task_hash)
+					continue;
+
+				double delta = t1.price - m;
+				stdev += delta * delta;
+			}
+
+			stdev = stdev / N;
+
+			for (auto t1 : task_updates)
+			{
+				if(t1.taskHash != task_hash)
+					continue;
+
+				if (task.price <= (m + (stdev * 2)) && task.price >= (m - (stdev * 2)))
+					m_valid_tasks[t1.pubkey] = t1;
+
+				m_task_update_seen.erase(t1.pubkey);
+			}
+		}
+	}
+
+	//Process Tasks for next block
+	void quorum_cop::process_tasks()
+	{
+		std::vector<delfi_protocol::task_update> task_updates;
+		std::vector<delfi_protocol::task> tasks = m_delfi.getTasks();
+		for (auto task : tasks)
+		{
+			delfi_protocol::task_update tu;
+			if (latest_height > task.block_height_finished)
+			{
+				MERROR("Task is expired");
+				continue;
+			}
+
+			uint64_t last_task_height = m_delfi.getTaskLastHeight(task.taskHash);
+			if(last_task_height + task.block_rate != latest_height)
+			{
+				MGINFO_GREEN("Task: " << task.taskHash << " at block height: " << latest_height << " does not need to be ran.");
+				continue;
+			}
+	
+			uint64_t task_price = task.completeTask();
+
+			tu.price = task_price;
+			tu.taskHash = task.taskHash;
+			crypto::hash hash = make_hash(req.pubkey, req.timestamp, tu);
+			crypto::generate_signature(hash, my_pubkey, my_seckey, tu.sig);
+
+			//push task update to then be sent to all oracle nodes
+			task_updates.push_back(tu);
+		}
+
+		if(task_updates.size() == 0)
+			continue;
+
+		cryptonote::NOTIFY_TASK_UPDATE::request req;
+		generate_task_update(my_pubkey,my_seckey, task_updates, req);
+
+		m_core.submit_task_update(req);
+	}
 
 	bool quorum_cop::handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof)
 	{
@@ -177,11 +295,49 @@ namespace service_nodes
 		return true;
 	}
 
+	bool quorum_cop::handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &taskUpdate)
+	{
+		uint64_t now = time(nullptr);
+			
+		uint64_t timestamp = taskUpdate.timestamp;
+		const crypto::public_key& pubkey = taskUpdate.pubkey;
+		const crypto::signature& sig = taskUpdate.sig;
+
+
+		if ((timestamp < now - UPTIME_PROOF_BUFFER_IN_SECONDS) || (timestamp > now + UPTIME_PROOF_BUFFER_IN_SECONDS))
+			return false;
+
+		if (!m_core.is_service_node(pubkey))
+			return false;
+
+		CRITICAL_REGION_LOCAL(m_lock);
+		if (m_task_update_seen[pubkey] >= now - (UPTIME_PROOF_FREQUENCY_IN_SECONDS / 2))
+			return false; // already received one uptime proof for this node recently.
+
+		crypto::hash hash = make_hash(pubkey, timestamp);
+		if (!crypto::check_signature(hash, pubkey, sig))
+			return false;
+
+		m_task_update_seen[pubkey] = now;
+		return true;
+	}
+
+
 	void generate_uptime_proof_request(const crypto::public_key& pubkey, const crypto::secret_key& seckey, cryptonote::NOTIFY_UPTIME_PROOF::request& req)
 	{
 		req.snode_version_major = static_cast<uint16_t>(TRITON_VERSION_MAJOR);
 		req.snode_version_minor = static_cast<uint16_t>(TRITON_VERSION_MINOR);
 		req.snode_version_patch = static_cast<uint16_t>(TRITON_VERSION_PATCH);
+		req.timestamp = time(nullptr);
+		req.pubkey = pubkey;
+
+		crypto::hash hash = make_hash(req.pubkey, req.timestamp);
+		crypto::generate_signature(hash, pubkey, seckey, req.sig);
+	}
+
+	void generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req)
+	{
+		req.task_updates = task_updates;
 		req.timestamp = time(nullptr);
 		req.pubkey = pubkey;
 
