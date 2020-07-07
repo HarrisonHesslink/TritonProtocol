@@ -152,20 +152,6 @@ namespace cryptonote
 
   };
 
-
-  struct task 
-  {
-    crypto::hash taskHash;
-    std::pair<std::string, std::string> pair;
-    std::vector<std::string> exchanges;
-
-    crypto::hash reg_tx_hash;
-
-    uint64_t nth_block;
-    uint64_t blocks;
-  };
-
-
   template<typename T> static inline unsigned int getpos(T &ar) { return 0; }
   template<> inline unsigned int getpos(binary_archive<true> &ar) { return ar.stream().tellp(); }
   template<> inline unsigned int getpos(binary_archive<false> &ar) { return ar.stream().tellg(); }
@@ -180,7 +166,6 @@ namespace cryptonote
       version_1,
       version_2,
       version_3_per_output_unlock_times,
-      version_4_register_task
     };
     // tx information
     size_t   version;
@@ -194,16 +179,14 @@ namespace cryptonote
 
     std::vector<uint64_t> output_unlock_times;
     bool is_deregister; //service node deregister tx
-    bool is_task_register;
+
     BEGIN_SERIALIZE()
       VARINT_FIELD(version)
       if (version > 2)
-      {
-        FIELD(output_unlock_times)
-        FIELD(is_deregister)
-      }
-      if (version > 3)
-        FIELD(is_task_register)
+   {
+     FIELD(output_unlock_times)
+     FIELD(is_deregister)
+   }
       if(version == 0 || CURRENT_TRANSACTION_VERSION < version) return false;
       VARINT_FIELD(unlock_time)
       FIELD(vin)
@@ -215,7 +198,6 @@ namespace cryptonote
   public:
     transaction_prefix(){}
 	  bool is_deregister_tx() const { return (version >= version_3_per_output_unlock_times) && is_deregister; }
-	  bool is_task_register_tx() const { return (version >= version_4_register_task) && is_task_register; }
 
     uint64_t get_unlock_time(size_t out_index) const
    {
@@ -235,7 +217,6 @@ namespace cryptonote
       version = 1;
       unlock_time = 0;
       is_deregister = false;
-      is_task_register = false;
       vin.clear();
       vout.clear();
       extra.clear();
@@ -532,8 +513,6 @@ namespace cryptonote
 
     transaction miner_tx;
     std::vector<crypto::hash> tx_hashes;
-    
-    std::vector<crypto::hash> task_hashes;
 
     // hash cash
     mutable crypto::hash hash;
@@ -547,8 +526,6 @@ namespace cryptonote
       FIELD(tx_hashes)
       if (tx_hashes.size() > CRYPTONOTE_MAX_TX_PER_BLOCK)
         return false;
-      if (block_header.major_version >= 8)
-        FIELD(task_hashes)
     END_SERIALIZE()
   };
 
