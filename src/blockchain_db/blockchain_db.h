@@ -147,9 +147,12 @@ struct txpool_tx_meta_t
   uint8_t relayed;
   uint8_t do_not_relay;
   uint8_t double_spend_seen: 1;
+  uint64_t fee_usd;
+  uint64_t offshore_fee;
+  uint64_t offshore_fee_usd;
   uint8_t bf_padding: 7;
 
-  uint8_t padding[76]; // till 192 bytes
+  uint8_t padding[52]; // till 192 bytes
 };
 
 #define DBF_SAFE       1
@@ -1116,6 +1119,13 @@ public:
    */
   virtual uint64_t height() const = 0;
 
+  /**
+   * @brief fetch the circulating supply tally values from the blockchain
+   *
+   * @return the current circulating supply tally values
+   */
+  virtual std::vector<std::pair<std::string, int64_t>> get_circulating_supply() const = 0;
+  
 
   /**
    * <!--

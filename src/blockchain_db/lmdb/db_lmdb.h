@@ -70,6 +70,11 @@ typedef struct mdb_txn_cursors
   MDB_cursor *m_txc_hf_versions;
 
   MDB_cursor *m_txc_properties;
+
+  // NEAC : Add cursor for the circulating supply data
+  MDB_cursor *m_txc_circ_supply;
+  MDB_cursor *m_txc_circ_supply_tally;
+
 } mdb_txn_cursors;
 
 #define m_cur_blocks	m_cursors->m_txc_blocks
@@ -89,6 +94,8 @@ typedef struct mdb_txn_cursors
 #define m_cur_txpool_blob	m_cursors->m_txc_txpool_blob
 #define m_cur_hf_versions	m_cursors->m_txc_hf_versions
 #define m_cur_properties	m_cursors->m_txc_properties
+#define m_cur_circ_supply       m_cursors->m_txc_circ_supply
+#define m_cur_circ_supply_tally m_cursors->m_txc_circ_supply_tally
 
 typedef struct mdb_rflags
 {
@@ -110,6 +117,8 @@ typedef struct mdb_rflags
   bool m_rf_txpool_blob;
   bool m_rf_hf_versions;
   bool m_rf_properties;
+  bool m_rf_circ_supply;
+  bool m_rf_circ_supply_tally;
 } mdb_rflags;
 
 typedef struct mdb_threadinfo
@@ -241,6 +250,8 @@ public:
 
   virtual block get_top_block() const;
 
+  virtual std::vector<std::pair<std::string, int64_t>> get_circulating_supply() const;
+  
   virtual uint64_t height() const;
 
   virtual bool tx_exists(const crypto::hash& h) const;
@@ -427,6 +438,9 @@ private:
   // migrate from DB version 4 to 5
   void migrate_4_5();
 
+  // migrate from DB version 5 to 6
+  void migrate_5_6();
+
   void cleanup_batch();
 
 private:
@@ -456,7 +470,10 @@ private:
   MDB_dbi m_hf_versions;
 
   MDB_dbi m_properties;
-
+  
+  MDB_dbi m_circ_supply;
+  MDB_dbi m_circ_supply_tally;
+  
   mutable uint64_t m_cum_size;	// used in batch size estimation
   mutable unsigned int m_cum_count;
   std::string m_folder;

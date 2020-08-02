@@ -57,6 +57,7 @@
 #include "checkpoints/checkpoints.h"
 #include "cryptonote_basic/hardfork.h"
 #include "blockchain_db/blockchain_db.h"
+#include "offshore/pricing_handler.h"
 
 namespace tools { class Notify; }
 
@@ -574,8 +575,8 @@ namespace cryptonote
      * @brief get dynamic per kB or byte fee for a given block weight
      *
      * The dynamic fee is based on the block weight in a past window, and
-     * the current block reward. It is expressed by kB before v8, and
-     * per byte from v8.
+     * the current block reward. It is expressed by kB before v5, and
+     * per byte from v5.
      *
      * @param block_reward the current block reward
      * @param median_block_weight the median block weight in the past window
@@ -589,8 +590,8 @@ namespace cryptonote
      * @brief get dynamic per kB or byte fee estimate for the next few blocks
      *
      * The dynamic fee is based on the block weight in a past window, and
-     * the current block reward. It is expressed by kB before v8, and
-     * per byte from v8.
+     * the current block reward. It is expressed by kB before v5, and
+     * per byte from v5.
      * This function calculates an estimate for a dynamic fee which will be
      * valid for the next grace_blocks
      *
@@ -648,6 +649,13 @@ namespace cryptonote
      * @return the median
      */
     uint64_t get_current_cumulative_block_weight_median() const;
+
+    /**
+     * @brief gets the pricing record for the specified timestamp
+     *
+     * @return false if method failed to obtain pricing record from oracle, otherwise true
+     */
+    bool get_pricing_record(offshore::pricing_record& pr, uint64_t timestamp) const;
 
     /**
      * @brief gets the difficulty of the block with a given height
@@ -1086,6 +1094,8 @@ namespace cryptonote
 
     HardFork *m_hardfork;
 
+    offshore::PricingHandler *m_pricing_handler;
+
     network_type m_nettype;
     bool m_offline;
     difficulty_type m_fixed_difficulty;
@@ -1130,6 +1140,12 @@ namespace cryptonote
     template<class visitor_t>
     inline bool scan_outputkeys_for_indexes(size_t tx_version, const txin_to_key& tx_in_to_key, visitor_t &vis, const crypto::hash &tx_prefix_hash, uint64_t* pmax_related_block_height = NULL) const;
 
+    template<class visitor_t>
+    inline bool scan_outputkeys_for_indexes(size_t tx_version, const txin_onshore& tx_in_to_key, visitor_t &vis, const crypto::hash &tx_prefix_hash, uint64_t* pmax_related_block_height = NULL) const;
+
+    template<class visitor_t>
+    inline bool scan_outputkeys_for_indexes(size_t tx_version, const txin_offshore& tx_in_to_key, visitor_t &vis, const crypto::hash &tx_prefix_hash, uint64_t* pmax_related_block_height = NULL) const;
+    
     /**
      * @brief collect output public keys of a transaction input set
      *
@@ -1151,7 +1167,9 @@ namespace cryptonote
      * @return false if any output is not yet unlocked, or is missing, otherwise true
      */
     bool check_tx_input(size_t tx_version,const txin_to_key& txin, const crypto::hash& tx_prefix_hash, const std::vector<crypto::signature>& sig, const rct::rctSig &rct_signatures, std::vector<rct::ctkey> &output_keys, uint64_t* pmax_related_block_height);
-
+    bool check_tx_input(size_t tx_version,const txin_offshore& txin, const crypto::hash& tx_prefix_hash, const std::vector<crypto::signature>& sig, const rct::rctSig &rct_signatures, std::vector<rct::ctkey> &output_keys, uint64_t* pmax_related_block_height);
+    bool check_tx_input(size_t tx_version,const txin_onshore& txin, const crypto::hash& tx_prefix_hash, const std::vector<crypto::signature>& sig, const rct::rctSig &rct_signatures, std::vector<rct::ctkey> &output_keys, uint64_t* pmax_related_block_height);
+    
     /**
      * @brief validate a transaction's inputs and their keys
      *
@@ -1282,7 +1300,10 @@ namespace cryptonote
      *
      * @param b the block containing the miner transaction to be validated
      * @param cumulative_block_weight the block's weight
-     * @param fee the total fees collected in the block
+     * @param fee the total TX fees collected in XHV in the block
+     * @param fee_usd the total TX fees collected in xUSD in the block
+     * @param offshore_fee the total offshore fees collected in XHV in the block
+     * @param offshore_fee_usd the total offshore fees collected in xUSD in the block
      * @param base_reward return-by-reference the new block's generated coins
      * @param already_generated_coins the amount of currency generated prior to this block
      * @param partial_block_reward return-by-reference true if miner accepted only partial reward
@@ -1290,7 +1311,7 @@ namespace cryptonote
      *
      * @return false if anything is found wrong with the miner transaction, otherwise true
      */
-    bool validate_miner_transaction(const block& b, size_t cumulative_block_weight, uint64_t fee, uint64_t& base_reward, uint64_t already_generated_coins, bool &partial_block_reward, uint8_t version);
+    bool validate_miner_transaction(const block& b, size_t cumulative_block_weight, uint64_t fee, uint64_t fee_usd, uint64_t offshore_fee, uint64_t offshore_fee_usd, uint64_t& base_reward, uint64_t already_generated_coins, bool &partial_block_reward, uint8_t version);
 
     /**
      * @brief reverts the blockchain to its previous state following a failed switch

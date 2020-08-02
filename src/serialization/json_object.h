@@ -182,6 +182,9 @@ void fromJsonValue(const rapidjson::Value& val, long& i);
 
 // end integers
 
+void toJsonValue(rapidjson::Document& doc, const offshore::pricing_record& pricing_record, rapidjson::Value& val);
+void fromJsonValue(const rapidjson::Value& val, offshore::pricing_record& pricing_record);
+  
 void toJsonValue(rapidjson::Document& doc, const cryptonote::transaction& tx, rapidjson::Value& val);
 void fromJsonValue(const rapidjson::Value& val, cryptonote::transaction& tx);
 
@@ -203,6 +206,12 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_to_scripthash& 
 void toJsonValue(rapidjson::Document& doc, const cryptonote::txin_to_key& txin, rapidjson::Value& val);
 void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_to_key& txin);
 
+void toJsonValue(rapidjson::Document& doc, const cryptonote::txin_offshore& txin, rapidjson::Value& val);
+void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_offshore& txin);
+
+void toJsonValue(rapidjson::Document& doc, const cryptonote::txin_onshore& txin, rapidjson::Value& val);
+void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_onshore& txin);
+
 void toJsonValue(rapidjson::Document& doc, const cryptonote::txout_target_v& txout, rapidjson::Value& val);
 void fromJsonValue(const rapidjson::Value& val, cryptonote::txout_target_v& txout);
 
@@ -214,6 +223,9 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::txout_to_scripthash&
 
 void toJsonValue(rapidjson::Document& doc, const cryptonote::txout_to_key& txout, rapidjson::Value& val);
 void fromJsonValue(const rapidjson::Value& val, cryptonote::txout_to_key& txout);
+
+void toJsonValue(rapidjson::Document& doc, const cryptonote::txout_offshore& txout, rapidjson::Value& val);
+void fromJsonValue(const rapidjson::Value& val, cryptonote::txout_offshore& txout);
 
 void toJsonValue(rapidjson::Document& doc, const cryptonote::tx_out& txout, rapidjson::Value& val);
 void fromJsonValue(const rapidjson::Value& val, cryptonote::tx_out& txout);

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2019, Haven Protocol
 #
 # All rights reserved.
 #
@@ -26,41 +26,36 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(simplewallet_sources
-  simplewallet.cpp)
+set(offshore_sources
+  pricing_handler.cpp
+  pricing_record.cpp)
 
-set(simplewallet_headers)
+set(offshore_headers)
 
-set(simplewallet_private_headers
-  simplewallet.h)
+set(offshore_private_headers
+  pricing_handler.h
+  pricing_record.h)
 
-monero_private_headers(simplewallet
-  ${simplewallet_private_headers})
-monero_add_executable(simplewallet
-  ${simplewallet_sources}
-  ${simplewallet_headers}
-  ${simplewallet_private_headers})
-target_link_libraries(simplewallet
-  PRIVATE
-    wallet
-    rpc_base
-    cryptonote_core
-    cncrypto
-    common
-    mnemonics
-    ${EPEE_READLINE}
+monero_private_headers(offshore
+  ${offshore_private_headers})
+monero_add_library(offshore
+  ${offshore_sources}
+  ${offshore_headers}
+  ${offshore_private_headers})
+target_link_libraries(offshore
+  PUBLIC
     version
-    ${Boost_CHRONO_LIBRARY}
+    common
+    cncrypto
+    blockchain_db
+    multisig
+    ringct
+    device
+    ${Boost_DATE_TIME_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
+    ${Boost_SERIALIZATION_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
-    ${Boost_LOCALE_LIBRARY}
-    ${ICU_LIBRARIES}
+    ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
-    ${CMAKE_THREAD_LIBS_INIT}
-    ${GNU_READLINE_LIBRARY}
+  PRIVATE
     ${EXTRA_LIBRARIES})
-set_property(TARGET simplewallet
-  PROPERTY
-    OUTPUT_NAME "haven-wallet-cli")
-install(TARGETS simplewallet DESTINATION bin)
-add_definitions(-D__STDC_FORMAT_MACROS)
