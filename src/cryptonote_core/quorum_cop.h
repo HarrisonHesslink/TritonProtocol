@@ -41,8 +41,20 @@ namespace cryptonote
 	class core;
 };
 
+
+
+
 namespace service_nodes
 {
+	struct ribbon_data_v2 {
+		uint64_t height;
+		uint64_t ribbon_green;
+		uint64_t ribbon_blue;
+		uint64_t ribbon_volume;
+		uint64_t btc_a;
+	};
+	
+
 	class quorum_cop
 		: public cryptonote::Blockchain::BlockAddedHook,
 		public cryptonote::Blockchain::BlockchainDetachedHook,
@@ -55,7 +67,8 @@ namespace service_nodes
 		void block_added(const cryptonote::block& block, const std::vector<std::pair<cryptonote::transaction, cryptonote::blobdata>>& txs) override;
 		void blockchain_detached(uint64_t height) override;
 
-		bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation);
+		bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof);
+		bool handle_ribbon_data_received(const cryptonote::NOTIFY_RIBBON_DATA::request &data);
 
 		static const uint64_t REORG_SAFETY_BUFFER_IN_BLOCKS = 20;
 		static_assert(REORG_SAFETY_BUFFER_IN_BLOCKS < triton::service_node_deregister::VOTE_LIFETIME_BY_HEIGHT,
@@ -63,7 +76,16 @@ namespace service_nodes
 		bool prune_uptime_proof();
 
 		uint64_t get_uptime_proof(const crypto::public_key &pubkey) const;
+		std::pair<std::pair<uint64_t,uint64_t>, uint64_t> get_ribbon_data(const crypto::public_key &pubkey, uint64_t height);
+		void clear_ribbon_data(uint64_t clear_height);
+		bool send_out_ribbon();
 
+
+
+		crypto::hash make_ribbon_key_hash(crypto::public_key pubkey, uint64_t height);
+		bool generate_ribbon_data_request(const crypto::public_key& pubkey, const crypto::secret_key& seckey, cryptonote::NOTIFY_RIBBON_DATA::request& req);
+		std::unordered_map<crypto::hash, ribbon_data_v2> get_all_ribbon_data();
+		
 	private:
 
 		cryptonote::core& m_core;
@@ -71,6 +93,7 @@ namespace service_nodes
 
 		using timestamp = uint64_t;
 		std::unordered_map<crypto::public_key, timestamp> m_uptime_proof_seen;
+		std::unordered_map<crypto::hash, ribbon_data_v2> m_ribbon_data_received; // use hash of pubkey + height as key
 		mutable epee::critical_section m_lock;
 	};
 	void generate_uptime_proof_request(const crypto::public_key& pubkey, const crypto::secret_key& seckey, cryptonote::NOTIFY_UPTIME_PROOF::request& req);

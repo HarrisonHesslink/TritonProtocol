@@ -419,5 +419,35 @@ namespace cryptonote
     };
     typedef epee::misc_utils::struct_init<request_t> request;
   };
-    
+   /************************************************************************/
+  /*                                                                      */
+  /************************************************************************/
+  struct NOTIFY_RIBBON_DATA
+  {
+    const static int ID = BC_COMMANDS_POOL_BASE + 12;
+
+    struct request
+    {
+      uint64_t timestamp;
+      uint64_t height;
+      uint64_t ribbon_green;
+      uint64_t ribbon_blue;
+      uint64_t ribbon_volume;
+      uint64_t btc_a;
+      crypto::public_key pubkey;
+      crypto::signature sig;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(timestamp)
+        KV_SERIALIZE(height)
+        KV_SERIALIZE(ribbon_green)
+        KV_SERIALIZE(ribbon_blue)
+        KV_SERIALIZE(ribbon_volume)
+        KV_SERIALIZE(btc_a)
+        KV_SERIALIZE_VAL_POD_AS_BLOB(pubkey)
+        KV_SERIALIZE_VAL_POD_AS_BLOB(sig)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+  };
 }

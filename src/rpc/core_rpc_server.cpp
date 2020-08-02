@@ -2145,6 +2145,11 @@ namespace cryptonote
     response.timestamp = blk.timestamp;
     response.prev_hash = string_tools::pod_to_hex(blk.prev_id);
     response.nonce = blk.nonce;
+    response.ribbon_blue = blk.ribbon_blue;
+    response.ribbon_red = blk.ribbon_red;
+    response.ribbon_volume = blk.ribbon_volume;
+    response.btc_a = blk.btc_a;
+    response.btc_b = blk.btc_b;
     response.orphan_status = orphan_status;
     response.height = height;
     response.depth = m_core.get_current_blockchain_height() - height - 1;
@@ -3403,7 +3408,6 @@ namespace cryptonote
     return success;
   }
   //------------------------------------------------------------------------------------------------------------------------------
-
   bool core_rpc_server::on_get_service_node_registration_cmd_raw(const COMMAND_RPC_GET_SERVICE_NODE_REGISTRATION_CMD_RAW::request& req,
                                                              COMMAND_RPC_GET_SERVICE_NODE_REGISTRATION_CMD_RAW::response& res,
                                                              epee::json_rpc::error& error_resp, const connection_context *ctx)
@@ -3428,6 +3432,35 @@ namespace cryptonote
         error_resp.message += ": " + err_msg;
       return false;
     }
+
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+
+   //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_get_ribbon_data(const COMMAND_RPC_GET_GROUP_RIBBON_DATA::request& req, COMMAND_RPC_GET_GROUP_RIBBON_DATA::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
+  {
+    PERF_TIMER(on_get_ribbon_data);
+    
+    for(size_t i = req.start_height; i <= req.end_height;i++){
+      cryptonote::block blk;
+      crypto::hash this_hash = m_core.get_blockchain_storage().get_block_id_by_height(i);
+
+      if(!m_core.get_blockchain_storage().get_block_by_hash(this_hash, blk))
+      {
+        std::cout << "Could not get block" << std::endl;
+        return false;
+      }
+    
+      std::vector<std::pair<cryptonote::account_public_address, uint64_t>> ribbon_winners_vec = m_core.get_blockchain_storage().get_winning_address_amounts(blk.prev_id);
+      std::vector<cryptonote::ribbon_w> ribbon_winners;
+      for(size_t i = 0;i < ribbon_winners_vec.size();i++){
+        std::string ribbon_winner = cryptonote::get_account_address_as_str(nettype(), false/*is_subaddress*/, ribbon_winners_vec[i].first);
+        res.ribbon_winners.push_back({ribbon_winner, ribbon_winners_vec[i].second});
+      }
+
+      res.ribbons.push_back({i, string_tools::pod_to_hex(this_hash), blk.timestamp, blk.ribbon_blue,  blk.ribbon_red, blk.ribbon_volume, blk.btc_a, blk.btc_b});
+    }    
 
     res.status = CORE_RPC_STATUS_OK;
     return true;

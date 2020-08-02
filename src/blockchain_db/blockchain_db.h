@@ -39,6 +39,7 @@
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/difficulty.h"
 #include "cryptonote_basic/hardfork.h"
+#include "cryptonote_core/ribbon.h"
 #include "cryptonote_protocol/enums.h"
 
 /** \file
@@ -404,6 +405,7 @@ private:
                 , uint64_t long_term_block_weight
                 , const difficulty_type& cumulative_difficulty
                 , const uint64_t& coins_generated
+                , const uint64_t& coints_burned
                 , uint64_t num_rct_outs
                 , const crypto::hash& blk_hash
                 ) = 0;
@@ -1052,6 +1054,20 @@ public:
    * @return the already generated coins
    */
   virtual uint64_t get_block_already_generated_coins(const uint64_t& height) const = 0;
+  
+  /**
+   * @brief fetch a block's total burned coins
+   *
+   * The subclass should return the total coins burned as of the block
+   * with the given height.
+   *
+   * If the block does not exist, the subclass should throw BLOCK_DNE
+   *
+   * @param height the height requested
+   *
+   * @return the total burned coins
+   */
+  virtual uint64_t get_block_total_burned_coins(const uint64_t& height) const = 0;
 
   /**
    * @brief fetch a block's long term weight
@@ -1854,6 +1870,8 @@ public:
   virtual void set_service_node_data(const std::string& data) = 0;
   virtual bool get_service_node_data(std::string& data) = 0;
   virtual void clear_service_node_data() = 0;
+  virtual void set_trade_history_at_height(std::vector<service_nodes::exchange_trade>& trades, uint64_t height) = 0;
+  virtual std::vector<service_nodes::exchange_trade> get_trade_history_for_height(const uint64_t height) const = 0;
 
   /**
    * @brief set whether or not to automatically remove logs

@@ -100,6 +100,7 @@ Blockchain::Blockchain(tx_memory_pool& tx_pool, service_nodes::service_node_list
   m_service_node_list(service_node_list),
   m_deregister_vote_pool(deregister_vote_pool),
   m_btc_valid(false),
+  m_service_node_pubkey(service_node_pk)
   m_batch_success(true),
   m_prepare_height(0)
 {
@@ -1118,12 +1119,12 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<block_extended_info>
 // an alternate chain.
 difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std::list<block_extended_info>& alt_chain, block_extended_info& bei) const
 {
-  if (m_fixed_difficulty)
-  {
+  LOG_PRINT_L3("Blockchain::" << __func__);
+  
+  if (m_fixed_difficulty) {
     return m_db->height() ? m_fixed_difficulty : 1;
   }
-
-  LOG_PRINT_L3("Blockchain::" << __func__);
+  
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
   uint64_t height = m_db->height();
@@ -1450,6 +1451,121 @@ uint64_t Blockchain::get_current_cumulative_block_weight_median() const
   return m_current_block_cumul_weight_median;
 }
 //------------------------------------------------------------------
+ uint64_t Blockchain::create_btc_b(uint64_t height) const 
+ {
+    uint64_t ma1_sum = 0;
+    for (size_t i = 1; i <= 2160; i++)
+    {
+      cryptonote::block blk;
+      crypto::hash block_hash = get_block_id_by_height(height - i);
+      get_block_by_hash(block_hash, blk);
+      ma1_sum += blk.btc_a;
+    }
+
+    return ma1_sum / 2160;
+ }
+//------------------------------------------------------------------
+ uint64_t Blockchain::create_ribbon_red(uint64_t height) const 
+ {
+    uint64_t ma1_sum = 0;
+    uint64_t ma1_vol_sum = 0;
+    for (size_t i = 1; i <= 1440; i++)
+    {
+      cryptonote::block blk;
+      crypto::hash block_hash = get_block_id_by_height(height - i);
+      get_block_by_hash(block_hash, blk);
+      ma1_sum += (blk.ribbon_volume * blk.ribbon_blue);
+      ma1_vol_sum += blk.ribbon_volume;
+    }
+    uint64_t ma1 = 0;
+    if(ma1_vol_sum > 0)
+      ma1 = (ma1_sum / ma1_vol_sum);
+    else
+      ma1 = 0;
+    
+    uint64_t ma2_sum = 0;
+    uint64_t ma2_vol_sum = 0;
+    for (size_t i = 1; i <= 720; i++)
+    {
+      cryptonote::block blk;
+      crypto::hash block_hash = get_block_id_by_height(height - i);
+      get_block_by_hash(block_hash, blk);
+      ma2_sum += (blk.ribbon_volume * blk.ribbon_blue);
+      ma2_vol_sum += blk.ribbon_volume;
+    }
+    uint64_t ma2 = 0;
+    if(ma2_vol_sum > 0)
+      ma2 = (ma2_sum / ma2_vol_sum);
+    else 
+      ma2 = 0;
+    
+    uint64_t ma3_sum = 0;
+    uint64_t ma3_vol_sum = 0;
+    for (size_t i = 1; i <= 360; i++)
+    {
+      cryptonote::block blk;
+      crypto::hash block_hash = get_block_id_by_height(height - i);
+      get_block_by_hash(block_hash, blk);
+      ma3_sum += (blk.ribbon_volume * blk.ribbon_blue);
+      ma3_vol_sum += blk.ribbon_volume;
+    }
+    uint64_t ma3 = 0;
+    if(ma3_vol_sum > 0)
+      ma3 = (ma3_sum / ma3_vol_sum);
+    else
+      ma3 = 0;
+    
+    uint64_t ma4_sum = 0;
+    uint64_t ma4_vol_sum = 0;
+    for (size_t i = 1; i <= 180; i++)
+    {
+      cryptonote::block blk;
+      crypto::hash block_hash = get_block_id_by_height(height - i);
+      get_block_by_hash(block_hash, blk);
+      ma4_sum += (blk.ribbon_volume * blk.ribbon_blue);
+      ma4_vol_sum += blk.ribbon_volume;
+    }
+    uint64_t ma4 = 0;
+    if(ma4_vol_sum > 0)
+      ma4 = (ma4_sum / ma4_vol_sum);
+    else 
+      ma4 = 0;
+    
+    return (ma1 + ma2 + ma3 + ma4) / 4;
+  }
+
+std::pair<std::pair<uint64_t,uint64_t>, uint64_t> Blockchain::get_first_random_ribbon_data(block& b){
+  MGINFO_GREEN("Getting next SN ribbon data as winner failed!");
+  std::vector<crypto::public_key> all_sn_pubkeys = m_service_node_list.get_service_nodes_pubkeys();
+
+  if(all_sn_pubkeys.size() == 0)
+    return m_service_node_list.get_ribbon_data(m_service_node_pubkey, m_db->height() - 1);
+
+
+  std::pair<std::pair<uint64_t,uint64_t>, uint64_t> winning_data = std::make_pair(std::make_pair(0,0),0);
+  for (size_t i = 0; i <= all_sn_pubkeys.size(); i++)
+  {
+    std::pair<std::pair<uint64_t,uint64_t>, uint64_t> ribbon_data = m_service_node_list.get_ribbon_data(all_sn_pubkeys[i], m_db->height() - 1);
+    if(b.major_version > 7 && ribbon_data.second != 0)
+    {
+      return ribbon_data;
+    }
+
+    if(b.major_version < 8 && ribbon_data.first.first != 0 && winning_data.first.first == 0)
+    {
+      return ribbon_data;
+    } 
+
+  }
+
+  return winning_data;
+}
+
+std::vector<std::pair<cryptonote::account_public_address, uint64_t>> Blockchain::get_winning_address_amounts (crypto::hash& hash) const{
+  return m_service_node_list.get_winner_addresses_and_portions(hash);
+}
+
+//------------------------------------------------------------------
 //TODO: This function only needed minor modification to work with BlockchainDB,
 //      and *works*.  As such, to reduce the number of things that might break
 //      in moving to BlockchainDB, this function will remain otherwise
@@ -1565,6 +1681,64 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   {
     b.timestamp = median_ts;
   }
+  
+  if (b.major_version > 5)
+  {
+    std::vector<HardFork::Params> hf_params = get_hard_fork_heights(m_nettype);
+    std::pair<std::pair<uint64_t,uint64_t>, uint64_t> last_winner_ribbon_data = m_service_node_list.get_ribbon_data(m_service_node_list.select_winner(b.prev_id), height - 1);
+  
+    if (last_winner_ribbon_data.second == 0)
+    {
+      std::pair<std::pair<uint64_t,uint64_t>, uint64_t> new_winner = get_first_random_ribbon_data(b);
+      b.ribbon_blue = new_winner.first.first;
+      b.ribbon_volume = new_winner.first.second;
+      if(b.major_version > 7)
+        b.btc_a = new_winner.second;
+    }
+    else 
+    {
+      b.ribbon_blue = last_winner_ribbon_data.first.first;
+      b.ribbon_volume = last_winner_ribbon_data.first.second;
+      if(b.major_version > 7)
+        b.btc_a = last_winner_ribbon_data.second;
+    }
+
+    if(b.major_version > 7){
+      if (height > hf_params[6].height + 4000)
+      {
+        b.btc_b = create_btc_b(height - 1);
+      }
+      else
+      {
+        b.btc_b  = 0;
+        LOG_PRINT_L3("Not enough data for btc_b, setting to zero");
+      }
+    }
+
+    if(b.btc_a == 0 && b.major_version > 7){
+      LOG_PRINT_L3("Creating block template: error: Bitcoin_A Price is 0 pulling last block bitcoin a to fill");
+      cryptonote::block blk;
+      crypto::hash block_hash = get_block_id_by_height(height - 1);
+      get_block_by_hash(block_hash, blk);
+      b.btc_a = blk.btc_a;
+    }
+    MGINFO_GREEN("Ribbon price winner for next block (" << height << "): " << ((float)b.ribbon_blue / 1000) << "! Bitcoin Price winner for next block (" << height << "): " << b.btc_a);
+
+    // give ribbon red a buffer after the fork for the required window of ribbon blue data
+    if (height > hf_params[5].height + 1440)
+    {
+      b.ribbon_red = create_ribbon_red(height - 1);
+    }
+    else
+    {
+      b.ribbon_red = 0;
+      LOG_PRINT_L3("Not enough data for ribbon red, setting to zero");
+    }
+
+  }
+
+  m_service_node_list.clear_ribbon_data(height - 10);
+
 
   CHECK_AND_ASSERT_MES(diffic, false, "difficulty overhead.");
 
@@ -3101,6 +3275,76 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
   CRITICAL_REGION_LOCAL(m_blockchain_lock);
 
   const uint8_t hf_version = m_hardfork->get_current_version();
+  
+  // from v7 allow burn transactions
+  crypto::public_key mint_key;
+  bool mint_key_found = get_mint_key_from_tx_extra(tx.extra, mint_key);
+  if (hf_version > 6)
+  {
+    if (mint_key_found)
+    {
+      crypto::public_key burn_pubkey;
+      crypto::secret_key burn_seckey;
+      get_burn_keys(burn_pubkey, burn_seckey);
+      
+      std::vector<tx_extra_field> tx_extra_fields;
+      crypto::public_key txkey_pub_i_zero = get_tx_pub_key_from_extra(tx.extra, 0); // require index in transaction to be zero for simplicity
+      if(txkey_pub_i_zero == null_pkey)
+      {
+        MERROR_VER("Could not get tx pubkey from extra to verify burn transaction");
+        tvc.m_invalid_output = true;
+        return false;
+      }
+      crypto::public_key index_zero_pubkey = boost::get<txout_to_key>(tx.vout[0].target).key;
+      crypto::key_derivation derivation;
+      
+      if (!crypto::generate_key_derivation(txkey_pub_i_zero, burn_seckey, derivation))
+      {
+        MERROR_VER("Failed to calculate burn transaction key derivation");
+        tvc.m_invalid_output = true;
+        return false;
+      }
+      
+      crypto::public_key derived_pubkey;
+      crypto::derive_public_key(derivation, 0, burn_pubkey, derived_pubkey);
+      
+      if (index_zero_pubkey != derived_pubkey)
+      {
+        MERROR_VER("Burn transaction output at index zero does not match expected derived public key" << std::endl << "fetched: " << index_zero_pubkey << " derived: " << derived_pubkey);
+        tvc.m_invalid_output = true;
+        return false;
+      }
+      
+      if (!crypto::check_key(mint_key))
+      {
+        MERROR_VER("Burn transaction's mint key is not a proper public key");
+        tvc.m_invalid_output = true;
+        return false;
+      }
+      
+      crypto::secret_key shared_secret;
+      crypto::derivation_to_scalar(derivation, 0, shared_secret);
+      rct::ecdhTuple ecdh_info = tx.rct_signatures.ecdhInfo[0];
+      rct::ecdhDecode(ecdh_info, rct::sk2rct(shared_secret));
+      uint64_t decrypted_amount = rct::h2d(ecdh_info.amount);
+      
+      if (decrypted_amount != tx.vout[0].amount)
+      {
+        MERROR_VER("Burn transaction's decrypted amount does not match vout amount");
+        tvc.m_invalid_output = true;
+        return false;
+      }
+    }
+  }
+  else
+  {
+    if (mint_key_found)
+    {
+      MERROR_VER("Burn transactions are not allowed until v7");
+      tvc.m_invalid_output = true;
+      return false;
+    }
+  }
 
   // from hard fork 2, we forbid dust and compound outputs
   if (hf_version >= 2){
@@ -3115,9 +3359,9 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
     }
   }
 
-  // in a v2 tx, all outputs must have 0 amount
+  // in a v2 non-burn/mint tx, all outputs must have 0 amount
   if (hf_version >= 3) {
-    if (tx.version >= 2) {
+    if (tx.version >= 2 && !mint_key_found) {
       for (auto &o: tx.vout) {
         if (o.amount != 0) {
           tvc.m_invalid_output = true;
@@ -3164,7 +3408,7 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
         return false;
       }
     }
-  }
+  }  
 
   // from v6, allow bulletproofs v2
   if (hf_version < HF_VERSION_SMALLER_BP) {
@@ -3297,10 +3541,13 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 	crypto::hash tx_prefix_hash = get_transaction_prefix_hash(tx);
 
 	const uint8_t hf_version = m_hardfork->get_current_version();
+	
+	bool is_mint_tx, is_burn_tx;
+	get_is_mint_tx_tag_from_tx_extra(tx.extra, is_mint_tx);
 
 	// from hard fork 2, we require mixin at least 2 unless one output cannot mix with 2 others
 	// if one output cannot mix with 2 others, we accept at most 1 output that can mix
-	if (hf_version >= 2 && !tx.is_deregister_tx())
+	if (hf_version >= 2 && !tx.is_deregister_tx() && !is_mint_tx)
 	{
 		size_t n_unmixable = 0, n_mixable = 0;
 		size_t mixin = std::numeric_limits<size_t>::max();
@@ -3359,10 +3606,15 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 		}
 
 		// min/max tx version based on HF, and we accept v1 txes if having a non mixable
-		const size_t max_tx_version = (hf_version <= 3) ? 1 : (hf_version < SERVICE_NODE_VERSION)
-			? transaction::version_2
-			: transaction::version_3_per_output_unlock_times;
+		size_t max_tx_version;
 
+    if(hf_version <= 3 || is_mint_tx){
+      max_tx_version= 1;
+    }else if(is_burn_tx || (hf_version < SERVICE_NODE_VERSION && !is_mint_tx)){
+      max_tx_version = transaction::version_2;
+    }else{
+      max_tx_version = transaction::version_3_per_output_unlock_times;
+    }
 
 		if (tx.version > max_tx_version)
 		{
@@ -3379,7 +3631,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 		}
 	}
 
-	// from v7, sorted ins
+	// from v4, sorted ins
 	if (hf_version >= 4) {
 		const crypto::key_image *last_key_image = NULL;
 		for (size_t n = 0; n < tx.vin.size(); ++n)
@@ -3449,7 +3701,7 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 
 		// make sure that output being spent matches up correctly with the
 		// signature spending it.
-		if (!check_tx_input(tx.version, in_to_key, tx_prefix_hash, tx.version == 1 ? tx.signatures[sig_index] : std::vector<crypto::signature>(), tx.rct_signatures, pubkeys[sig_index], pmax_used_block_height))
+		if (!check_tx_input(tx.version, in_to_key, tx_prefix_hash, tx.version == 1 ? tx.signatures[sig_index] : std::vector<crypto::signature>(), tx.rct_signatures, pubkeys[sig_index], pmax_used_block_height, is_mint_tx, is_burn_tx))
 		{
       MERROR_VER("Failed to check ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: " << in_to_key.k_image << "  sig_index: " << sig_index);
       if (pmax_used_block_height) // a default value of NULL is used when called from Blockchain::handle_block_to_main_chain()
@@ -3860,7 +4112,7 @@ bool Blockchain::check_fee(size_t tx_weight, uint64_t fee) const
     median = m_current_block_cumul_weight_limit / 2;
     const uint64_t blockchain_height = m_db->height();
     already_generated_coins = blockchain_height ? m_db->get_block_already_generated_coins(blockchain_height - 1) : 0;
-    if (!get_block_reward(median, 1, already_generated_coins, base_reward, version))
+    if (!get_block_reward(median, 1, already_generated_coins, base_reward, version, m_nettype, blockchain_height - 1))
       return false;
   }
 
@@ -3939,6 +4191,14 @@ uint64_t Blockchain::get_dynamic_base_fee_estimate(uint64_t grace_blocks) const
   MDEBUG("Estimating " << grace_blocks << "-block fee at " << print_money(fee) << "/" << (per_byte ? "byte" : "kB"));
   return fee;
 }
+//------------------------------------------------------------------
+// This function checks to see if a tx is burn tx. (Used for wallet)
+bool Blockchain::is_burn_tx(crypto::hash txid) const{
+  bool is_burn_tx;
+  cryptonote::transaction tx = m_db->get_tx(txid);
+  get_is_burn_tx_tag_from_tx_extra(tx.extra, is_burn_tx);
+  return is_burn_tx;
+}
 
 //------------------------------------------------------------------
 // This function checks to see if a tx is unlocked.  unlock_time is either
@@ -3948,6 +4208,35 @@ bool Blockchain::is_output_spendtime_unlocked(uint64_t unlock_time) const
   LOG_PRINT_L3("Blockchain::" << __func__);
   return cryptonote::rules::is_output_unlocked(unlock_time, m_db->height());
 
+}
+// This function finds the whole transaction for an input from
+// a given set of key offsets and an amount
+bool Blockchain::get_input_txs_from_txin(txin_to_key txin, std::vector<transaction>& txs)
+{
+  
+   std::vector<uint64_t> absolute_offsets = relative_output_offsets_to_absolute(txin.key_offsets);
+  std::vector<crypto::hash> tx_hashes;
+  for (size_t i = 0; i < txin.key_offsets.size(); i++)
+  {
+    tx_out_index tx_oi = m_db->get_output_tx_and_index(txin.amount, absolute_offsets[i]);
+    tx_hashes.push_back(tx_oi.first);
+  }
+  
+
+  bool found_no_tx = false;
+  for(size_t j = 0; j < tx_hashes.size();j++){
+    bool r = have_tx(tx_hashes[j]);
+    if(!r && !found_no_tx)
+      found_no_tx = true;
+  }
+
+  if(!found_no_tx)
+  {
+    MERROR("Could not find a transaction from input");
+    return false;
+  }
+
+  return true;
 }
 //------------------------------------------------------------------
 // This function locates all outputs associated with a given input (mixins)
@@ -4005,6 +4294,48 @@ bool Blockchain::check_tx_input(size_t tx_version, const txin_to_key& txin, cons
   }
   if (tx_version == 1) {
     CHECK_AND_ASSERT_MES(sig.size() == output_keys.size(), false, "internal error: tx signatures count=" << sig.size() << " mismatch with outputs keys count for inputs=" << output_keys.size());
+  }
+  
+  if (!is_mint_tx && !is_burn_tx)
+  {
+    std::vector<transaction> txs;
+    if (get_input_txs_from_txin(txin, txs))
+    {
+      MERROR_VER("Could not find transaction from which a transaction input originates");
+      return false;
+    }
+    
+    for (size_t i = 0; i < txs.size(); i++)
+    {
+      crypto::public_key mint_key;
+      bool mint_key_found = get_mint_key_from_tx_extra(txs[i].extra, mint_key);
+      if (mint_key_found)
+      {
+        crypto::public_key burn_pubkey;
+        crypto::secret_key burn_seckey;
+        get_burn_keys(burn_pubkey, burn_seckey);
+             
+        for (size_t a = 0; a < txs[i].vout.size(); a++)
+        {
+          std::vector<tx_extra_field> tx_extra_fields;
+          crypto::public_key tx_pubkey = get_tx_pub_key_from_extra(txs[i].extra, a);
+          crypto::public_key out_pubkey = boost::get<txout_to_key>(txs[i].vout[a].target).key;
+          crypto::key_derivation derivation;
+          if (crypto::generate_key_derivation(tx_pubkey, burn_seckey, derivation))
+          {
+            MERROR_VER("Failed to calculate input transaction key derivation while checking if input key was burned");
+            return false;
+          }
+          crypto::public_key derived_pubkey;
+          crypto::derive_public_key(derivation, a, burn_pubkey, derived_pubkey);
+          if (out_pubkey == derived_pubkey)
+          {
+            MERROR_VER("An input used in this transaction was burned and cannot be spent");
+            return false;
+          }
+        }
+      }
+    }
   }
   // rct_signatures will be expanded after this
   return true;
@@ -4433,6 +4764,13 @@ leave:
   TIME_MEASURE_FINISH(block_processing_time);
   if(precomputed)
     block_processing_time += m_fake_pow_calc_time;
+    
+  uint64_t total_burned_coins = 0;
+  if(bl.major_version > 6)
+  {
+    uint64_t coins_burned_in_block = coins_burned_in_txs(txs);
+    total_burned_coins = m_db->get_block_total_burned_coins(m_db->height() - 1) + coins_burned_in_block;
+  }
 
   rtxn_guard.stop();
 

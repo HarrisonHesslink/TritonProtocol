@@ -166,6 +166,7 @@ namespace cryptonote
       version_1,
       version_2,
       version_3_per_output_unlock_times,
+      version_4_burn,
     };
     // tx information
     size_t   version;
@@ -183,10 +184,10 @@ namespace cryptonote
     BEGIN_SERIALIZE()
       VARINT_FIELD(version)
       if (version > 2)
-   {
-     FIELD(output_unlock_times)
-     FIELD(is_deregister)
-   }
+      {
+        FIELD(output_unlock_times)
+        FIELD(is_deregister)
+      }
       if(version == 0 || CURRENT_TRANSACTION_VERSION < version) return false;
       VARINT_FIELD(unlock_time)
       FIELD(vin)
@@ -194,7 +195,7 @@ namespace cryptonote
       if (version >= 3 && vout.size() != output_unlock_times.size()) return false;
       FIELD(extra)
     END_SERIALIZE()
-
+    
   public:
     transaction_prefix(){}
 	  bool is_deregister_tx() const { return (version >= version_3_per_output_unlock_times) && is_deregister; }
@@ -487,12 +488,31 @@ namespace cryptonote
     crypto::hash  prev_id;
     uint32_t nonce;
 
+    //Ribbon Prices
+    uint64_t ribbon_green;
+    uint64_t ribbon_blue;
+    uint64_t ribbon_red;
+    uint64_t ribbon_volume;
+
+    //Bitcoin Index
+    uint64_t btc_a;
+    uint64_t btc_b;
+
     BEGIN_SERIALIZE()
       VARINT_FIELD(major_version)
       VARINT_FIELD(minor_version)
       VARINT_FIELD(timestamp)
       FIELD(prev_id)
       FIELD(nonce)
+      if (major_version > 5)
+      {
+        FIELD(ribbon_green)
+        FIELD(ribbon_blue)
+        FIELD(ribbon_red)
+        FIELD(ribbon_volume)
+        FIELD(btc_a)
+        FIELD(btc_b)
+      }
     END_SERIALIZE()
   };
 

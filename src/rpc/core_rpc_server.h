@@ -184,6 +184,7 @@ namespace cryptonote
 		    MAP_JON_RPC_WE("get_quorum_state", on_get_quorum_state, COMMAND_RPC_GET_QUORUM_STATE)
         MAP_JON_RPC_WE("get_service_node_registration_cmd_raw", on_get_service_node_registration_cmd_raw, COMMAND_RPC_GET_SERVICE_NODE_REGISTRATION_CMD_RAW)
 		    MAP_JON_RPC_WE("get_service_node_registration_cmd", on_get_service_node_registration_cmd, COMMAND_RPC_GET_SERVICE_NODE_REGISTRATION_CMD)
+        MAP_JON_RPC_WE("get_ribbon_data",       on_get_ribbon_data,      COMMAND_RPC_GET_GROUP_RIBBON_DATA)
         MAP_JON_RPC_WE("get_service_node_key", on_get_service_node_key, COMMAND_RPC_GET_SERVICE_NODE_KEY)
         MAP_JON_RPC_WE("get_service_nodes", on_get_service_nodes, COMMAND_RPC_GET_SERVICE_NODES)
         MAP_JON_RPC_WE("get_staking_requirement", on_get_staking_requirement, COMMAND_RPC_GET_STAKING_REQUIREMENT)
@@ -275,7 +276,7 @@ namespace cryptonote
     bool on_get_transactions_by_heights(const COMMAND_RPC_GET_TRANSACTIONS_BY_HEIGHTS::request& req, COMMAND_RPC_GET_TRANSACTIONS_BY_HEIGHTS::response& res, const connection_context *ctx = NULL);
     bool on_resolve_open_alias(const COMMAND_RPC_RESOLVE_OPEN_ALIAS::request& req, COMMAND_RPC_RESOLVE_OPEN_ALIAS::response& res, const connection_context *ctx = NULL);
 
-
+    bool on_get_ribbon_data(const COMMAND_RPC_GET_GROUP_RIBBON_DATA::request& req, COMMAND_RPC_GET_GROUP_RIBBON_DATA::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
 
 
 

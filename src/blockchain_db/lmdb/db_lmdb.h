@@ -31,6 +31,7 @@
 #include "blockchain_db/blockchain_db.h"
 #include "cryptonote_basic/blobdatatype.h" // for type blobdata
 #include "ringct/rctTypes.h"
+#include "cryptonote_core/ribbon.h"
 #include <boost/thread/tss.hpp>
 
 #include <lmdb.h>
@@ -71,6 +72,7 @@ typedef struct mdb_txn_cursors
 
   MDB_cursor *m_txc_hf_versions;
   MDB_cursor *m_txc_service_node_data;
+  MDB_cursor *m_txc_trade_history;
 
 
   MDB_cursor *m_txc_properties;
@@ -94,6 +96,7 @@ typedef struct mdb_txn_cursors
 #define m_cur_alt_blocks	m_cursors->m_txc_alt_blocks
 #define m_cur_hf_versions	m_cursors->m_txc_hf_versions
 #define m_cur_service_node_data	m_cursors->m_txc_service_node_data
+#define m_cur_trade_history	m_cursors->m_txc_trade_history
 #define m_cur_properties	m_cursors->m_txc_properties
 
 typedef struct mdb_rflags
@@ -117,6 +120,7 @@ typedef struct mdb_rflags
   bool m_rf_alt_blocks;
   bool m_rf_hf_versions;
   bool m_rf_service_node_data;
+  bool m_rf_trade_history;
 
   bool m_rf_properties;
 } mdb_rflags;
@@ -235,6 +239,8 @@ public:
   virtual difficulty_type get_block_difficulty(const uint64_t& height) const;
 
   virtual uint64_t get_block_already_generated_coins(const uint64_t& height) const;
+  
+  virtual uint64_t get_block_total_burned_coins(const uint64_t& height) const;
 
   virtual uint64_t get_block_long_term_weight(const uint64_t& height) const;
 
@@ -372,6 +378,7 @@ private:
                 , uint64_t long_term_block_weight
                 , const difficulty_type& cumulative_difficulty
                 , const uint64_t& coins_generated
+                , const uint64_t& coins_burned
                 , uint64_t num_rct_outs
                 , const crypto::hash& block_hash
                 );
@@ -441,6 +448,9 @@ private:
 
   // migrate from DB version 3 to 4
   void migrate_3_4();
+  
+  // migrate from DB version 4 to 5
+  void migrate_4_5();
 
   // migrate from DB version 4 to 5
   void migrate_4_5();
@@ -449,6 +459,9 @@ private:
   virtual void set_service_node_data(const std::string& data);
   virtual bool get_service_node_data(std::string& data);
   virtual void clear_service_node_data();
+  
+  virtual void set_trade_history_at_height(std::vector<service_nodes::exchange_trade>& trades, uint64_t height);
+  virtual std::vector<service_nodes::exchange_trade> get_trade_history_for_height(const uint64_t height) const;
 
 private:
   MDB_env* m_env;
@@ -478,6 +491,7 @@ private:
   MDB_dbi m_hf_starting_heights;
   MDB_dbi m_hf_versions;
   MDB_dbi m_service_node_data;
+  MDB_dbi m_trade_history;
 
   MDB_dbi m_properties;
 

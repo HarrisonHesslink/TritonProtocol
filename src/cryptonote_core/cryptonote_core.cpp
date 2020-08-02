@@ -230,9 +230,9 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   core::core(i_cryptonote_protocol* pprotocol):
               m_mempool(m_blockchain_storage),
-              m_service_node_list(m_blockchain_storage),
-              m_blockchain_storage(m_mempool, m_service_node_list, m_deregister_vote_pool),
               m_quorum_cop(*this),
+              m_service_node_list(m_blockchain_storage, m_quorum_cop),
+              m_blockchain_storage(m_mempool, m_service_node_list, m_deregister_vote_pool, m_service_node_pubkey),
               m_miner(this),
               m_miner_address(boost::value_initialized<account_public_address>()),
               m_starter_message_showed(false),
@@ -712,6 +712,8 @@ namespace cryptonote
     r = m_miner.init(vm, m_nettype);
     CHECK_AND_ASSERT_MES(r, false, "Failed to initialize miner instance");
 
+    submit_ribbon_data();
+      
     if (!keep_alt_blocks && !m_blockchain_storage.get_db().is_read_only())
       m_blockchain_storage.get_db().drop_alt_blocks();
 
@@ -1397,6 +1399,63 @@ namespace cryptonote
 	  return m_quorum_cop.handle_uptime_proof(proof, my_uptime_proof_confirmation);
   }
   //-----------------------------------------------------------------------------------------------
+  bool core::submit_ribbon_data()
+  {
+    if (m_service_node)
+    {
+      cryptonote_connection_context fake_context = AUTO_VAL_INIT(fake_context);
+      NOTIFY_RIBBON_DATA::request r;
+      m_quorum_cop.generate_ribbon_data_request(m_service_node_pubkey, m_service_node_key, r);
+      bool relayed = get_protocol()->relay_ribbon_data(r, fake_context);
+      if (!relayed)
+      {
+        MERROR("Failed to relay ribbon data");
+        return false;
+      }else{
+		    MGINFO("Submitted ribbon-data at height: " << r.height << " for service node (yours): " << m_service_node_pubkey << std::endl << 
+        "Ribbon Green Price: $" << ((float) r.ribbon_green / 1000) << std::endl << 
+        "Ribbon Blue Price: $" << ((float) r.ribbon_blue / 1000) << std::endl <<
+        "Volume: $" << ((float) r.ribbon_volume / 1000) << std::endl <<
+        "Bitcoin: $" << ((float) r.btc_a) << std::endl);
+        return true;
+      }
+    }
+    return true;
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::handle_ribbon_data(const NOTIFY_RIBBON_DATA::request &data)
+  {
+    return m_quorum_cop.handle_ribbon_data_received(data);
+  }
+  //-----------------------------------------------------------------------------------------------
+  ribbon_data_core core::get_top_block_ribbon_data()
+  {
+    uint64_t top_block_height = m_blockchain_storage.get_current_blockchain_height() - 1;
+    crypto::hash top_block_hash = m_blockchain_storage.get_block_id_by_height(top_block_height);
+    cryptonote::block top_blk;
+    m_blockchain_storage.get_block_by_hash(top_block_hash, top_blk);
+    return {top_blk.ribbon_red, top_blk.ribbon_blue, top_blk.ribbon_volume};
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::store_trade_history_at_height(std::vector<service_nodes::exchange_trade>& trades, uint64_t height)
+  {
+    if (m_service_node)
+    {
+      m_blockchain_storage.get_db().set_trade_history_at_height(trades, height);
+      return true;
+    }
+    return false;
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::get_trade_history_for_height(std::vector<service_nodes::exchange_trade>& trades, const uint64_t height)
+  {
+    if (m_service_node)
+    {
+      trades = m_blockchain_storage.get_db().get_trade_history_for_height(height);
+      return true;
+    }
+    return false;
+  }
   void core::on_transactions_relayed(const epee::span<const cryptonote::blobdata> tx_blobs, const relay_method tx_relay)
   {
     std::vector<crypto::hash> tx_hashes{};
@@ -1558,6 +1617,10 @@ namespace cryptonote
 
       m_pprotocol->relay_block(arg, exclude_context);
     }
+
+    if(m_target_blockchain_height - get_current_blockchain_height() <= 3)
+      submit_ribbon_data();
+
     return true;
   }
   //-----------------------------------------------------------------------------------------------
@@ -1632,7 +1695,12 @@ namespace cryptonote
       }
       b = &lb;
     }
+
     add_new_block(*b, bvc);
+
+    if(m_target_blockchain_height - get_current_blockchain_height() <= 3)
+      submit_ribbon_data();
+
     if(update_miner_blocktemplate && bvc.m_added_to_main_chain)
        update_miner_block_template();
     return true;
@@ -1766,9 +1834,9 @@ namespace cryptonote
 		  // Code snippet from Github @Jagerman
 		  m_check_uptime_proof_interval.do_call([&states, this]() {
 			  uint64_t last_uptime = m_quorum_cop.get_uptime_proof(states[0].pubkey);
-			  if (last_uptime <= static_cast<uint64_t>(time(nullptr) - UPTIME_PROOF_FREQUENCY_IN_SECONDS))
+			  if (last_uptime <= static_cast<uint64_t>(time(nullptr) - UPTIME_PROOF_FREQUENCY_IN_SECONDS)){
 				  this->submit_uptime_proof();
-
+        }
 			  return true;
 		  });
 	  }

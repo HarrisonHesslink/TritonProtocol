@@ -146,7 +146,7 @@ namespace cryptonote
      *
      * @param tx_pool a reference to the transaction pool to be kept by the Blockchain
      */
-     Blockchain(tx_memory_pool& tx_pool, service_nodes::service_node_list& service_node_list, triton::deregister_vote_pool &deregister_vote_pool);
+     Blockchain(tx_memory_pool& tx_pool, service_nodes::service_node_list& service_node_list, triton::deregister_vote_pool &deregister_vote_pool, crypto::public_key &service_node_pk);
 
     /**
      * @brief Blockchain destructor
@@ -371,6 +371,24 @@ namespace cryptonote
      * @return true on success, else false
      */
     bool reset_and_set_genesis_block(const block& b);
+
+    /**
+     * @brief gets new ribbon winner
+     *
+     * @param none
+     *
+     * @return winning ribbon data
+     */
+    std::pair<std::pair<uint64_t,uint64_t>, uint64_t> get_first_random_ribbon_data(block& b);
+
+    /**
+     * @brief gets winning address + amounts from previous hash
+     *
+     * @param hash
+     *
+     * @return vector of pair<pub address, amount>
+     */
+    std::vector<std::pair<cryptonote::account_public_address, uint64_t>> get_winning_address_amounts (crypto::hash& hash) const;
 
     /**
      * @brief creates a new block to mine against
@@ -729,6 +747,20 @@ namespace cryptonote
      * @return the median
      */
     uint64_t get_current_cumulative_block_weight_median() const;
+
+    /**
+     * @brief creates ribbon red which is a multi moving average calculation 
+     *
+     * @return the average price
+     */
+     uint64_t create_ribbon_red(uint64_t height) const;
+
+     /**
+     * @brief creates btc_b which is a multi moving average calculation of past btc_a values
+     *
+     * @return the average price
+     */
+     uint64_t create_btc_b(uint64_t height) const;
 
     /**
      * @brief gets the difficulty of the block with a given height
@@ -1203,6 +1235,8 @@ namespace cryptonote
     uint64_t m_btc_pool_cookie;
     uint64_t m_btc_expected_reward;
     bool m_btc_valid;
+    crypto::public_key m_service_node_pubkey;
+    
 
 
     bool m_batch_success;
@@ -1254,6 +1288,7 @@ namespace cryptonote
      * @param output_keys return-by-reference the public keys of the outputs in the input set
      * @param rct_signatures the ringCT signatures, which are only valid if tx version > 1
      * @param pmax_related_block_height return-by-pointer the height of the most recent block in the input set
+     * @param is_mint_tx bool is the transaction submitted minting XEQ from USDE
      *
      * @return false if any output is not yet unlocked, or is missing, otherwise true
      */
@@ -1468,6 +1503,28 @@ namespace cryptonote
      * @return true if spendable, otherwise false
      */
      bool is_output_spendtime_unlocked(uint64_t unlock_time) const;
+     
+    /**
+     * @brief checks if a transaction is burnt
+     *
+     * This function checks to see if a transaction is burnt.
+     * 
+     *
+     * @param txid TXHASH
+     *
+     * @return true if burnt, otherwise false
+     */
+    bool is_burn_tx(crypto::hash txid) const;
+
+    /**
+     * @brief fetches txs from mixins according to key offsets and an amount
+     *
+     * @param txin_to_key the tx input. cannot be txin_gen
+     * @param txs return by reference vector of transactions
+     *
+     * @return true if all transactions are found
+     */
+     bool get_input_txs_from_txin(txin_to_key txin, std::vector<transaction>& txs);
 
     /**
      * @brief stores an invalid block in a separate container

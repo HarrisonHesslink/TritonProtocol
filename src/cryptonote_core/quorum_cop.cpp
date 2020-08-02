@@ -31,6 +31,7 @@
 #include "cryptonote_config.h"
 #include "cryptonote_core.h"
 #include "version.h"
+#include "ribbon.h"
 #include "quorum_cop.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -63,8 +64,9 @@ namespace service_nodes
 	void quorum_cop::block_added(const cryptonote::block& block, const std::vector<std::pair<cryptonote::transaction, cryptonote::blobdata>>& txs)
 	{
 		uint64_t const height = cryptonote::get_block_height(block);
+		uint8_t version = m_core.get_hard_fork_version(height);
 
-		if (m_core.get_hard_fork_version(height) < 5)
+		if (version < 5)
 			return;
 
 		crypto::public_key my_pubkey;
@@ -92,6 +94,12 @@ namespace service_nodes
 		if (m_last_height < execute_justice_from_height)
 			m_last_height = execute_justice_from_height;
 
+		ribbon_protocol rp(m_core);
+		// store trades that have happened during this block to the DB
+		if (version > 5){
+			std::vector<service_nodes::exchange_trade> trades_during_block = rp.trades_during_latest_1_block();
+			m_core.store_trade_history_at_height(trades_during_block, height);
+		}
 
 		for (; m_last_height < (height - REORG_SAFETY_BUFFER_IN_BLOCKS); m_last_height++)
 		{
@@ -116,10 +124,33 @@ namespace service_nodes
 				const crypto::public_key &node_key = state->nodes_to_test[node_index];
 
 				CRITICAL_REGION_LOCAL(m_lock);
-				bool vote_off_node = (m_uptime_proof_seen.find(node_key) == m_uptime_proof_seen.end());
+				bool uptime_proof_seen = (m_uptime_proof_seen.find(node_key) != m_uptime_proof_seen.end());
+				
+				if (version > 5)
+				{
+					crypto::hash pair_hash = make_ribbon_key_hash(node_key, m_last_height);
+					bool ribbon_data_seen = (m_ribbon_data_received.find(pair_hash) != m_ribbon_data_received.end());
+					LOG_ERROR("Ribbon Data has not been seen! From: " << node_key);
 
-				if (!vote_off_node)
-					continue;
+					std::vector<service_nodes::exchange_trade> trades_during_height;
+					m_core.get_trade_history_for_height(trades_during_height, m_last_height);
+
+					ribbon_protocol rp(m_core);
+					uint64_t my_ribbon_blue = rp.convert_btc_to_usd(create_ribbon_blue(trades_during_height));
+					LOG_ERROR("My Ribbon Data: " << my_ribbon_blue);
+
+					bool ribbon_data_agrees = false;
+					if (my_ribbon_blue == m_ribbon_data_received[pair_hash].ribbon_blue)
+						ribbon_data_agrees = true;
+
+					if (uptime_proof_seen && ribbon_data_seen && ribbon_data_agrees)
+						continue;
+				}
+				else
+				{
+					if (uptime_proof_seen)
+						continue;
+				}
 
 				triton::service_node_deregister::vote vote = {};
 				vote.block_height = m_last_height;
@@ -144,6 +175,33 @@ namespace service_nodes
 		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
 		crypto::cn_fast_hash(buf, sizeof(buf), result);
 
+		return result;
+	}
+	
+	crypto::hash make_ribbon_hash(uint64_t timestamp, uint64_t height, uint64_t ribbon_green, uint64_t ribbon_blue, uint64_t ribbon_volume, uint64_t btc_a, crypto::public_key pubkey)
+	{
+		char buf[256] = "RIB";
+		memcpy(buf + 4, reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
+		memcpy(buf + 4 + sizeof(timestamp), reinterpret_cast<const void *>(&height), sizeof(height));
+		memcpy(buf + 4 + sizeof(timestamp) + sizeof(height), reinterpret_cast<const void *>(&ribbon_green), sizeof(ribbon_green));
+		memcpy(buf + 4 + sizeof(timestamp) + sizeof(height) + sizeof(ribbon_green), reinterpret_cast<const void *>(&ribbon_blue), sizeof(ribbon_blue));
+		memcpy(buf + 4 + sizeof(timestamp) + sizeof(height) + sizeof(ribbon_green) + sizeof(ribbon_blue), reinterpret_cast<const void *>(&ribbon_volume), sizeof(ribbon_volume));
+		memcpy(buf + 4 + sizeof(timestamp) + sizeof(height) + sizeof(ribbon_green) + sizeof(ribbon_blue) + sizeof(ribbon_volume), reinterpret_cast<const void *>(&btc_a), sizeof(btc_a));
+		memcpy(buf + 4 + sizeof(timestamp) + sizeof(height) + sizeof(ribbon_green) + sizeof(ribbon_blue) + sizeof(ribbon_volume) + sizeof(btc_a), reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
+
+		crypto::hash result;
+		crypto::cn_fast_hash(buf, sizeof(buf), result);
+		return result;
+	}
+	
+	crypto::hash quorum_cop::make_ribbon_key_hash(crypto::public_key pubkey, uint64_t height)
+	{
+		char buf[40];
+		memcpy(buf, reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
+		memcpy(buf + sizeof(pubkey), reinterpret_cast<const void *>(&height), sizeof(height));
+		crypto::hash result;
+		
+		crypto::cn_fast_hash(buf, sizeof(buf), result);
 		return result;
 	}
 
@@ -190,6 +248,21 @@ namespace service_nodes
 		m_uptime_proof_seen[pubkey] = now;
 		return true;
 	}
+	
+	bool quorum_cop::handle_ribbon_data_received(const cryptonote::NOTIFY_RIBBON_DATA::request &data)
+	{		
+		crypto::hash hash = make_ribbon_hash(data.timestamp, data.height, data.ribbon_green, data.ribbon_blue, data.ribbon_volume, data.btc_a, data.pubkey);
+
+		if (!crypto::check_signature(hash, data.pubkey, data.sig)){
+			std::cout << "Ribbon Signature Failure" << std::endl;
+			return false;
+		}
+		
+		const crypto::public_key& pubkey = data.pubkey;
+		crypto::hash pair_hash = make_ribbon_key_hash(pubkey, data.height);
+		m_ribbon_data_received[pair_hash] = {data.height, data.ribbon_blue, data.ribbon_volume, data.btc_a};
+		return true;
+	}
 
 	void generate_uptime_proof_request(const crypto::public_key& pubkey, const crypto::secret_key& seckey, cryptonote::NOTIFY_UPTIME_PROOF::request& req)
 	{
@@ -202,6 +275,37 @@ namespace service_nodes
 		crypto::hash hash = make_hash(req.pubkey, req.timestamp);
 		crypto::generate_signature(hash, pubkey, seckey, req.sig);
 	}
+	
+	bool quorum_cop::generate_ribbon_data_request(const crypto::public_key& pubkey, const crypto::secret_key& seckey, cryptonote::NOTIFY_RIBBON_DATA::request& req)
+	{
+		ribbon_protocol rp(m_core);
+		req.timestamp = time(nullptr);
+		req.height = m_core.get_current_blockchain_height() - 1;
+		
+		std::vector<service_nodes::exchange_trade> recent_trades = rp.trades_during_latest_1_block();
+
+		if(recent_trades.size() == 0){
+			req.ribbon_green = 0;
+			req.ribbon_blue = 0;
+			req.ribbon_volume = 0;
+		}else{
+			req.ribbon_green = service_nodes::create_ribbon_green(recent_trades);
+			req.ribbon_blue = service_nodes::create_ribbon_blue(recent_trades);
+			req.ribbon_volume = service_nodes::get_volume_for_block(recent_trades);
+		}
+		req.btc_a = service_nodes::create_bitcoin_a();
+
+		req.pubkey = pubkey;
+
+		crypto::hash hash = make_ribbon_hash(req.timestamp, req.height, req.ribbon_green, req.ribbon_blue, req.ribbon_volume, req.btc_a, req.pubkey);
+		crypto::generate_signature(hash, pubkey, seckey, req.sig);
+
+		crypto::hash pair_hash = make_ribbon_key_hash(pubkey, req.height);
+		m_ribbon_data_received[pair_hash] = {req.height, req.ribbon_blue, req.ribbon_volume, req.btc_a};
+
+		return true;
+	}
+
 
 	bool quorum_cop::prune_uptime_proof()
 	{
@@ -232,4 +336,44 @@ namespace service_nodes
 
 		return (*it).second;
 	}
+
+    std::pair<std::pair<uint64_t,uint64_t>, uint64_t> quorum_cop::get_ribbon_data(const crypto::public_key &pubkey, uint64_t height)
+    {
+      CRITICAL_REGION_LOCAL(m_lock);
+	  crypto::hash pair_hash = make_ribbon_key_hash(pubkey, height);
+      const auto& it = m_ribbon_data_received.find(pair_hash);
+      if (it != m_ribbon_data_received.end())
+      {
+		  if(m_core.get_hard_fork_version(it->second.height) <= 7)
+		  {
+			return std::make_pair(std::make_pair(it->second.ribbon_blue, it->second.ribbon_volume), 0);
+		  }
+		  else
+		  {
+			return std::make_pair(std::make_pair(it->second.ribbon_blue, it->second.ribbon_volume), it->second.btc_a);
+		  }
+      }
+      return std::make_pair(std::make_pair(0,0),0);
+    }
+    
+	std::unordered_map<crypto::hash, service_nodes::ribbon_data_v2> quorum_cop::get_all_ribbon_data()
+	{
+		return m_ribbon_data_received;
+	}
+	
+	bool quorum_cop::send_out_ribbon(){
+		return m_core.submit_ribbon_data();
+	}
+
+	void quorum_cop::clear_ribbon_data(uint64_t clear_height){
+		std::unordered_map<crypto::hash, ribbon_data_v2>::iterator it = m_ribbon_data_received.begin();
+		while(it != m_ribbon_data_received.end())
+		{	
+			if(it->second.height < clear_height){
+				it = m_ribbon_data_received.erase(it);
+			} else 
+				it++;
+		}
+	}
+
 }

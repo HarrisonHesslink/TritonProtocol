@@ -285,12 +285,10 @@ namespace cryptonote
 		crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
 		crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
 		bool r = crypto::generate_key_derivation(miner_address.m_view_public_key, txkey.sec, derivation);
-		LOG_PRINT_L1("while creating outs:  to generate_key_derivation(" << miner_address.m_view_public_key << ", " << txkey.sec << ")");
 
 		CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to generate_key_derivation(" << miner_address.m_view_public_key << ", " << txkey.sec << ")");
 
 		r = crypto::derive_public_key(derivation, 0, miner_address.m_spend_public_key, out_eph_public_key);
-		LOG_PRINT_L1("while creating outs:  to derive_public_key(" << derivation << ", " << 0 << ", " << miner_address.m_spend_public_key << ")");
 		CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to derive_public_key(" << derivation << ", " << 0 << ", " << miner_address.m_spend_public_key << ")");
 
 		txout_to_key tk;
@@ -310,10 +308,8 @@ namespace cryptonote
 			crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
 			crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
 			bool r = crypto::generate_key_derivation(service_node_info[i].first.m_view_public_key, sn_key.sec, derivation);
-			LOG_PRINT_L1("while creating outs: generate_key_derivation(" << service_node_info[i].first.m_view_public_key << ")");
 			CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to generate_key_derivation(" << service_node_info[i].first.m_view_public_key << ", "<< sn_key.sec << ")");
 			r = crypto::derive_public_key(derivation, 1 + i, service_node_info[i].first.m_spend_public_key, out_eph_public_key);
-			LOG_PRINT_L1("while creating outs:  derive_public_key(" << derivation << ", " << (1 + i) << ", " << service_node_info[i].first.m_spend_public_key << ")");
 			CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to derive_public_key(" << derivation << ", " << (1 + i) << ", " << service_node_info[i].first.m_spend_public_key << ")");
 
 			txout_to_key tk;
@@ -364,7 +360,7 @@ namespace cryptonote
   {
 	  result = {};
 	  uint64_t base_reward;
-	  if (!get_block_reward(median_weight, current_block_weight, already_generated_coins, base_reward, hard_fork_version))
+	  if (!get_block_reward(median_weight, current_block_weight, already_generated_coins, base_reward, hard_fork_version, nettype, height))
 	  {
 		  MERROR("Failed to calculate base block reward");
 		  return false;
@@ -445,8 +441,11 @@ namespace cryptonote
     {
       msout->c.clear();
     }
+    
+    bool is_burn_tx = ((pub_mint_key != crypto::null_pkey) && (sec_mint_key == crypto::null_skey));
+    bool is_mint_tx = (sec_mint_key != crypto::null_skey);
 
-    if (per_output_unlock)
+    if (per_output_unlock && !is_burn_tx && !is_mint_tx)
     {
       tx.version = 3;
     }
@@ -456,85 +455,113 @@ namespace cryptonote
       tx.unlock_time = unlock_time;
     }
 
-    tx.extra = extra;
     crypto::public_key txkey_pub;
-
-    // if we have a stealth payment id, find it and encrypt it with the tx key now
-    std::vector<tx_extra_field> tx_extra_fields;
-    if (parse_tx_extra(tx.extra, tx_extra_fields))
+    if (is_burn_tx)
     {
-      bool add_dummy_payment_id = true;
-      tx_extra_nonce extra_nonce;
-      if (find_tx_extra_field_by_type(tx_extra_fields, extra_nonce))
+      crypto::public_key burn_pubkey;
+      cryptonote::get_burn_pubkey(burn_pubkey);
+      
+      for(tx_destination_entry& dest:  destinations)
       {
-        crypto::hash payment_id = null_hash;
-        crypto::hash8 payment_id8 = null_hash8;
-        if (get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8))
+        if (dest.is_subaddress)
         {
-          LOG_PRINT_L2("Encrypting payment id " << payment_id8);
-          crypto::public_key view_key_pub = get_destination_view_key_pub(destinations, change_addr);
-          if (view_key_pub == null_pkey)
-          {
-            LOG_ERROR("Destinations have to have exactly one output to support encrypted payment ids");
-            return false;
-          }
-
-          if (!hwdev.encrypt_payment_id(payment_id8, view_key_pub, tx_key))
-          {
-            LOG_ERROR("Failed to encrypt payment id");
-            return false;
-          }
-
-          std::string extra_nonce;
-          set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
-          remove_field_from_tx_extra(tx.extra, typeid(tx_extra_nonce));
-          if (!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
-          {
-            LOG_ERROR("Failed to add encrypted payment id to tx extra");
-            return false;
-          }
-          LOG_PRINT_L1("Encrypted payment ID: " << payment_id8);
-          add_dummy_payment_id = false;
-        }
-        else if (get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id))
-        {
-          add_dummy_payment_id = false;
+          LOG_ERROR("Destination for burn transaction should not be a subaddress");
+          return false;
         }
       }
-
-      // we don't add one if we've got more than the usual 1 destination plus change
-      if (destinations.size() > 2)
-        add_dummy_payment_id = false;
-
-      if (add_dummy_payment_id)
+      
+      if (destinations[0].addr.m_view_public_key != burn_pubkey || destinations[0].addr.m_spend_public_key != burn_pubkey)
       {
-        // if we have neither long nor short payment id, add a dummy short one,
-        // this should end up being the vast majority of txes as time goes on
-        std::string extra_nonce;
-        crypto::hash8 payment_id8 = null_hash8;
-        crypto::public_key view_key_pub = get_destination_view_key_pub(destinations, change_addr);
-        if (view_key_pub == null_pkey)
-        {
-          LOG_ERROR("Failed to get key to encrypt dummy payment id with");
-        }
-        else
-        {
-          hwdev.encrypt_payment_id(payment_id8, view_key_pub, tx_key);
-          set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
-          if (!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
-          {
-            LOG_ERROR("Failed to add dummy encrypted payment id to tx extra");
-            // continue anyway
-          }
-        }
+        LOG_ERROR("Destination is marked as burn transaction but does not use the correct public key for burn");
+        return false;
       }
+      
+      std::vector<uint8_t> new_extra;
+      add_mint_key_to_tx_extra(new_extra, pub_mint_key);
+      add_is_burn_tx_tag_to_tx_extra(new_extra, is_burn_tx);
+      tx.extra = new_extra;
+      
     }
     else
     {
-      MWARNING("Failed to parse tx extra");
-      tx_extra_fields.clear();
-    }
+      tx.extra = extra;
+      // if we have a stealth payment id, find it and encrypt it with the tx key now
+      std::vector<tx_extra_field> tx_extra_fields;
+      if (parse_tx_extra(tx.extra, tx_extra_fields))
+      {
+        bool add_dummy_payment_id = true;
+        tx_extra_nonce extra_nonce;
+        if (find_tx_extra_field_by_type(tx_extra_fields, extra_nonce))
+        {
+          crypto::hash payment_id = null_hash;
+          crypto::hash8 payment_id8 = null_hash8;
+          if (get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8))
+          {
+            LOG_PRINT_L2("Encrypting payment id " << payment_id8);
+            crypto::public_key view_key_pub = get_destination_view_key_pub(destinations, change_addr);
+            if (view_key_pub == null_pkey)
+            {
+              LOG_ERROR("Destinations have to have exactly one output to support encrypted payment ids");
+              return false;
+            }
 
+            if (!hwdev.encrypt_payment_id(payment_id8, view_key_pub, tx_key))
+            {
+              LOG_ERROR("Failed to encrypt payment id");
+              return false;
+            }
+
+            std::string extra_nonce;
+            set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
+            remove_field_from_tx_extra(tx.extra, typeid(tx_extra_nonce));
+            if (!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
+            {
+              LOG_ERROR("Failed to add encrypted payment id to tx extra");
+              return false;
+            }
+            LOG_PRINT_L1("Encrypted payment ID: " << payment_id8);
+            add_dummy_payment_id = false;
+          }
+          else if (get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id))
+          {
+            add_dummy_payment_id = false;
+          }
+        }
+
+        // we don't add one if we've got more than the usual 1 destination plus change
+        if (destinations.size() > 2)
+          add_dummy_payment_id = false;
+
+        if (add_dummy_payment_id)
+        {
+          // if we have neither long nor short payment id, add a dummy short one,
+          // this should end up being the vast majority of txes as time goes on
+          std::string extra_nonce;
+          crypto::hash8 payment_id8 = null_hash8;
+          crypto::public_key view_key_pub = get_destination_view_key_pub(destinations, change_addr);
+          if (view_key_pub == null_pkey)
+          {
+            LOG_ERROR("Failed to get key to encrypt dummy payment id with");
+          }
+          else
+          {
+            hwdev.encrypt_payment_id(payment_id8, view_key_pub, tx_key);
+            set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
+            if (!add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
+            {
+              LOG_ERROR("Failed to add dummy encrypted payment id to tx extra");
+              // continue anyway
+            }
+          }
+        }
+      }
+      else
+      {
+        MWARNING("Failed to parse tx extra");
+        tx_extra_fields.clear();
+      }
+    }
+    
     struct input_generation_context_data
     {
       keypair in_ephemeral;
@@ -691,7 +718,7 @@ namespace cryptonote
       MDEBUG("Null secret key, skipping signatures");
     }
 
-    if (tx.version == 1)
+    if (tx.version == 1 && !is_mint_tx)
     {
       //generate ring signatures
       crypto::hash tx_prefix_hash;
@@ -725,6 +752,16 @@ namespace cryptonote
       }
 
       MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << ENDL << obj_to_json_str(tx) << ENDL << ss_ring_s.str());
+    }
+    else if (is_mint_tx)
+    {
+      crypto::hash mint_hash = get_mint_hash(tx);
+      crypto::signature sig;
+      std::vector<crypto::signature> sigs;
+      crypto::generate_signature(mint_hash, pub_mint_key, sec_mint_key, sig);
+      sigs.push_back(sig);
+      tx.signatures.push_back(sigs);
+      MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << ENDL << obj_to_json_str(tx) << ENDL);
     }
     else
     {
@@ -823,9 +860,13 @@ namespace cryptonote
         if (sources[i].rct)
           boost::get<txin_to_key>(tx.vin[i]).amount = 0;
       }
-      for (size_t i = 0; i < tx.vout.size(); ++i)
-        tx.vout[i].amount = 0;
 
+      for (size_t i = 0; i < tx.vout.size(); ++i)
+      {
+        if (!is_burn_tx || (is_burn_tx && i !=0))
+          tx.vout[i].amount = 0;
+      }
+      
       crypto::hash tx_prefix_hash;
       get_transaction_prefix_hash(tx, tx_prefix_hash, hwdev);
       rct::ctkeyV outSk;

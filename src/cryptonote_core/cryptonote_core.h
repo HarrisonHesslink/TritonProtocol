@@ -62,6 +62,14 @@ namespace cryptonote
       const size_t long_term_block_weight_window;
    };
 
+
+  struct ribbon_data_core {
+		uint64_t ribbon_red;
+		uint64_t ribbon_blue;
+    uint64_t ribbon_green;
+		uint64_t ribbon_volume;
+	};
+
   extern const command_line::arg_descriptor<std::string, false, true, 2> arg_data_dir;
   extern const command_line::arg_descriptor<bool, false> arg_testnet_on;
   extern const command_line::arg_descriptor<bool, false> arg_stagenet_on;
@@ -118,7 +126,39 @@ namespace cryptonote
      *
      * @return true if we haven't seen it before and thus need to relay.
      */
-	 bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation);
+     bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof);
+    /**
+     * @brief handles incoming ribbon data
+     *
+     * Parses incoming ribbon data
+     *
+     * @return true if we haven't seen it before and thus need to relay.
+     */
+     bool handle_ribbon_data(const NOTIFY_RIBBON_DATA::request &data);
+     /**
+     * @brief gets ribbon blue from last block
+     *
+     * gets ribbon data from top block header
+     *
+     * @return ribbon_blue, ribbon_red
+     */
+     ribbon_data_core get_top_block_ribbon_data();
+    /**
+     * @brief stores trade history in database
+     *
+     * Stores trade history for trades that happened within the time period of a certain block height in DB
+     *
+     * @return true if successful
+     */
+     bool store_trade_history_at_height(std::vector<service_nodes::exchange_trade>& trades, uint64_t height);
+    /**
+     * @brief fetches trade history from database
+     *
+     * Fetches trade history for trades that happened within the time period of a certain block height from DB
+     *
+     * @return true if successful
+     */
+     bool get_trade_history_for_height(std::vector<service_nodes::exchange_trade>& trades, const uint64_t height);
 	 /**
       * @brief handles an incoming transaction
       *
@@ -881,6 +921,21 @@ namespace cryptonote
    * @return 0 if no uptime proof found, otherwise the timestamp it last received in epoch time
    */
    uint64_t get_uptime_proof(const crypto::public_key &key) const;
+   
+   /**
+    * @brief attempts to submit ribbon data to the network, if this is running in service node mode
+    *
+    * @return true
+    */
+   bool submit_ribbon_data();
+   /**
+   * @brief Try to find ribbon data from service node public key
+   *
+   * @param key The public key of the service node
+   *
+   * @return 0 if no ribbon data found, otherwise the ribbon blue price
+   */
+   double get_ribbon_data(const crypto::public_key &key, uint64_t height) const;
 
      /**
       * @brief get the blockchain pruning seed

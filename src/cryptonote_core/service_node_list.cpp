@@ -42,6 +42,7 @@
 
 #include "service_node_list.h"
 #include "service_node_rules.h"
+#include "ribbon.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "service_nodes"
@@ -62,8 +63,8 @@ namespace service_nodes
 		return result;
 	}
 
-	service_node_list::service_node_list(cryptonote::Blockchain& blockchain)
-		: m_blockchain(blockchain), m_hooks_registered(false), m_height(0), m_db(nullptr), m_service_node_pubkey(nullptr)
+	service_node_list::service_node_list(cryptonote::Blockchain& blockchain, service_nodes::quorum_cop &quorum_cop)
+		: m_blockchain(blockchain), m_quorum_cop(quorum_cop), m_hooks_registered(false), m_height(0), m_db(nullptr), m_service_node_pubkey(nullptr)
 	{
 	}
 
@@ -155,6 +156,21 @@ namespace service_nodes
 			return memcmp(reinterpret_cast<const void*>(&a), reinterpret_cast<const void*>(&b), sizeof(a)) < 0;
 		});
 		return result;
+	}
+	
+	crypto::public_key service_node_list::get_random_service_node_pubkey()
+	{
+		std::vector<crypto::public_key> all_pubkeys = get_service_nodes_pubkeys();
+		std::vector<service_node_pubkey_info> pks_info = get_service_node_list_state(all_pubkeys);
+		
+		std::vector<crypto::public_key> registered_pubkeys;
+		for (const auto pk_info : pks_info)
+		{
+			if (pk_info.info.total_reserved == pk_info.info.staking_requirement)
+				registered_pubkeys.push_back(pk_info.pubkey);
+		}
+		
+		return registered_pubkeys[(std::rand() % registered_pubkeys.size())]; // TODO: there's definitely a better way to do this
 	}
 
 	const std::shared_ptr<const quorum_state> service_node_list::get_quorum_state(uint64_t height) const
@@ -784,9 +800,10 @@ namespace service_nodes
 	{
 		uint64_t block_height = cryptonote::get_block_height(block);
 		int hard_fork_version = m_blockchain.get_hard_fork_version(block_height);
-
 		if (hard_fork_version < 5)
 			return;
+
+		//Communicate with other SNs to come to consensus
 
 		assert(m_height == block_height);
 		m_height++;
@@ -988,25 +1005,37 @@ namespace service_nodes
 		}
 		return winners;
 	}
+	
+	std::pair<std::pair<uint64_t,uint64_t>, uint64_t> service_node_list::get_ribbon_data(crypto::public_key pubkey, uint64_t height) const
+	{
+		return m_quorum_cop.get_ribbon_data(pubkey, height);
+	}
 
 	crypto::public_key service_node_list::select_winner(const crypto::hash& prev_id) const
 	{
 		std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
 		auto oldest_waiting = std::pair<uint64_t, uint32_t>(std::numeric_limits<uint64_t>::max(), std::numeric_limits<uint32_t>::max());
 		crypto::public_key key = crypto::null_pkey;
+		uint64_t height = m_db->get_block_height(prev_id);
 		for (const auto& info : m_service_nodes_infos)
 			if (info.second.is_fully_funded())
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)
 				{
-					oldest_waiting = waiting_since;
-					key = info.first;
+						oldest_waiting = waiting_since;
+						key = info.first;
 				}
 			}
 		return key;
 	}
 
+	bool service_node_list::send_ribbon_data(){
+		return m_quorum_cop.send_out_ribbon();
+	}
+	void service_node_list::clear_ribbon_data(uint64_t clear_height){
+		return m_quorum_cop.clear_ribbon_data(clear_height);
+	}
 	/// validates the miner TX for the next block
 	//
 	bool service_node_list::validate_miner_tx(const crypto::hash& prev_id, const cryptonote::transaction& miner_tx, uint64_t height, int hard_fork_version, cryptonote::block_reward_parts const &reward_parts) const

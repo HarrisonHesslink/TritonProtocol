@@ -90,7 +90,26 @@ namespace cryptonote {
     }
   }
   //-----------------------------------------------------------------------------------------------
-   bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version) {
+  int get_emission_speed_factor(uint64_t height, network_type nettype){
+    if(nettype == MAINNET){
+      //will add after testing, every 45 days (21600 blocks)
+      return EMISSION_SPEED_FACTOR_PER_MINUTE;
+    }else{
+      if(height < 240){ //100 blocks from fork
+        return EMISSION_SPEED_FACTOR_PER_MINUTE;
+      } else if(height >= 240 && height < 260){
+        return EMISSION_SPEED_FACTOR_PER_MINUTE + 1;
+      } else if(height >= 260 && height < 320){
+        return EMISSION_SPEED_FACTOR_PER_MINUTE + 2;
+      } else if(height >= 320 && height < 500){
+        return EMISSION_SPEED_FACTOR_PER_MINUTE + 3;
+      }else {
+        return 24;
+      }
+    }
+  }
+  //-----------------------------------------------------------------------------------------------
+   bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version, network_type nettype, uint64_t height) {
 	    if (version == 0) {
 		   reward = 0;
 		   return true;
@@ -115,6 +134,14 @@ namespace cryptonote {
 	   const int emission_speed_factor = get_emission_speed_factor(version);
 	   uint64_t base_reward = (MONEY_SUPPLY - already_generated_coins) >> emission_speed_factor;
 
+      if(version <= 5){
+	      base_reward = (MONEY_SUPPLY - already_generated_coins) >> emission_speed_factor;
+      }else if(version == 6) {
+        base_reward = (MONEY_SUPPLY - already_generated_coins) >> emission_speed_factor;
+      }else {
+        //Should be forked on 7 with 4% inflation constant
+        base_reward = 47712;
+      }
 	   uint64_t full_reward_zone = get_min_block_weight(version);
 
 	   //make it soft

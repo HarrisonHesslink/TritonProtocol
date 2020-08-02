@@ -6835,6 +6835,136 @@ bool simple_wallet::locked_sweep_all(const std::vector<std::string> &args_)
   return true;
 }
 //----------------------------------------------------------------------------------------------------
+bool simple_wallet::make_burn_transaction(const std::vector<std::string> &args_)
+{
+
+  if (!try_connect_to_daemon())
+    return true;
+
+  if(args_.size() < 1)
+  {
+    fail_msg_writer() << tr("wrong number of arguments");
+    return true;
+  }
+
+  uint64_t amount;
+  if(!cryptonote::parse_amount(amount, args_[0]))
+  {
+    fail_msg_writer() << tr("amount is wrong: ") << amount <<
+          ", " << tr("expected number from 0 to ") << print_money(std::numeric_limits<uint64_t>::max());
+    return true;
+  }
+  
+  cryptonote::COMMAND_RPC_GET_INFO::request req = AUTO_VAL_INIT(req);
+  cryptonote::COMMAND_RPC_GET_INFO::response res = AUTO_VAL_INIT(res);
+  bool r = m_wallet->invoke_http_json_rpc("/json_rpc", "get_info", req, res);
+  
+  if (!r)
+  {
+    fail_msg_writer() << "Failed to get latest ribbon data from daemon";
+    return true;
+  }
+  
+  uint64_t USDE_estimate = (res.last_ribbon_red * amount) / 1000;
+
+  if(res.last_ribbon_red == 0){
+    fail_msg_writer() << "Ribbon red has not been created yet! Please wait until block 1470!";
+    return true;
+  }
+  
+  std::string prompt = std::string("You will exchange ") + std::string(args_[0]) + std::string(" XEQ for ~$") + std::string(print_money(USDE_estimate)) + std::string(" USDE @ the rate of $") + print_money(res.last_ribbon_red * 10) + std::string(" per XEQ \nIs this okay?  (Y/Yes/N/No): ");
+  std::string accepted = input_line(prompt);
+  if (std::cin.eof())
+  return true;
+  if (!command_line::is_yes(accepted))
+  {
+   fail_msg_writer() << tr("Exchange transaction cancelled.");
+   return true;
+  }
+  
+  SCOPED_WALLET_UNLOCK();
+  try
+  {
+    crypto::public_key burn_pubkey;
+    cryptonote::get_burn_pubkey(burn_pubkey);
+    
+    std::vector<uint8_t> extra;
+    std::set<uint32_t> subaddr_indices;
+    std::vector<cryptonote::tx_destination_entry> dsts;
+    cryptonote::tx_destination_entry burn_dst;
+    
+    burn_dst.original = ""; //not needed
+    burn_dst.addr.m_spend_public_key = burn_pubkey;
+    burn_dst.addr.m_view_public_key = burn_pubkey;
+    burn_dst.amount = amount;
+    burn_dst.is_subaddress = false;
+    burn_dst.is_integrated = false;
+    dsts.push_back(burn_dst);
+    
+    crypto::public_key mint_pubkey;
+    crypto::secret_key mint_seckey;
+    crypto::generate_keys(mint_pubkey, mint_seckey); // TODO: make this deterministic
+    std::vector<tools::wallet2::pending_tx> ptx_vector = m_wallet->create_transactions_2(dsts, 1, 0, 1, extra, m_current_subaddress_account, subaddr_indices, false, true, mint_pubkey);
+ 
+    commit_or_save(ptx_vector, m_do_not_relay);
+
+  }
+  catch (const std::exception &e)
+  {
+    handle_transfer_exception(std::current_exception(), m_wallet->is_trusted_daemon());
+  }
+  catch (...)
+  {
+    LOG_ERROR("unknown error");
+    fail_msg_writer() << tr("unknown error");
+  }
+  //m_wallet->save_mint_key(ptx_vector[0], mint_seckey);
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
+bool simple_wallet::make_mint_transaction(const std::vector<std::string> &args_)
+{
+
+  if (!try_connect_to_daemon())
+    return true;
+
+  uint64_t amount;
+  if(!cryptonote::parse_amount(amount, args_[0]))
+  {
+    fail_msg_writer() << tr("Exchange amount is not valid!");
+    return true;
+  }
+  cryptonote::blobdata blob;
+  if(!epee::string_tools::parse_hexstr_to_binbuff(args_[1], blob))
+  {
+    fail_msg_writer() << tr("Mint key parse error...");
+    return true;
+  }
+
+  crypto::secret_key mint_seckey = *reinterpret_cast<const crypto::secret_key*>(blob.data());
+  crypto::public_key mint_pubkey;
+  crypto::secret_key_to_public_key(mint_seckey, mint_pubkey);
+  
+  SCOPED_WALLET_UNLOCK();
+  
+  std::vector<uint8_t> extra;
+  std::set<uint32_t> subaddr_indices;
+  std::vector<cryptonote::tx_destination_entry> dsts;
+  cryptonote::tx_destination_entry dst;
+  
+  dst.original = ""; //not needed, it's our own address
+  dst.addr = m_wallet->get_account_public_address();
+  dst.amount = amount;
+  dst.is_subaddress = false;
+  dst.is_integrated = false;
+  dsts.push_back(dst);
+  
+  std::vector<tools::wallet2::pending_tx> ptx_vector = m_wallet->create_transactions_2(dsts, 0, 0, 1, extra, m_current_subaddress_account, subaddr_indices, false, false, mint_pubkey, mint_seckey);
+  commit_or_save(ptx_vector, m_do_not_relay);
+  
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
 bool simple_wallet::register_service_node_main(
 	const std::vector<std::string>& service_node_key_as_str,
 	uint64_t expiration_timestamp,
@@ -11222,9 +11352,15 @@ void simple_wallet::commit_or_save(std::vector<tools::wallet2::pending_tx>& ptx_
     }
     else
     {
-      m_wallet->commit_tx(ptx);
-      success_msg_writer(true) << tr("Transaction successfully submitted, transaction ") << txid << ENDL
-      << tr("You can check its status by using the `show_transfers` command.");
+      if (!m_wallet->commit_tx(ptx))
+      {
+        fail_msg_writer() << tr("Failed to commit transaction, try again");
+      }
+      else
+      {
+        success_msg_writer(true) << tr("Transaction successfully submitted, transaction ") << txid << ENDL
+        << tr("You can check its status by using the `show_transfers` command.");
+      }
     }
     // if no exception, remove element from vector
     ptx_vector.pop_back();

@@ -1169,6 +1169,11 @@ namespace cryptonote
       bool was_bootstrap_ever_used;
       uint64_t database_size;
       bool update_available;
+      uint64_t last_ribbon_blue;
+      uint64_t last_ribbon_red;
+      uint64_t last_ribbon_volume;
+      uint64_t last_btc_a;
+      uint64_t last_btc_b;
       std::string version;
 
       BEGIN_KV_SERIALIZE_MAP()
@@ -1207,6 +1212,12 @@ namespace cryptonote
         KV_SERIALIZE(was_bootstrap_ever_used)
         KV_SERIALIZE(database_size)
         KV_SERIALIZE(update_available)
+        KV_SERIALIZE(last_ribbon_blue)
+        KV_SERIALIZE(last_ribbon_volume)
+        KV_SERIALIZE(last_ribbon_red)
+        KV_SERIALIZE(last_btc_a)
+        KV_SERIALIZE(last_btc_b)
+
         KV_SERIALIZE(version)
       END_KV_SERIALIZE_MAP()
     };
@@ -1471,6 +1482,11 @@ namespace cryptonote
       uint64_t timestamp;
       std::string prev_hash;
       uint32_t nonce;
+      uint64_t ribbon_blue;
+      uint64_t ribbon_red;
+      uint64_t ribbon_volume;
+      uint64_t btc_a;
+      uint64_t btc_b;
       bool orphan_status;
       uint64_t height;
       uint64_t depth;
@@ -1495,6 +1511,11 @@ namespace cryptonote
         KV_SERIALIZE(timestamp)
         KV_SERIALIZE(prev_hash)
         KV_SERIALIZE(nonce)
+        KV_SERIALIZE(ribbon_blue)
+        KV_SERIALIZE(ribbon_red)
+        KV_SERIALIZE(ribbon_volume)
+        KV_SERIALIZE(btc_a)
+        KV_SERIALIZE(btc_b)
         KV_SERIALIZE(orphan_status)
         KV_SERIALIZE(height)
         KV_SERIALIZE(depth)
@@ -3231,6 +3252,67 @@ namespace cryptonote
 		  END_KV_SERIALIZE_MAP()
 	  };
       typedef epee::misc_utils::struct_init<response_t> response;
+  };
+   struct ribbon_w
+   {
+     std::string address;
+     uint64_t amount;
+
+     BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(address)
+        KV_SERIALIZE(amount)
+      END_KV_SERIALIZE_MAP()
+   };
+
+   struct ribbon_data
+  {
+      uint64_t height; //Blk Height
+      std::string blk_hash; //Blk Hash
+      uint64_t timestamp; //Blk timestamp
+      uint64_t ribbon_blue; //Blk ribbon blue
+      uint64_t ribbon_red; //Blk ribbon red
+      uint64_t ribbon_volume; //Blk ribbon volume
+      uint64_t btc_a; //Blk bitcoin a
+      uint64_t btc_b; //Blk bitcoin b
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(height)
+        KV_SERIALIZE(blk_hash)
+        KV_SERIALIZE(timestamp)
+        KV_SERIALIZE(ribbon_blue)
+        KV_SERIALIZE(ribbon_red)
+        KV_SERIALIZE(ribbon_volume)
+        KV_SERIALIZE(btc_a)
+        KV_SERIALIZE(btc_b)
+      END_KV_SERIALIZE_MAP()
+  };
+
+   struct COMMAND_RPC_GET_GROUP_RIBBON_DATA
+  {
+    struct request_t: public rpc_request_base
+    {
+      uint64_t start_height;
+      uint64_t end_height;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(start_height)
+			  KV_SERIALIZE(end_height)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      std::vector<ribbon_data> ribbons;
+      std::vector<ribbon_w> ribbon_winners; //Service Node Address
+		  std::string status;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(ribbons)
+        KV_SERIALIZE(ribbon_winners)
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
   struct COMMAND_RPC_POP_BLOCKS
   {
