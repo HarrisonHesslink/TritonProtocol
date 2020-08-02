@@ -45,7 +45,7 @@ using namespace epee;
 #include "ringct/rctSigs.h"
 #include "multisig/multisig.h"
 #include "int-util.h"
-#include "cryptonote_core/service_node_list.h"
+#include "oracle_node/service_node_list.h"
 
 using namespace crypto;
 

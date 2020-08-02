@@ -166,6 +166,8 @@ namespace cryptonote
       version_1,
       version_2,
       version_3_per_output_unlock_times,
+      version_4_delfi,
+
     };
     // tx information
     size_t   version;
@@ -179,14 +181,25 @@ namespace cryptonote
 
     std::vector<uint64_t> output_unlock_times;
     bool is_deregister; //service node deregister tx
+    bool is_delfi_marker; //service node deregister tx
+    bool is_task_reg; //service node deregister tx
 
     BEGIN_SERIALIZE()
       VARINT_FIELD(version)
+
       if (version > 2)
-   {
-     FIELD(output_unlock_times)
-     FIELD(is_deregister)
-   }
+      {
+        FIELD(output_unlock_times)
+        FIELD(is_deregister)
+      }
+
+      if(version > 3)
+      {
+        FIELD(is_delfi_marker)
+        FIELD(is_task_reg)
+      }
+
+
       if(version == 0 || CURRENT_TRANSACTION_VERSION < version) return false;
       VARINT_FIELD(unlock_time)
       FIELD(vin)
@@ -487,12 +500,22 @@ namespace cryptonote
     crypto::hash  prev_id;
     uint32_t nonce;
 
+    if(major_version > 7)
+    {
+     std::vector<delfi_protocol::task_for_block> tasks;
+    }
+
     BEGIN_SERIALIZE()
       VARINT_FIELD(major_version)
       VARINT_FIELD(minor_version)
       VARINT_FIELD(timestamp)
       FIELD(prev_id)
-      FIELD(nonce)
+
+    if(major_version > 7)
+    {
+      FIELD(tasks)
+    }
+
     END_SERIALIZE()
   };
 

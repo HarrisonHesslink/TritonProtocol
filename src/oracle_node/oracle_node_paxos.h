@@ -42,7 +42,7 @@
 namespace cryptonote
 {
 	struct vote_verification_context;
-	struct tx_extra_service_node_deregister;
+	struct tx_extra_oracle_node_proposer;
 };
 
 namespace service_nodes
@@ -50,11 +50,11 @@ namespace service_nodes
 	struct quorum_state;
 };
 
-namespace triton
+namespace oracle_node_paxos
 {
-	namespace service_node_deregister
+	namespace oracle_node_proposer
 	{
-		const uint64_t VOTE_LIFETIME_BY_HEIGHT = (60 * 60 * 24) / DIFFICULTY_TARGET_V2;
+		const uint64_t VOTE_LIFETIME_BY_HEIGHT = (60 * 60 * 24) / DIFFICULTY_TARGET_V3;
 		const uint64_t DEREGISTER_LIFETIME_BY_HEIGHT = VOTE_LIFETIME_BY_HEIGHT;
 
 		struct vote
@@ -69,68 +69,69 @@ namespace triton
 		bool verify_vote_signature(uint64_t block_height, uint32_t service_node_index, crypto::public_key p, crypto::signature s);
 		bool verify_votes_signature(uint64_t block_height, uint32_t service_node_index, const std::vector<std::pair<crypto::public_key, crypto::signature>>& keys_and_sigs);
 
-		bool verify_deregister(cryptonote::network_type nettype, const cryptonote::tx_extra_service_node_deregister& deregister,
+		bool verify_proposer(cryptonote::network_type nettype, const cryptonote::tx_extra_oracle_node_proposer& proposer,
 			cryptonote::vote_verification_context& vvc,
 			const service_nodes::quorum_state &quorum);
 		bool verify_vote(cryptonote::network_type nettype, const vote& v, cryptonote::vote_verification_context &vvc,
 			const service_nodes::quorum_state &quorum);
 	};
 
-	class deregister_vote_pool
+
+	class oracle_node_pool
 	{
 	public:
 		/**
 		*  @return True if vote was valid and in the pool already or just added (check vote verfication for specific case).
 		*/
-		bool add_vote(const service_node_deregister::vote& new_vote,
+		bool add_vote(const oracle_node_proposer::vote& new_vote,
 			cryptonote::vote_verification_context& vvc,
 			const service_nodes::quorum_state &quorum_state,
 			cryptonote::transaction &tx);
 
 		// TODO(triton): Review relay behaviour and all the cases when it should be triggered
-		void                                       set_relayed(const std::vector<service_node_deregister::vote>& votes);
+		void                                       set_relayed(const std::vector<oracle_node_proposer::vote>& votes);
 		void                                       remove_expired_votes(uint64_t height);
 		void                                       remove_used_votes(std::vector<std::pair<cryptonote::transaction, cryptonote::blobdata>> const &txs);
-		std::vector<service_node_deregister::vote> get_relayable_votes() const;
+		std::vector<oracle_node_proposer::vote> get_relayable_votes() const;
 
 		cryptonote::network_type m_nettype = cryptonote::UNDEFINED;
 
 	private:
-		struct deregister
+		struct proposer
 		{
-			deregister(uint64_t time_last_sent_p2p, service_node_deregister::vote vote)
+			proposer(uint64_t time_last_sent_p2p, oracle_node_proposer::vote vote)
 				: m_time_last_sent_p2p(time_last_sent_p2p), m_vote(vote) {}
 
 			uint64_t m_time_last_sent_p2p;
-			service_node_deregister::vote m_vote;
+			oracle_node_proposer::vote m_vote;
 		};
 
-		struct deregister_group
+		struct proposer_group
 		{
 			uint64_t block_height;
 			uint32_t service_node_index;
 			time_t   time_group_created;
 
-			bool operator==(const deregister_group &other) const
+			bool operator==(const proposer_group &other) const
 			{
 				bool result = (block_height == other.block_height) && (service_node_index == other.service_node_index);
 				return result;
 			}
 		};
 
-		struct deregister_group_hasher
+		struct proposer_group_hasher
 		{
-			size_t operator()(const deregister_group& deregister) const
+			size_t operator()(const proposer_group& proposer) const
 			{
 				size_t res = 17;
-				res = res * 31 + std::hash<uint64_t>()(deregister.block_height);
-				res = res * 31 + std::hash<uint32_t>()(deregister.service_node_index);
-				res = res * 31 + std::hash<uint32_t>()(deregister.time_group_created);
+				res = res * 31 + std::hash<uint64_t>()(proposer.block_height);
+				res = res * 31 + std::hash<uint32_t>()(proposer.service_node_index);
+				res = res * 31 + std::hash<uint32_t>()(proposer.time_group_created);
 				return res;
 			}
 		};
 
-		std::unordered_map<deregister_group, std::vector<deregister>, deregister_group_hasher> m_deregisters;
+		std::unordered_map<proposer_group, std::vector<proposer>, proposer_group_hasher> m_proposers;
 		mutable epee::critical_section m_lock;
 	};
 }; // namespace triton

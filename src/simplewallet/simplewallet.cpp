@@ -58,8 +58,8 @@
 #include "crypto/crypto.h" // for crypto::secret_key definition
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_protocol/cryptonote_protocol_handler.h"
-#include "cryptonote_core/service_node_deregister.h"
-#include "cryptonote_core/service_node_list.h"
+#include "oracle_node/service_node_deregister.h"
+#include "oracle_node/service_node_list.h"
 #include "simplewallet.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "storages/http_abstract_invoke.h"

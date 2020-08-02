@@ -41,11 +41,11 @@
 #include "storages/portable_storage_template_helper.h"
 #include "common/download.h"
 #include "common/command_line.h"
-#include "service_node_deregister.h"
+#include "oracle_node/service_node_deregister.h"
 #include "tx_pool.h"
 #include "blockchain.h"
-#include "service_node_list.h"
-#include "quorum_cop.h"
+#include "oracle_node/service_node_list.h"
+#include "oracle_node/quorum_cop.h"
 #include "cryptonote_basic/miner.h"
 #include "cryptonote_basic/connection_context.h"
 #include "warnings.h"
@@ -858,6 +858,7 @@ namespace cryptonote
      * @return Whether the vote was added to the partial deregister pool
      */
     bool add_deregister_vote(const triton::service_node_deregister::vote& vote, vote_verification_context &vvc);
+    bool add_oracle_node_vote(const triton::service_node_deregister::vote& vote, std::vector<delfi_protocol::task_update> data, vote_verification_context &vvc);
 
     /**
     * @brief Return the account associated to this service node.

@@ -44,7 +44,7 @@ using namespace epee;
 #include "crypto/hash.h"
 #include "ringct/rctSigs.h"
 #include "cryptonote_basic/verification_context.h"
-#include "cryptonote_core/service_node_deregister.h"
+#include "oracle_node/service_node_deregister.h"
 
 using namespace epee;
 
@@ -628,6 +628,7 @@ namespace cryptonote
 
 	if (!pick<tx_extra_service_node_register>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_REGISTER)) return false;
 	if (!pick<tx_extra_service_node_deregister>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_DEREGISTER)) return false;
+  if (!pick<tx_extra_oracle_node_proposer>(nar, tx_extra_fields, TX_EXTRA_TAG_ORACLE_NODE_PROPOSER)) return false;
 	if (!pick<tx_extra_service_node_winner>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_WINNER)) return false;
 	if (!pick<tx_extra_service_node_contributor>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR)) return false;
 	if (!pick<tx_extra_service_node_pubkey>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY)) return false;
@@ -759,10 +760,38 @@ namespace cryptonote
    memcpy(&tx_extra[pos], tx_extra_str.data(), tx_extra_str.size());
     return true;
   }
+
+  //DELFI
+  //---------------------------------------------------------------
+  bool add_oracle_node_proposer_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_oracle_node_proposer& proposer)
+  {
+    tx_extra_field field = tx_extra_oracle_node_proposer{proposer.block_height, proposer.service_node_index, proposer.votes, proposer.task_updates};
+
+    std::ostringstream oss;
+    binary_archive<true> ar(oss);
+    bool r = ::do_serialize(ar, field);
+    CHECK_AND_ASSERT_MES(r, false, "failed to serialize tx extra service node deregister");
+
+    std::string tx_extra_str = oss.str();
+    size_t pos = tx_extra.size();
+    tx_extra.resize(tx_extra.size() + tx_extra_str.size());
+    memcpy(&tx_extra[pos], tx_extra_str.data(), tx_extra_str.size());
+      return true;
+  }
+
+  //---------------------------------------------------------------
+  bool get_oracle_node_proposer_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_oracle_node_proposer &proposer)
+  {
+	  std::vector<tx_extra_field> tx_extra_fields;
+	  parse_tx_extra(tx_extra, tx_extra_fields);
+	  bool result = find_tx_extra_field_by_type(tx_extra_fields, proposer);
+	  return result;
+  }
+
   void add_service_node_pubkey_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& pubkey)
- {
-   add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&pubkey), sizeof(pubkey), TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
- }
+  {
+    add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&pubkey), sizeof(pubkey), TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
+  }
  //---------------------------------------------------------------
  bool get_service_node_pubkey_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::public_key& pubkey)
  {

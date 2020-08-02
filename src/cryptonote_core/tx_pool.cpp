@@ -124,41 +124,79 @@ namespace cryptonote
 
   }
   //---------------------------------------------------------------------------------
- bool tx_memory_pool::have_deregister_tx_already(transaction const &tx) const
- {
-	 if (!tx.is_deregister_tx())
-		return false;
+  bool tx_memory_pool::have_deregister_tx_already(transaction const &tx) const
+  {
+    if (!tx.is_deregister_tx())
+      return false;
 
-   tx_extra_service_node_deregister deregister;
-   if (!get_service_node_deregister_from_tx_extra(tx.extra, deregister))
-   {
-     MERROR("Could not get service node deregister from tx v3, possibly corrupt tx in your blockchain");
-     return false;
-   }
+    tx_extra_service_node_deregister deregister;
+    if (!get_service_node_deregister_from_tx_extra(tx.extra, deregister))
+    {
+      MERROR("Could not get service node deregister from tx v3, possibly corrupt tx in your blockchain");
+      return false;
+    }
 
-   std::vector<transaction> pool_txs;
-   get_transactions(pool_txs);
-   for (const transaction& pool_tx : pool_txs)
-   {
-	 if (!pool_tx.is_deregister_tx())
-       continue;
+    std::vector<transaction> pool_txs;
+    get_transactions(pool_txs);
+    for (const transaction& pool_tx : pool_txs)
+    {
+    if (!pool_tx.is_deregister_tx())
+        continue;
 
-     tx_extra_service_node_deregister pool_tx_deregister;
-     if (!get_service_node_deregister_from_tx_extra(pool_tx.extra, pool_tx_deregister))
-     {
-       MERROR("Could not get service node deregister from tx v3, possibly corrupt tx in your blockchain");
-       continue;
-     }
+      tx_extra_service_node_deregister pool_tx_deregister;
+      if (!get_service_node_deregister_from_tx_extra(pool_tx.extra, pool_tx_deregister))
+      {
+        MERROR("Could not get service node deregister from tx v3, possibly corrupt tx in your blockchain");
+        continue;
+      }
 
-     if ((pool_tx_deregister.block_height       == deregister.block_height) &&
-         (pool_tx_deregister.service_node_index == deregister.service_node_index))
-     {
-       return true;
-     }
-   }
+      if ((pool_tx_deregister.block_height       == deregister.block_height) &&
+          (pool_tx_deregister.service_node_index == deregister.service_node_index))
+      {
+        return true;
+      }
+    }
 
-   return false;
- }
+    return false;
+  }
+  //---------------------------------------------------------------------------------
+  bool tx_memory_pool::have_proposer_already(transaction const &tx) const
+  {
+    if (!tx.is_delfi_marker())
+      return false;
+
+    tx_extra_oracle_node_proposer proposer;
+    if (!get_oracle_node_proposer_from_tx_extra(tx.extra, proposer))
+    {
+      MERROR("Could not get service node oracle from tx v4, possibly corrupt tx in your blockchain");
+      return false;
+    }
+
+    std::vector<transaction> pool_txs;
+    get_transactions(pool_txs);
+    for (const transaction& pool_tx : pool_txs)
+    {
+    if (!pool_tx.is_delfi_marker())
+        continue;
+
+      tx_extra_oracle_node_proposer pool_tx_proposer;
+      if (!get_oracle_node_proposer_from_tx_extra(pool_tx.extra, pool_tx_proposer))
+      {
+        MERROR("Could not get service node proposer from tx v4, possibly corrupt tx in your blockchain");
+        continue;
+      }
+
+      if ((pool_tx_proposer.block_height       == proposer.block_height) &&
+          (pool_tx_proposer.service_node_index == proposer.service_node_index))
+      {
+        return true;
+      }
+    }
+
+    return false;
+  }
+  
+  
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::add_tx(transaction &tx, /*const crypto::hash& tx_prefix_hash,*/ const crypto::hash &id, const cryptonote::blobdata &blob, size_t tx_weight, tx_verification_context& tvc, relay_method tx_relay, bool relayed, uint8_t version)
   {
@@ -432,55 +470,11 @@ namespace cryptonote
   void tx_memory_pool::prune(size_t bytes)
   {
     CRITICAL_REGION_LOCAL(m_transactions_lock);
-	  if (bytes == 0)
+    if (bytes == 0)
       bytes = m_txpool_max_weight;
     CRITICAL_REGION_LOCAL1(m_blockchain);
     LockedTXN lock(m_blockchain.get_db());
     bool changed = false;
-
-	for (auto it = m_txs_by_fee_and_receive_time.begin(); it != m_txs_by_fee_and_receive_time.end(); )
-	{
-		if (!std::get<0>(it->first))
-			break;
-		// is deregister. keep if has not be around for a long time
-		if (std::get<2>(it->first) >= time(nullptr) - MEMPOOL_PRUNE_DEREGISTER_LIFETIME)
-			break;
-		try
-		{
-			const crypto::hash &txid = it->second;
-			txpool_tx_meta_t meta;
-			if (!m_blockchain.get_txpool_tx_meta(txid, meta))
-			{
-				MERROR("Failed to find tx in txpool");
-				return;
-			}
-			// don't prune the kept_by_block ones, they're likely added because we're adding a block with those
-			if (meta.kept_by_block)
-			{
-				it++;
-				continue;
-			}
-			cryptonote::blobdata txblob = m_blockchain.get_txpool_tx_blob(txid, relay_category::all);
-			cryptonote::transaction tx;
-			if (!parse_and_validate_tx_from_blob(txblob, tx))
-			{
-				MERROR("Failed to parse tx from txpool");
-				return;
-			}
-			// remove first, in case this throws, so key images aren't removed
-			MINFO("Pruning deregister tx " << txid << " from txpool");
-			m_blockchain.remove_txpool_tx(txid);
-			m_txpool_weight -= txblob.size();
-			remove_transaction_keyimages(tx, txid);
-			MINFO("Pruned deregister tx " << txid << " from txpool");
-			it = m_txs_by_fee_and_receive_time.erase(it);
-		}
-		catch (const std::exception &e)
-		{
-			MERROR("Error while pruning txpool: " << e.what());
-			return;
-		}
-	}
 
     // this will never remove the first one, but we don't care
     auto it = --m_txs_by_fee_and_receive_time.end();
@@ -488,11 +482,17 @@ namespace cryptonote
     {
       if (m_txpool_weight <= bytes)
         break;
+
+      const bool is_deregister  = std::get<0>(it->first);
+      const time_t receive_time = std::get<2>(it->first);
+
+      if (!is_deregister || receive_time >= time(nullptr) - MEMPOOL_PRUNE_DEREGISTER_LIFETIME)
+        break;
       try
       {
         const crypto::hash &txid = it->second;
         txpool_tx_meta_t meta;
-        if (!m_blockchain.get_txpool_tx_meta(txid, meta))
+        if (!m_blockchain.get_txpool_tx_meta(txid, meta) && !meta.matches(relay_category::legacy))
         {
           MERROR("Failed to find tx_meta in txpool");
           return;
@@ -511,11 +511,11 @@ namespace cryptonote
           return;
         }
         // remove first, in case this throws, so key images aren't removed
-        MINFO("Pruning tx " << txid << " from txpool: weight: " << meta.weight << ", fee/byte: " << std::get<1>(it->first));
+        MINFO("Pruning tx " << txid << " from txpool: weight: " << meta.weight << ", fee/byte: " << it->first.first);
         m_blockchain.remove_txpool_tx(txid);
-        m_txpool_weight -=  meta.weight;
+        m_txpool_weight -= meta.weight;
         remove_transaction_keyimages(tx, txid);
-        MINFO("Pruned tx " << txid << " from txpool: weight: " <<  meta.weight << ", fee/byte: " << std::get<1>(it->first));
+        MINFO("Pruned tx " << txid << " from txpool: weight: " << meta.weight << ", fee/byte: " << it->first.first);
         m_txs_by_fee_and_receive_time.erase(it--);
         changed = true;
       }

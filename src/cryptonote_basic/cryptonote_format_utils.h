@@ -87,6 +87,11 @@ namespace cryptonote
   bool add_service_node_deregister_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_service_node_deregister& deregistration);
   bool get_service_node_register_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_register& registration);
   bool get_service_node_deregister_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_deregister& deregistration);
+  
+  //Delfi - Oracle Nodes
+  bool add_oracle_node_proposer_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_service_node_deregister& deregistration);
+  bool get_oracle_node_proposer_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_deregister& deregistration);
+
   bool get_service_node_pubkey_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::public_key& pubkey);
   bool get_service_node_contributor_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::account_public_address& address);
   bool add_service_node_register_to_tx_extra(std::vector<uint8_t>& tx_extra, const std::vector<cryptonote::account_public_address>& addresses, uint64_t  portions_for_operator, const std::vector<uint64_t >& portions, uint64_t expiration_timestamp, const crypto::signature& signature);

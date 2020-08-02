@@ -45,6 +45,8 @@
 #define TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR 0x73
 #define TX_EXTRA_TAG_SERVICE_NODE_PUBKEY      0x74
 #define TX_EXTRA_TAG_TX_SECRET_KEY            0x75
+#define TX_EXTRA_TAG_ORACLE_NODE_PROPOSER  0x76
+
 #define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG     0xDE
 
 #define TX_EXTRA_NONCE_PAYMENT_ID             0x00
@@ -246,6 +248,51 @@ struct tx_extra_service_node_deregister
 		FIELD(votes)
 		END_SERIALIZE()
 };
+
+struct tx_extra_service_node_proposer
+{
+	struct vote
+	{
+		crypto::signature signature;
+		uint32_t          voters_quorum_index;
+	};
+
+  struct oracle_data 
+  {
+      crypto::hash oracleHash;
+
+
+      crypto::hash task_hash;
+      uint64_t price;
+
+      crypto::signature sig;
+  };
+
+  struct task_update 
+  {
+      crypto::hash task_update_hash;
+      std::vector<oracle_data> od;
+
+      crypto::public_key pubkey;
+  };
+
+
+  std::vector<task_update> task_updates;
+
+	uint64_t          block_height;
+	uint32_t          service_node_index;
+	std::vector<vote> votes;
+
+	BEGIN_SERIALIZE()
+		FIELD(block_height)
+		FIELD(service_node_index)
+		FIELD(votes)
+    FIELD(task_updates)
+		END_SERIALIZE()
+};
+
+
+
  struct tx_extra_tx_secret_key
 {
   crypto::secret_key key;
@@ -269,9 +316,13 @@ struct tx_extra_service_node_deregister
 	 tx_extra_service_node_contributor,
 	 tx_extra_service_node_winner,
 	 tx_extra_service_node_deregister,
-	 tx_extra_tx_secret_key> tx_extra_field;
+	 tx_extra_tx_secret_key,
+   tx_extra_oracle_node_proposer> tx_extra_field;
   }
   BLOB_SERIALIZER(cryptonote::tx_extra_service_node_deregister::vote);
+  BLOB_SERIALIZER(cryptonote::tx_extra_oracle_node_proposer::vote);
+  BLOB_SERIALIZER(cryptonote::tx_extra_oracle_node_proposer::oracle_data);
+  BLOB_SERIALIZER(cryptonote::tx_extra_oracle_node_proposer::task_update);
 
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_padding, TX_EXTRA_TAG_PADDING);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_pub_key, TX_EXTRA_TAG_PUBKEY);
@@ -285,3 +336,4 @@ struct tx_extra_service_node_deregister
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_winner, TX_EXTRA_TAG_SERVICE_NODE_WINNER);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_pubkey, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_tx_secret_key, TX_EXTRA_TAG_TX_SECRET_KEY);
+  VARIANT_TAG(binary_archive, cryptonote::tx_extra_oracle_node_proposer, TX_EXTRA_TRAG_ORACLE_NODE_PROPOSER);

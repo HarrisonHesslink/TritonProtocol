@@ -1,16 +1,68 @@
-#include <queue>
+// Copyright (c) 2020 Harrison Hesslink
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are
+// permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of
+//    conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list
+//    of conditions and the following disclaimer in the documentation and/or other
+//    materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors may be
+//    used to endorse or promote products derived from this software without specific
+//    prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+// THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+// THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+// Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
+
 #include <math.h>
 
 #include "rapidjson/document.h"
 #include "net/http_client.h"
 #include "delfi_protocol.h"
 #include "int-util.h"
+#include "price_provider.h"
 
 namespace delfi_protocol {
 
+    static crypto::hash make_hash(crypto::public_key const &pubkey, uint64_t timestamp, delfi_protocol::oracle_data od)
+	{
+		char buf[44] = "SUP"; // Meaningless magic bytes
+		crypto::hash result;
+		memcpy(buf + 4, reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
+		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
+		memcpy(buf + 4 + sizeof(timestamp), reinterpret_cast<const void *>(&tu.price), sizeof(od.price));
+		memcpy(buf + 4 + sizeof(tu.price), reinterpret_cast<const void *>(&tu.taskHash), sizeof(tu.task_hash));
+		crypto::cn_fast_hash(buf, sizeof(buf), result);
 
+		return result;
+	}
 
-    Delfi::Delfi(){
+	static crypto::hash make_hash(crypto::public_key const &pubkey, uint64_t timestamp)
+	{
+		char buf[44] = "SUP"; // Meaningless magic bytes
+		crypto::hash result;
+		memcpy(buf + 4, reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
+		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
+		crypto::cn_fast_hash(buf, sizeof(buf), result);
+
+		return result;
+	}
+
+    Delfi::Delfi(cryptonote::core& core) : m_core(core){
         if(!scanTasks()){
             LOG_PRINT_L1("Unable to scan tasks!");
         }
@@ -30,21 +82,21 @@ namespace delfi_protocol {
         {
             if(exchange == "Coinbase")
             {
-                return getCoinbasePrice(task.pair);
+                return price_provider::getCoinbasePrice(task.pair);
             }
             else if(exchange == "Kucoin")
             {
-                return getKucoinPrice(task.pair);
+                return price_provider::getKucoinPrice(task.pair);
 
             }
             else if(exchange == "TradeOgre")
             {
-                return getTradeOgrePrice(task.pair);
+                return price_provider::getTradeOgrePrice(task.pair);
 
             }
             else if(exchange == "Bittrex")
             {
-                return getBittrexPrice(task.pair);
+                return price_provider::getBittrexPrice(task.pair);
             }
             else 
             {
@@ -55,176 +107,132 @@ namespace delfi_protocol {
         }
     }
 
+    std::tuple<uint64_t,uint64_t,uint64_t> Delfi::census_tasks(const crypto::public_key &my_pubkey, oracle_data od)
+	{
+        double stdev = 0;
+        sizet_t N = 0;
+        uint64_t m = 0;
 
-    uint64_t getCoinbasePrice(std::pair<std::string, std::string> pair)
-    {
-        std::string url = "api.pro.coinbase.com";
-        std::string uri = "/products/" + pair.first + "-" + pair.second + "/stats";
-
-        LOG_PRINT_L1("Requesting coinbase pricing");
-
-        epee::net_utils::http::http_simple_client http_client;
-        epee::net_utils::http::http_response_info res;
-        const epee::net_utils::http::http_response_info *res_info = &res;
-        epee::net_utils::http::fields_list fields;
-        std::string body;
-        http_client.set_server(url, "443",  boost::none);
-        bool r = true;
-        r = http_client.invoke_get(uri, std::chrono::milliseconds(1000000), "", &res_info, fields);
-
-        if(res_info){
-            rapidjson::Document d;
-            d.Parse(res_info->m_body.c_str());
-            if(d.Size() < 0)
-                return 0;
-            for (size_t i = 0; i < d.Size(); i++)
-            {  
-                return 0;
-            }
-        }
-        else
+        //Mean
+        for (auto t1 : task_updates)
         {
-            return 0;
+            if(t1.taskHash != task_hash)
+                continue;
+
+            m += ti.od.price;
+            N++;
         }
-        
-        return 0;
+
+        m = m / N;
+
+        //stdev
+        for (auto t1 : task_updates)
+        {
+            if(t1.taskHash != task_hash)
+                continue;
+
+            double delta = t1.od.price - m;
+            stdev += delta * delta;
+        }
+
+        stdev = stdev / N;
+
+        return {stdev, N, m};
+
+	}
+
+    //Process Tasks for next block
+	void Delfi::process_tasks(const crypto::public_key &my_pubkey, const crypto::secret_key &my_seckey)
+	{
+		delfi_protocol::task_update task_update;
+		std::vector<delfi_protocol::task> tasks = m_delfi.getTasks();
+		for (auto task : tasks)
+		{
+			delfi_protocol::oracle_data od;
+			if (latest_height > task.block_height_finished)
+			{
+				MERROR("Task is expired");
+				continue;
+			}
+
+			uint64_t last_task_height = m_delfi.getTaskLastHeight(task.taskHash);
+
+			if(last_task_height + task.block_rate != latest_height)
+			{
+				MGINFO_GREEN("Task: " << task.taskHash << " at block height: " << latest_height << " does not need to be ran.");
+				continue;
+			}
+	
+			od.price = task.completeTask();
+			task_update.taskHash = task.taskHash;
+
+            //Generate Oracle Hash
+			crypto::hash hash = make_hash(my_pubkey, time(nullptr), od);
+			crypto::generate_signature(hash, my_pubkey, my_seckey, od.sig);
+
+            od.oracle_hash = hash;
+
+			//push task update to then be sent to all oracle nodes
+			task_update.od.push_back(od);
+		}
+
+		if(task_update.od.size() == 0)
+			return;
+
+		cryptonote::NOTIFY_TASK_UPDATE::request req;
+		generate_task_update(my_pubkey, my_seckey, task_updates, req);
+
+		m_core.submit_task_update(req);
+	}
+
+    bool Delfi::handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &taskUpdate)
+    {
+        uint64_t now = time(nullptr);
+			
+		uint64_t timestamp = taskUpdate.timestamp;
+		const crypto::public_key& pubkey = taskUpdate.pubkey;
+		const crypto::signature& sig = taskUpdate.sig;
+
+
+		if ((timestamp < now - UPTIME_PROOF_BUFFER_IN_SECONDS) || (timestamp > now + UPTIME_PROOF_BUFFER_IN_SECONDS))
+			return false;
+
+		if (!m_core.is_service_node(pubkey))
+			return false;
+
+		CRITICAL_REGION_LOCAL(m_lock);
+		if (m_task_update_seen[pubkey] >= now - (UPTIME_PROOF_FREQUENCY_IN_SECONDS / 2))
+			return false; // already received one uptime proof for this node recently.
+
+		crypto::hash hash = make_hash(pubkey, timestamp);
+		if (!crypto::check_signature(hash, pubkey, sig))
+			return false;
+
+		m_task_update_seen[pubkey] = now;
+		return true;
     }
 
-    uint64_t getTradeOgrePrice(std::pair<std::string, std::string> pair)
-    {
-        std::string url = "tradeogre.com";
-        std::string uri = "/api/v1/ticker/" + pair.first + "-" + pair.second;
+    std::vector<delfi_protocol::task_update> quorum_cop::get_task_updates(const crypto::public_key &pubkey)
+	{
+		CRITICAL_REGION_LOCAL(m_lock);
 
-        epee::net_utils::http::http_simple_client http_client;
-        const epee::net_utils::http::http_response_info *res_info = nullptr;
-        epee::net_utils::http::fields_list fields;
-        std::string body;
+		const auto& it = m_ribbon_data_received.find(pair_hash);
+		if (it != m_ribbon_data_received.end())
+		{
+			return m_valid_tasks[pubkey];
+		}
 
-        http_client.set_server(url, "443",  boost::none);
-        http_client.connect(std::chrono::seconds(10));
-        bool r = true;
-        r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
-
-        if(res_info){
-            body = res_info->m_body;
-            rapidjson::Document d;
-            d.Parse(body.c_str());
-            if(d.Size() < 0)
-                return 0;
-            for (size_t i = 0; i < d.Size(); i++)
-            {  
-                uint64_t t = static_cast<uint64_t>(std::stod(d["price"].GetString()) * 100000000);
-                std::cout << t << std::endl;
-                return static_cast<uint64_t>(std::stod(d["price"].GetString()) * 100000000);
-            }
-
-        }
-        else
-        {
-            return 0;
-        }
-        
-
-        return 0;
+		return {};
     }
-    uint64_t getBittrexPrice(std::pair<std::string, std::string> pair)
-    {
 
-        std::string url = "api.bittrex.com";
-        std::string uri = "/v3/markets/" + pair.second + "-" + pair.first + "/ticker" ;
+    void Delfi::generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req)
+	{
+		req.task_updates = task_updates;
+		req.timestamp = time(nullptr);
+		req.pubkey = pubkey;
 
-        LOG_PRINT_L1("Requesting bittrex pricing");
+		crypto::hash hash = make_hash(req.pubkey, req.timestamp);
+	}
 
-        epee::net_utils::http::http_simple_client http_client;
-        const epee::net_utils::http::http_response_info *res_info = nullptr;
-        epee::net_utils::http::fields_list fields;
-        std::string body;
 
-        http_client.set_server(url, "443",  boost::none);
-        http_client.connect(std::chrono::seconds(10));
-        bool r = true;
-        r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
-        if(res_info)
-        {
-            rapidjson::Document d;
-            d.Parse(res_info->m_body.c_str());
-            if(d.Size() < 0)
-                return 0;
-            for (size_t i = 0; i < d.Size(); i++)
-            {  
-                return static_cast<uint64_t>(std::stod(d["lastTradeRate"].GetString()) * 100000000);
-            }
-
-        }
-        else
-        {
-            return 0;
-        }
-        
-
-        return 0;
-    }
-    uint64_t getNancePrice(std::pair<std::string, std::string> pair)
-    {
-        std::string url = "api.binance.com";
-        std::string uri = "/api/v3/ticker/price?symbol=" +  pair.second + pair.first;
-
-        LOG_PRINT_L1("Requesting binance pricing");
-
-        epee::net_utils::http::http_simple_client http_client;
-        const epee::net_utils::http::http_response_info *res_info = nullptr;
-        epee::net_utils::http::fields_list fields;
-        std::string body;
-
-        http_client.set_server(url, "443",  boost::none);
-        http_client.connect(std::chrono::seconds(10));
-        bool r = true;
-        r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
-        if(res_info)
-        {
-            rapidjson::Document d;
-            d.Parse(res_info->m_body.c_str());
-            if(d.Size() < 0)
-                return 0;
-            for (size_t i = 0; i < d.Size(); i++)
-            {  
-                return static_cast<uint64_t>(std::stod(d["price"].GetString()) * 100000000);
-            }
-        }
-
-        return 0;
-    }
-    uint64_t getKucoinPrice(std::pair<std::string, std::string> pair)
-    {
-        std::string url = "api.kucoin.com";
-        std::string uri = "/api/v1/market/orderbook/level1?symbol=" + pair.first + "-" + pair.second;
-
-        LOG_PRINT_L1("Requesting kucoin pricing");
-
-        epee::net_utils::http::http_simple_client http_client;
-        const epee::net_utils::http::http_response_info *res_info = nullptr;
-        epee::net_utils::http::fields_list fields;
-        std::string body;
-
-        http_client.set_server(url, "443",  boost::none);
-        http_client.connect(std::chrono::seconds(10));
-        bool r = true;
-        r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
-        if(res_info)
-        {
-            rapidjson::Document d;
-            d.Parse(res_info->m_body.c_str());
-        
-            if(d.Size() < 0)
-                return 0;
-
-            for (size_t i = 0; i < d.Size(); i++)
-            {  
-                return static_cast<uint64_t>(std::stod(d["data"]["price"].GetString()) * 100000000);
-            }
-
-        }
-
-        return 0;
-    }
 }

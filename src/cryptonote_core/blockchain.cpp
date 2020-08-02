@@ -56,8 +56,8 @@
 #include "ringct/rctSigs.h"
 #include "common/perf_timer.h"
 #include "common/notify.h"
-#include "service_node_deregister.h"
-#include "service_node_list.h"
+#include "oracle_node/service_node_deregister.h"
+#include "oracle_node/service_node_list.h"
 #include "common/varint.h"
 #include "common/pruning.h"
 
@@ -1557,6 +1557,20 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   {
     b.timestamp = median_ts;
   }
+
+
+  if(b.major_version > 7)
+  {
+    std::vector<delfi_protocol::task_update> last_winner_data = m_service_node_list.get_task_updates(m_service_node_list.select_winner(b.prev_id), height - 2);
+
+    if(last_winner_data.size() > 0)
+      b.tasks = last_winner_data;
+    else 
+      b.tasks = {};
+
+  }
+
+
 
   CHECK_AND_ASSERT_MES(diffic, false, "difficulty overhead.");
 
@@ -3658,6 +3672,122 @@ if (tx.version == 1)
 			}
 		}
 	}
+
+  if(tx.is_delfi_marker_tx())
+  {
+    if (tx.rct_signatures.txnFee != 0)
+		{
+			tvc.m_invalid_input = true;
+			tvc.m_verifivation_failed = true;
+			MERROR_VER("TX version delfi_marker should have 0 fee!");
+			return false;
+		}
+
+    // Check the inputs (votes) of the transaction have not been already been
+		// submitted to the blockchain under another transaction using a different
+		// combination of votes.
+
+		tx_extra_oracle_node_proposer proposer;
+		if (!get_oracle_node_proposer_from_tx_extra(tx.extra, proposer))
+		{
+			MERROR_VER("TX version proposer did not have the proposer metadata in the tx_extra");
+			return false;
+		}
+
+		const std::shared_ptr<const service_nodes::quorum_state> quorum_state = m_service_node_list.get_quorum_state(proposer.block_height);
+		if (!quorum_state)
+		{
+			MERROR_VER("TX version 4 proposer_tx could not get quorum for height: " << proposer.block_height);
+			return false;
+		}
+
+		if (!oracle_node_paxos::verify_proposer(nettype(), proposer, tvc.m_vote_ctx, *quorum_state))
+		{
+			tvc.m_verifivation_failed = true;
+			MERROR_VER("tx " << get_transaction_hash(tx) << ": version 4 proposer_tx could not be completely verified reason: " << print_vote_verification_context(tvc.m_vote_ctx));
+			return false;
+		}
+
+		// Check if deregister is too old or too new to hold onto
+		{
+      const uint64_t curr_height = get_current_blockchain_height();
+
+      if (proposer.block_height >= curr_height)
+      {
+        LOG_PRINT_L1("Received proposer tx for height: " << proposer.block_height
+          << " and service node: " << proposer.service_node_index
+          << ", is newer than current height: " << curr_height
+          << " blocks and has been rejected.");
+        tvc.m_vote_ctx.m_invalid_block_height = true;
+        tvc.m_verifivation_failed = true;
+        return false;
+      }
+
+      uint64_t delta_height = curr_height - proposer.block_height;
+      if (delta_height >= oracle_node_paxos::DEREGISTER_LIFETIME_BY_HEIGHT)
+      {
+        LOG_PRINT_L1("Received proposer tx for height: " << proposer.block_height
+          << " and service node: " << proposer.service_node_index
+          << ", is older than: " << oracle_node_paxos::DEREGISTER_LIFETIME_BY_HEIGHT
+          << " blocks and has been rejected. The current height is: " << curr_height);
+        tvc.m_vote_ctx.m_invalid_block_height = true;
+        tvc.m_verifivation_failed = true;
+        return false;
+      }
+
+    }
+
+  const uint64_t height = proposer.block_height;
+	const size_t num_blocks_to_check = oracle_node_paxos::DEREGISTER_LIFETIME_BY_HEIGHT;
+
+	std::vector<std::pair<cryptonote::blobdata, block>> blocks;
+	std::vector<cryptonote::blobdata> txs;
+
+	if (get_blocks(height, num_blocks_to_check, blocks, txs))
+	{
+		for (blobdata const &blob : txs)
+		{
+			transaction existing_tx;
+			if (!parse_and_validate_tx_from_blob(blob, existing_tx))
+			{
+				MERROR_VER("tx could not be validated from blob, possibly corrupt blockchain");
+				continue;
+			}
+
+			if (!existing_tx.is_delfi_marker())
+				continue;
+
+			tx_extra_oracle_node_proposer existing_proposer;
+			if (!get_oracle_node_proposer_from_tx_extra(existing_tx.extra, existing_proposer))
+			{
+				MERROR_VER("could not get service node proposer from tx extra, possibly corrupt tx");
+				continue;
+			}
+
+			const std::shared_ptr<const service_nodes::quorum_state> existing_oracle_proposer_state = m_service_node_list.get_quorum_state(existing_proposer.block_height);
+
+			if (!existing_oracle_proposer_state)
+			{
+				MERROR_VER("could not get quorum state for recent proposer tx");
+				continue;
+			}
+
+			if (existing_oracle_proposer_state->nodes_to_test[existing_proposer.service_node_index] ==
+				quorum_state->nodes_to_test[existing_proposer.service_node_index])
+			{
+				tvc.m_double_spend = true;
+				return false;
+			}
+		}
+	}
+	else
+	{
+		return false;
+	}
+
+
+  }
+
 	if (tx.is_deregister_tx())
 	{
 		if (tx.rct_signatures.txnFee != 0)

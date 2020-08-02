@@ -1842,7 +1842,7 @@ namespace cryptonote
     m_deregisters_auto_relayer.do_call(boost::bind(&core::relay_deregister_votes, this));
     m_check_updates_interval.do_call(boost::bind(&core::check_updates, this));
     m_check_disk_space_interval.do_call(boost::bind(&core::check_disk_space, this));
-	time_t const lifetime = time(nullptr) - get_start_time();
+	  time_t const lifetime = time(nullptr) - get_start_time();
 
   int target = DIFFICULTY_TARGET_V2; 
   if(get_ideal_hard_fork_version() < 6){
@@ -1856,7 +1856,7 @@ namespace cryptonote
 		do_uptime_proof_call();
 	}
 
-	m_uptime_proof_pruner.do_call(boost::bind(&service_nodes::quorum_cop::prune_uptime_proof, &m_quorum_cop));
+	  m_uptime_proof_pruner.do_call(boost::bind(&service_nodes::quorum_cop::prune_uptime_proof, &m_quorum_cop));
     m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));
     m_blockchain_pruning_interval.do_call(boost::bind(&core::update_blockchain_pruning, this));
     m_miner.on_idle();
@@ -2207,6 +2207,61 @@ namespace cryptonote
 
     cryptonote::transaction deregister_tx;
     bool result = m_deregister_vote_pool.add_vote(vote, vvc, *quorum_state, deregister_tx);
+    if (result && vvc.m_full_tx_deregister_made)
+    {
+      tx_verification_context tvc = AUTO_VAL_INIT(tvc);
+      blobdata const tx_blob = tx_to_blob(deregister_tx);
+
+      result = handle_incoming_tx(tx_blob, tvc, relay_method::block, false /*relayed*/);
+	  if (!result || tvc.m_verifivation_failed)
+	  {
+		  LOG_PRINT_L1("A full deregister tx for height: " << vote.block_height <<
+			  " and service node: " << vote.service_node_index <<
+			  " could not be verified and was not added to the memory pool, reason: " <<
+			  print_tx_verification_context(tvc, &deregister_tx));
+	  }
+    }
+
+    return result;
+  }
+    //-----------------------------------------------------------------------------------------------
+  bool core::add_oracle_node_vote(const triton::service_node_deregister::vote& vote, std::vector<delfi_protocol::task_update> data, vote_verification_context &vvc)
+  {
+	  uint64_t latest_block_height = std::max(get_current_blockchain_height(), get_target_blockchain_height());
+	  uint64_t delta_height = latest_block_height - vote.block_height;
+
+	  if (vote.block_height < latest_block_height && delta_height >= triton::service_node_deregister::VOTE_LIFETIME_BY_HEIGHT)
+	  {
+		  LOG_PRINT_L1("Received vote for height: " << vote.block_height
+			  << " and service node: " << vote.service_node_index
+			  << ", is older than: " << triton::service_node_deregister::VOTE_LIFETIME_BY_HEIGHT
+			  << " blocks and has been rejected.");
+		  vvc.m_invalid_block_height = true;
+	  }
+	  else if (vote.block_height > latest_block_height)
+	  {
+		  LOG_PRINT_L1("Received vote for height: " << vote.block_height
+			  << " and service node: " << vote.service_node_index
+			  << ", is newer than: " << latest_block_height
+			  << " (latest block height) and has been rejected.");
+		  vvc.m_invalid_block_height = true;
+	  }
+	  if (vvc.m_invalid_block_height)
+	  {
+		  vvc.m_verification_failed = true;
+		  return false;
+	  }
+	  const auto quorum_state = m_service_node_list.get_quorum_state(vote.block_height);
+	  if (!quorum_state)
+    {
+      vvc.m_verification_failed  = true;
+      vvc.m_invalid_block_height = true;
+      LOG_ERROR("Could not get quorum state for height: " << vote.block_height);
+      return false;
+    }
+
+    cryptonote::transaction delfi_marker;
+    bool result = m_delfi_marker_pool.add_vote(vote, vvc, *quorum_state, delfi_marker);
     if (result && vvc.m_full_tx_deregister_made)
     {
       tx_verification_context tvc = AUTO_VAL_INIT(tvc);

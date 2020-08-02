@@ -49,7 +49,7 @@ namespace service_nodes
 	{
 		m_last_height = 0;
 		m_uptime_proof_seen.clear();
-		m_delfi = delfi_protocol::Delfi();
+		m_delfi = delfi_protocol::Delfi(m_core);
 	}
 
 	void quorum_cop::blockchain_detached(uint64_t height)
@@ -95,13 +95,13 @@ namespace service_nodes
 			m_last_height = execute_justice_from_height;
 
 
-		if (m_core.get_hard_fork_version >= 8)
+		if (m_core.get_hard_fork_version(m_last_height) >= 8)
 		{
 			//Create consensus on current tasks
-			census_tasks();
+			m_delfi.census_tasks(my_public);
 
 			//Process tasks for next block
-			process_tasks();
+			m_delfi.process_tasks(my_public, my_seckey);
 		}
 			
 		for (; m_last_height < (height - REORG_SAFETY_BUFFER_IN_BLOCKS); m_last_height++)
@@ -115,6 +115,74 @@ namespace service_nodes
 				// TODO(triton): Fatal error
 				LOG_ERROR("Quorum state for height: " << m_last_height << "was not cached in daemon!");
 				continue;
+			}
+
+			if (m_core.get_hard_fork_version(m_last_height) >= 8)
+			{
+				crypto::hash prev_id = m_core.get_block_id_by_height(m_last_height);
+				crypto::public_key cur_leader_key = service_node_list::select_winner(prev_id);
+				
+				if(cur_leader_key == my_pubkey)
+				{
+					//You are the leader
+					MGINFO_GREEN("You are the leader");
+					continue;
+				}
+
+				MGINFO_GREEN("You are a voter");
+				crypto::hash valid_leader_key;
+				std::vector<delfi_protocol::task_update> leader_data, my_data;
+
+				leader_data = m_delfi.get_task_updates(cur_leader_key);
+				my_data = m_delfi.get_task_updates(my_pubkey);
+
+				//stdev,n,m
+				std::tuple<uint64_t, uint64_t, uint64_t> stdev_data = m_delfi.census_tasks(my_public, my_data);
+
+				//assume leader is bad
+				bool valid_leader = false;
+
+				if (leader_data.od.price <= (stdev_data.second + (stdev_data.first * 2)) && leader_data.od.price >= (stdev_data.second - (stdev_data.first * 2)))
+				{
+					valid_leader = true;
+					valid_leader_key = cur_leader_key;
+				}
+				else 
+				{
+					//Pick a new winner based off ++ of cur_leader_key
+					auto it = std::find(state->quorum_nodes.begin(), state->quorum_nodes.end(), cur_leader_key);
+					if (it == state->quorum_nodes.end())
+						continue;
+
+					size_t my_index_in_quorum = it - state->quorum_nodes.begin();
+					for (size_t node_index = 0; node_index < state->nodes_to_test.size(); ++node_index)
+					{				
+						const crypto::public_key &node_key = state->nodes_to_test[node_index];
+						CRITICAL_REGION_LOCAL(m_lock);
+
+						leader_data = m_delfi.get_task_updates(node_key);
+						if (leader_data.od.price <= (stdev_data.second + (stdev_data.first * 2)) && leader_data.od.price >= (stdev_data.second - (stdev_data.first * 2)))
+						{
+
+							valid_leader = true;
+							valid_leader_key = node_key;
+						}
+					}
+				}
+
+				//Submit vote
+				oracle_node_paxos::oracle_node_vote vote = {};
+				vote.block_height m_last_height;
+				vote.service_node_index = node_index;
+				vote.voters_quorum_index = my_index_in_quorum;
+				vote.signature = triton::service_node_deregister::sign_vote(vote.block_height, vote.service_node_index, my_pubkey, my_seckey);
+
+				cryptonote::vote_verification_context vvc = {};
+				if (!m_core.add_oracle_data_vote(vote, leader_data, vvc))
+				{
+					LOG_ERROR("Failed to add oracle data vote reason: " << print_vote_verification_context(vvc, &vote));
+				}
+
 			}
 
 			auto it = std::find(state->quorum_nodes.begin(), state->quorum_nodes.end(), my_pubkey);
@@ -157,113 +225,6 @@ namespace service_nodes
 
 		return result;
 	}
-	static crypto::hash make_hash(crypto::public_key const &pubkey, uint64_t timestamp, delfi_protocol::task_update tu)
-	{
-		char buf[44] = "SUP"; // Meaningless magic bytes
-		crypto::hash result;
-		memcpy(buf + 4, reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
-		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
-		memcpy(buf + 4 + sizeof(timestamp), reinterpret_cast<const void *>(&tu.price), sizeof(tu.price));
-		memcpy(buf + 4 + sizeof(tu.price), reinterpret_cast<const void *>(&tu.taskHash), sizeof(tu.taskHash));
-		crypto::cn_fast_hash(buf, sizeof(buf), result);
-
-		return result;
-	}
-
-	void quorum_cop::census_tasks()
-	{
-		std::vector<delfi_protocol::task_update> task_updates = m_task_update_seen;
-		auto it = std::find(state->quorum_nodes.begin(), state->quorum_nodes.end(), my_pubkey);
-
-		if (it == state->quorum_nodes.end())
-			continue;
-
-		size_t my_index_in_quorum = it - state->quorum_nodes.begin();
-
-		for (auto task : task_updates)
-		{
-			//Pick task
-			crypto::hash task_hash = task.taskHash;
-			double stdev = 0;
-			sizet_t N = 0;
-			//Mean
-			uint64_t m = 0;
-			for (auto t1 : task_updates)
-			{
-				if(t1.taskHash != task_hash)
-					continue;
-
-				m += ti.price;
-				N++;
-			}
-
-			m = m / N;
-
-			//stdev
-			for (auto t1 : task_updates)
-			{
-				if(t1.taskHash != task_hash)
-					continue;
-
-				double delta = t1.price - m;
-				stdev += delta * delta;
-			}
-
-			stdev = stdev / N;
-
-			for (auto t1 : task_updates)
-			{
-				if(t1.taskHash != task_hash)
-					continue;
-
-				if (task.price <= (m + (stdev * 2)) && task.price >= (m - (stdev * 2)))
-					m_valid_tasks[t1.pubkey] = t1;
-
-				m_task_update_seen.erase(t1.pubkey);
-			}
-		}
-	}
-
-	//Process Tasks for next block
-	void quorum_cop::process_tasks()
-	{
-		std::vector<delfi_protocol::task_update> task_updates;
-		std::vector<delfi_protocol::task> tasks = m_delfi.getTasks();
-		for (auto task : tasks)
-		{
-			delfi_protocol::task_update tu;
-			if (latest_height > task.block_height_finished)
-			{
-				MERROR("Task is expired");
-				continue;
-			}
-
-			uint64_t last_task_height = m_delfi.getTaskLastHeight(task.taskHash);
-			if(last_task_height + task.block_rate != latest_height)
-			{
-				MGINFO_GREEN("Task: " << task.taskHash << " at block height: " << latest_height << " does not need to be ran.");
-				continue;
-			}
-	
-			uint64_t task_price = task.completeTask();
-
-			tu.price = task_price;
-			tu.taskHash = task.taskHash;
-			crypto::hash hash = make_hash(req.pubkey, req.timestamp, tu);
-			crypto::generate_signature(hash, my_pubkey, my_seckey, tu.sig);
-
-			//push task update to then be sent to all oracle nodes
-			task_updates.push_back(tu);
-		}
-
-		if(task_updates.size() == 0)
-			continue;
-
-		cryptonote::NOTIFY_TASK_UPDATE::request req;
-		generate_task_update(my_pubkey,my_seckey, task_updates, req);
-
-		m_core.submit_task_update(req);
-	}
 
 	bool quorum_cop::handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof)
 	{
@@ -279,6 +240,7 @@ namespace service_nodes
 
 		if (!m_core.is_service_node(pubkey))
 			return false;
+			
 		//1573975194 = v6 hf timestamp + 12 hours
 		if(proof.snode_version_major <= 4 && proof.timestamp >= 1573975194)
 			return false;
@@ -297,47 +259,14 @@ namespace service_nodes
 
 	bool quorum_cop::handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &taskUpdate)
 	{
-		uint64_t now = time(nullptr);
-			
-		uint64_t timestamp = taskUpdate.timestamp;
-		const crypto::public_key& pubkey = taskUpdate.pubkey;
-		const crypto::signature& sig = taskUpdate.sig;
-
-
-		if ((timestamp < now - UPTIME_PROOF_BUFFER_IN_SECONDS) || (timestamp > now + UPTIME_PROOF_BUFFER_IN_SECONDS))
-			return false;
-
-		if (!m_core.is_service_node(pubkey))
-			return false;
-
-		CRITICAL_REGION_LOCAL(m_lock);
-		if (m_task_update_seen[pubkey] >= now - (UPTIME_PROOF_FREQUENCY_IN_SECONDS / 2))
-			return false; // already received one uptime proof for this node recently.
-
-		crypto::hash hash = make_hash(pubkey, timestamp);
-		if (!crypto::check_signature(hash, pubkey, sig))
-			return false;
-
-		m_task_update_seen[pubkey] = now;
-		return true;
+		return m_delfi.handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &taskUpdate);
 	}
-
 
 	void generate_uptime_proof_request(const crypto::public_key& pubkey, const crypto::secret_key& seckey, cryptonote::NOTIFY_UPTIME_PROOF::request& req)
 	{
 		req.snode_version_major = static_cast<uint16_t>(TRITON_VERSION_MAJOR);
 		req.snode_version_minor = static_cast<uint16_t>(TRITON_VERSION_MINOR);
 		req.snode_version_patch = static_cast<uint16_t>(TRITON_VERSION_PATCH);
-		req.timestamp = time(nullptr);
-		req.pubkey = pubkey;
-
-		crypto::hash hash = make_hash(req.pubkey, req.timestamp);
-		crypto::generate_signature(hash, pubkey, seckey, req.sig);
-	}
-
-	void generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req)
-	{
-		req.task_updates = task_updates;
 		req.timestamp = time(nullptr);
 		req.pubkey = pubkey;
 

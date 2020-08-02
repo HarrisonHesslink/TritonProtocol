@@ -160,6 +160,13 @@ namespace boost
       a & x.output_unlock_times;
       a & x.is_deregister;
     }
+
+    if (x.version >= 4)
+    {
+      a & x.is_delfi_marker;
+      a & x.is_task_reg;
+    }
+
     a & x.unlock_time;
     a & x.vin;
     a & x.vout;
@@ -175,6 +182,13 @@ namespace boost
       a & x.output_unlock_times;
       a & x.is_deregister;
     }
+    
+    if (x.version >= 4)
+    {
+      a & x.is_delfi_marker;
+      a & x.is_task_reg;
+    }
+
     a & x.unlock_time;
     a & x.vin;
     a & x.vout;
@@ -199,6 +213,12 @@ namespace boost
     a & b.timestamp;
     a & b.prev_id;
     a & b.nonce;
+
+    if(major_version > 7)
+    {
+      a & b.tasks;
+    }
+
     //------------------
     a & b.miner_tx;
     a & b.tx_hashes;

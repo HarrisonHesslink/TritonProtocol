@@ -34,7 +34,7 @@
 #include "serialization/keyvalue_serialization.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/blobdatatype.h"
-#include "cryptonote_core/service_node_deregister.h"
+#include "oracle_node/service_node_deregister.h"
 
 namespace cryptonote
 {
