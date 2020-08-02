@@ -1,4 +1,4 @@
- // Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -28,17 +28,16 @@
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#include "include_base_utils.h"
-
-using namespace epee;
-
 #include "checkpoints.h"
 
 #include "common/dns_utils.h"
-#include "include_base_utils.h"
 #include "string_tools.h"
 #include "storages/portable_storage_template_helper.h" // epee json include
 #include "serialization/keyvalue_serialization.h"
+#include <functional>
+#include <vector>
+
+using namespace epee;
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "checkpoints"
@@ -77,7 +76,7 @@ namespace cryptonote
   bool checkpoints::add_checkpoint(uint64_t height, const std::string& hash_str)
   {
     crypto::hash h = crypto::null_hash;
-    bool r = epee::string_tools::parse_tpod_from_hex_string(hash_str, h);
+    bool r = epee::string_tools::hex_to_pod(hash_str, h);
     CHECK_AND_ASSERT_MES(r, false, "Failed to parse checkpoint hash string into binary representation!");
 
     // return false if adding at a height we already have AND the hash is different
@@ -136,11 +135,9 @@ namespace cryptonote
   //---------------------------------------------------------------------------
   uint64_t checkpoints::get_max_height() const
   {
-    std::map< uint64_t, crypto::hash >::const_iterator highest =
-        std::max_element( m_points.begin(), m_points.end(),
-                         ( boost::bind(&std::map< uint64_t, crypto::hash >::value_type::first, _1) <
-                           boost::bind(&std::map< uint64_t, crypto::hash >::value_type::first, _2 ) ) );
-    return highest->first;
+    if (m_points.empty())
+      return 0;
+    return m_points.rbegin()->first;
   }
   //---------------------------------------------------------------------------
   const std::map<uint64_t, crypto::hash>& checkpoints::get_points() const
@@ -213,6 +210,12 @@ namespace cryptonote
 	add_checkpoint(105000, "fd96f6c1a9147ac5b643b649ff9966143a45e9d61650dd4c02e9a018ccb6ce66");
 	add_checkpoint(110000, "e34e24c035c5d1b5d0b888f393dfc3a94b62956729fad8e52a20587f8232f079");
 	add_checkpoint(119558, "2fef20abf1adc33dad396ab7f61f2589b4c885e48f1beec78aa6149dc4d3b867");
+  //hf v6
+	add_checkpoint(181056, "180d0ac84048d1dd57126c38b53c353df90fa73aeb60def9359e21e55b4b2946");
+	add_checkpoint(200000, "86b1512952135f298361b216ef9441973f1567f1a7522ada2419ebe015b505a0");
+	add_checkpoint(250000, "f6cc274ba450040855a35cea9018d0e47fbb9edff3311ec55beaffe586336605");
+	add_checkpoint(300000, "972bb056059e4edba555726be385a27e8dafc41fdf959820f4e97b9d4763938b");
+
     return true;
   }
 
@@ -288,7 +291,7 @@ namespace cryptonote
         // parse the second part as crypto::hash,
         // if this fails move on to the next record
         std::string hashStr = record.substr(pos + 1);
-        if (!epee::string_tools::parse_tpod_from_hex_string(hashStr, hash))
+        if (!epee::string_tools::hex_to_pod(hashStr, hash))
         {
     continue;
         }

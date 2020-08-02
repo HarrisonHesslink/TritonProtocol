@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2018, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -41,7 +41,6 @@
 #include <algorithm>
 #include <cstdio>
 #include <fstream>
-#include <boost/iostreams/copy.hpp>
 #include <atomic>
 
 #include "common/command_line.h"
@@ -60,7 +59,7 @@ public:
   uint64_t count_bytes(std::ifstream& import_file, uint64_t blocks, uint64_t& h, bool& quit);
   uint64_t count_blocks(const std::string& dir_path, std::streampos& start_pos, uint64_t& seek_height);
   uint64_t count_blocks(const std::string& dir_path);
-  uint64_t seek_to_first_chunk(std::ifstream& import_file);
+  uint64_t seek_to_first_chunk(std::ifstream& import_file, uint8_t &major_version, uint8_t &minor_version);
 
   bool store_blockchain_raw(cryptonote::Blockchain* cs, cryptonote::tx_memory_pool* txp,
       boost::filesystem::path& output_file, uint64_t use_block_height=0);

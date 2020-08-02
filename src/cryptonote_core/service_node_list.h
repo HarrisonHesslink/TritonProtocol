@@ -143,8 +143,8 @@ namespace service_nodes
 		public cryptonote::Blockchain::ValidateMinerTxHook
 	{
 	public:
-		service_node_list(cryptonote::Blockchain& blockchain, service_nodes::quorum_cop &quorum_cop);
-		void block_added(const cryptonote::block& block, const std::vector<cryptonote::transaction>& txs) override;
+		service_node_list(cryptonote::Blockchain& blockchain);
+		void block_added(const cryptonote::block& block, const std::vector<std::pair<cryptonote::transaction,cryptonote::blobdata>>& txs) override;
 		void blockchain_detached(uint64_t height) override;
 		void register_hooks(service_nodes::quorum_cop &quorum_cop);
 		void init() override;
@@ -279,8 +279,9 @@ namespace service_nodes
 		void process_contribution_tx(const cryptonote::transaction& tx, uint64_t block_height, uint32_t index);
 		bool process_deregistration_tx(const cryptonote::transaction& tx, uint64_t block_height);
 
-		template<typename T>
-		void block_added_generic(const cryptonote::block& block, const T& txs);
+		std::vector<crypto::public_key> get_service_nodes_pubkeys() const;
+
+		void block_added_generic(const cryptonote::block& blck, const std::vector<std::pair<cryptonote::transaction, cryptonote::blobdata>>& txs);
 
 		bool contribution_tx_output_has_correct_unlock_time(const cryptonote::transaction& tx, size_t i, uint64_t block_height) const;
 
