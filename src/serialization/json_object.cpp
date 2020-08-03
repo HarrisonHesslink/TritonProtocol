@@ -301,6 +301,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::block& b)
   GET_FROM_JSON_OBJECT(val, b.timestamp, timestamp);
   GET_FROM_JSON_OBJECT(val, b.prev_id, prev_id);
   GET_FROM_JSON_OBJECT(val, b.nonce, nonce);
+  GET_FROM_JSON_OBJECT(val, b.pricing_record, pricing_record);
   GET_FROM_JSON_OBJECT(val, b.miner_tx, miner_tx);
   GET_FROM_JSON_OBJECT(val, b.tx_hashes, tx_hashes);
 }
@@ -317,6 +318,14 @@ void toJsonValue(rapidjson::Writer<epee::byte_stream>& dest, const cryptonote::t
     void operator()(cryptonote::txin_to_key const& input) const
     {
       INSERT_INTO_JSON_OBJECT(dest, to_key, input);
+    }
+    void operator()(cryptonote::txin_offshore const& input) const
+    {
+      INSERT_INTO_JSON_OBJECT(val, doc, offshore, input);
+    }
+    void operator()(cryptonote::txin_onshore const& input) const
+    {
+      INSERT_INTO_JSON_OBJECT(val, doc, onshore, input);
     }
     void operator()(cryptonote::txin_gen const& input) const
     {
@@ -353,6 +362,18 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_v& txin)
     if (elem.name == "to_key")
     {
       cryptonote::txin_to_key tmpVal;
+      fromJsonValue(elem.value, tmpVal);
+      txin = std::move(tmpVal);
+    }
+    else if (elem.name == "offshore")
+    {
+      cryptonote::txin_offshore tmpVal;
+      fromJsonValue(elem.value, tmpVal);
+      txin = std::move(tmpVal);
+    }
+    else if (elem.name == "onshore")
+    {
+      cryptonote::txin_onshore tmpVal;
       fromJsonValue(elem.value, tmpVal);
       txin = std::move(tmpVal);
     }
@@ -470,8 +491,51 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_to_key& txin)
   GET_FROM_JSON_OBJECT(val, txin.k_image, key_image);
 }
 
+void toJsonValue(rapidjson::Document& doc, const cryptonote::txin_offshore& txin, rapidjson::Value& val)
+{
+  val.SetObject();
 
-void toJsonValue(rapidjson::Writer<epee::byte_stream>& dest, const cryptonote::txout_to_script& txout)
+  INSERT_INTO_JSON_OBJECT(val, doc, amount, txin.amount);
+  INSERT_INTO_JSON_OBJECT(val, doc, key_offsets, txin.key_offsets);
+  INSERT_INTO_JSON_OBJECT(val, doc, key_image, txin.k_image);
+}
+
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_offshore& txin)
+{
+  if (!val.IsObject())
+  {
+    throw WRONG_TYPE("json object");
+  }
+
+  GET_FROM_JSON_OBJECT(val, txin.amount, amount);
+  GET_FROM_JSON_OBJECT(val, txin.key_offsets, key_offsets);
+  GET_FROM_JSON_OBJECT(val, txin.k_image, key_image);
+}
+
+void toJsonValue(rapidjson::Document& doc, const cryptonote::txin_onshore& txin, rapidjson::Value& val)
+{
+  val.SetObject();
+
+  INSERT_INTO_JSON_OBJECT(val, doc, amount, txin.amount);
+  INSERT_INTO_JSON_OBJECT(val, doc, key_offsets, txin.key_offsets);
+  INSERT_INTO_JSON_OBJECT(val, doc, key_image, txin.k_image);
+}
+
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_onshore& txin)
+{
+  if (!val.IsObject())
+  {
+    throw WRONG_TYPE("json object");
+  }
+
+  GET_FROM_JSON_OBJECT(val, txin.amount, amount);
+  GET_FROM_JSON_OBJECT(val, txin.key_offsets, key_offsets);
+  GET_FROM_JSON_OBJECT(val, txin.k_image, key_image);
+}
+
+void toJsonValue(rapidjson::Document& doc, const cryptonote::txout_to_script& txout, rapidjson::Value& val)
 {
   dest.StartObject();
 
@@ -532,7 +596,25 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::txout_to_key& txout)
   GET_FROM_JSON_OBJECT(val, txout.key, key);
 }
 
-void toJsonValue(rapidjson::Writer<epee::byte_stream>& dest, const cryptonote::tx_out& txout)
+void toJsonValue(rapidjson::Document& doc, const cryptonote::txout_offshore& txout, rapidjson::Value& val)
+{
+  val.SetObject();
+
+  INSERT_INTO_JSON_OBJECT(val, doc, key, txout.key);
+}
+
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::txout_offshore& txout)
+{
+  if (!val.IsObject())
+  {
+    throw WRONG_TYPE("json object");
+  }
+
+  GET_FROM_JSON_OBJECT(val, txout.key, key);
+}
+
+void toJsonValue(rapidjson::Document& doc, const cryptonote::tx_out& txout, rapidjson::Value& val)
 {
   dest.StartObject();
   INSERT_INTO_JSON_OBJECT(dest, amount, txout.amount);
@@ -546,6 +628,10 @@ void toJsonValue(rapidjson::Writer<epee::byte_stream>& dest, const cryptonote::t
     void operator()(cryptonote::txout_to_key const& output) const
     {
       INSERT_INTO_JSON_OBJECT(dest, to_key, output);
+    }
+    void operator()(cryptonote::txout_offshore const& output) const
+    {
+      INSERT_INTO_JSON_OBJECT(val, doc, to_key, output);
     }
     void operator()(cryptonote::txout_to_script const& output) const
     {
@@ -1042,6 +1128,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::BlockHeaderResp
   GET_FROM_JSON_OBJECT(val, response.timestamp, timestamp);
   GET_FROM_JSON_OBJECT(val, response.prev_id, prev_id);
   GET_FROM_JSON_OBJECT(val, response.nonce, nonce);
+  GET_FROM_JSON_OBJECT(val, response.pricing_record, pricing_record);
   GET_FROM_JSON_OBJECT(val, response.height, height);
   GET_FROM_JSON_OBJECT(val, response.depth, depth);
   GET_FROM_JSON_OBJECT(val, response.hash, hash);

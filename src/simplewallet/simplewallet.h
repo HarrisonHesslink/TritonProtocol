@@ -167,18 +167,20 @@ namespace cryptonote
     bool show_incoming_transfers(const std::vector<std::string> &args);
     bool show_payments(const std::vector<std::string> &args);
     bool show_blockchain_height(const std::vector<std::string> &args);
-    bool transfer_main(int transfer_type, const std::vector<std::string> &args, bool called_by_mms);
+    bool transfer_main(int transfer_type, const std::vector<std::string> &args, bool called_by_mms, bool bOffshoreTx = false);
     bool transfer(const std::vector<std::string> &args);
     bool locked_transfer(const std::vector<std::string> &args);
     bool stake(const std::vector<std::string> &args_);
     bool register_service_node(const std::vector<std::string> &args_);
     bool locked_sweep_all(const std::vector<std::string> &args);
-    bool sweep_main(uint32_t account, uint64_t below, bool locked, const std::vector<std::string> &args);
+    bool sweep_main(uint32_t account, uint64_t below, bool locked, const std::vector<std::string> &args, bool bOffshoreTx = false);
     bool sweep_all(const std::vector<std::string> &args);
     bool sweep_account(const std::vector<std::string> &args);
     bool sweep_below(const std::vector<std::string> &args);
     bool sweep_single(const std::vector<std::string> &args);
     bool sweep_unmixable(const std::vector<std::string> &args);
+    bool offshore_sweep_all(const std::vector<std::string> &args);
+    bool offshore_sweep_below(const std::vector<std::string> &args);
     bool donate(const std::vector<std::string> &args);
     bool sign_transfer(const std::vector<std::string> &args);
     bool submit_transfer(const std::vector<std::string> &args);
@@ -269,6 +271,10 @@ namespace cryptonote
 	  bool stake_main(const crypto::public_key& service_node_key, const cryptonote::address_parse_info& parse_info, uint32_t priority, std::set<uint32_t>& subaddr_indices, uint64_t amount, double amount_fraction, bool autostake);
     bool on_unknown_command(const std::vector<std::string>& args);
 
+    bool onshore(const std::vector<std::string> &args);
+    bool offshore(const std::vector<std::string> &args);
+    bool offshore_transfer(const std::vector<std::string> &args);
+
     bool cold_sign_tx(const std::vector<tools::wallet2::pending_tx>& ptx_vector, tools::wallet2::signed_tx_set &exported_txs, std::vector<cryptonote::address_parse_info> &dsts_info, std::function<bool(const tools::wallet2::signed_tx_set &)> accept_func);
     uint64_t get_daemon_blockchain_height(std::string& err);
     bool try_connect_to_daemon(bool silent = false, uint32_t* version = nullptr);
@@ -347,9 +353,9 @@ namespace cryptonote
 
     //----------------- i_wallet2_callback ---------------------
     virtual void on_new_block(uint64_t height, const cryptonote::block& block);
-    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, bool is_change, uint64_t unlock_time);
+    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, uint64_t unlock_time, bool offshore=false);
     virtual void on_unconfirmed_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index);
-    virtual void on_money_spent(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& in_tx, uint64_t amount, const cryptonote::transaction& spend_tx, const cryptonote::subaddress_index& subaddr_index);
+    virtual void on_money_spent(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& in_tx, uint64_t amount, const cryptonote::transaction& spend_tx, const cryptonote::subaddress_index& subaddr_index, bool offshore=false);
     virtual void on_skip_transaction(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx);
     virtual boost::optional<epee::wipeable_string> on_get_password(const char *reason);
     virtual void on_device_button_request(uint64_t code);

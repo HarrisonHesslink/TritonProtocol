@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2019, Haven Protocol
 #
 # All rights reserved.
 #
@@ -26,40 +26,23 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-set(cryptonote_core_sources
-  blockchain.cpp
-  cryptonote_core.cpp
-  service_node_rules.cpp
-  service_node_list.cpp
-  service_node_deregister.cpp
-  quorum_cop.cpp
-  ribbon.cpp
-  tx_pool.cpp
-  tx_sanity_check.cpp
-  cryptonote_tx_utils.cpp)
+set(offshore_sources
+  pricing_handler.cpp
+  pricing_record.cpp)
 
-set(cryptonote_core_headers)
+set(offshore_headers)
 
-set(cryptonote_core_private_headers
-  blockchain_storage_boost_serialization.h
-  blockchain.h
-  cryptonote_core.h
-  service_node_rules.h
-  service_node_list.h
-  service_node_deregister.h
-  quorum_cop.h
-  ribbon.h
-  tx_pool.h
-  tx_sanity_check.h
-  cryptonote_tx_utils.h)
+set(offshore_private_headers
+  pricing_handler.h
+  pricing_record.h)
 
-monero_private_headers(cryptonote_core
-  ${cryptonote_core_private_headers})
-monero_add_library(cryptonote_core
-  ${cryptonote_core_sources}
-  ${cryptonote_core_headers}
-  ${cryptonote_core_private_headers})
-target_link_libraries(cryptonote_core
+monero_private_headers(offshore
+  ${offshore_private_headers})
+monero_add_library(offshore
+  ${offshore_sources}
+  ${offshore_headers}
+  ${offshore_private_headers})
+target_link_libraries(offshore
   PUBLIC
     version
     common
@@ -68,14 +51,11 @@ target_link_libraries(cryptonote_core
     multisig
     ringct
     device
-    hardforks
-    offshore
     ${Boost_DATE_TIME_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_SERIALIZATION_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
-    ${CURL_LIBRARIES}
   PRIVATE
     ${EXTRA_LIBRARIES})

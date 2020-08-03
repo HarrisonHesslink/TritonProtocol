@@ -46,9 +46,7 @@
 #define TX_EXTRA_TAG_SERVICE_NODE_PUBKEY      0x74
 #define TX_EXTRA_TAG_TX_SECRET_KEY            0x75
 
-#define TX_EXTRA_TAG_MINT_KEY                 0x76
-#define TX_EXTRA_TAG_IS_MINT_TX               0x77
-#define TX_EXTRA_TAG_IS_BURN_TX               0x78
+#define TX_EXTRA_TAG_OFFSHORE                 0x76
 
 #define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG     0xDE
 
@@ -259,30 +257,18 @@ struct tx_extra_service_node_deregister
     FIELD(key)
   END_SERIALIZE()
 };
- struct tx_extra_mint_key
-{
-  crypto::public_key key;
+  struct tx_extra_offshore
+  {
+    // First char = source asset type
+    // Second char = dest asset type
+    // ...
+    std::string data;
 
-  BEGIN_SERIALIZE()
-    FIELD(key)
-  END_SERIALIZE()
-};
- struct tx_extra_is_mint_tx
-{
-  bool is_mint_tx;
-
-  BEGIN_SERIALIZE()
-    FIELD(is_mint_tx)
-  END_SERIALIZE()
-};
-struct tx_extra_is_burn_tx
-{
-  bool is_burn_tx;
-
-  BEGIN_SERIALIZE()
-    FIELD(is_burn_tx)
-  END_SERIALIZE()
-};
+    BEGIN_SERIALIZE()
+      FIELD(data)
+    END_SERIALIZE()
+  };
+  
   // tx_extra_field format, except tx_extra_padding and tx_extra_pub_key:
   //   varint tag;
   //   varint size;
@@ -301,8 +287,9 @@ struct tx_extra_is_burn_tx
 	 tx_extra_tx_secret_key,
 	 tx_extra_mint_key,
 	 tx_extra_is_mint_tx,
-   tx_extra_is_burn_tx> tx_extra_field;
+   tx_extra_is_burn_tx, tx_extra_offshore> tx_extra_field;
   }
+
   BLOB_SERIALIZER(cryptonote::tx_extra_service_node_deregister::vote);
 
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_padding, TX_EXTRA_TAG_PADDING);
@@ -317,6 +304,5 @@ struct tx_extra_is_burn_tx
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_winner, TX_EXTRA_TAG_SERVICE_NODE_WINNER);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_pubkey, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_tx_secret_key, TX_EXTRA_TAG_TX_SECRET_KEY);
-  VARIANT_TAG(binary_archive, cryptonote::tx_extra_mint_key, TX_EXTRA_TAG_MINT_KEY);
-  VARIANT_TAG(binary_archive, cryptonote::tx_extra_is_mint_tx, TX_EXTRA_TAG_IS_MINT_TX);
-  VARIANT_TAG(binary_archive, cryptonote::tx_extra_is_burn_tx, TX_EXTRA_TAG_IS_BURN_TX);
+  VARIANT_TAG(binary_archive, cryptonote::tx_extra_offshore, TX_EXTRA_TAG_OFFSHORE);
+

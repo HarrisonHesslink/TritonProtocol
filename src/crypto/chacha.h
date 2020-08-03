@@ -38,11 +38,15 @@
 
 #if defined(__cplusplus)
 #include <memory.h>
+#include "wipeable_string.h"
 
 #include "pow_hash/cn_slow_hash.hpp"
 #include "memwipe.h"
 #include "mlocker.h"
 #include "hash.h"
+#include "cn_slow_hash.hpp"
+
+#define HAVEN_CHACHA_ROUNDS 8
 
 namespace crypto {
   extern "C" {

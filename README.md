@@ -14,7 +14,7 @@ Equilibria can be used by anyone with access to the internet.
 ### Oracle Clusters
 Equilibria is a hybrid PoW/PoS decentralized oracle node network
 
-### High Utility 
+### High Utility
 Use-cases span from stablecoins to eSports
 
 ### For announcements:

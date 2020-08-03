@@ -60,6 +60,8 @@
 #include "service_node_list.h"
 #include "common/varint.h"
 #include "common/pruning.h"
+#include "net/http_client.h"
+#include "storages/http_abstract_invoke.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "blockchain"
@@ -138,6 +140,270 @@ bool Blockchain::have_tx_keyimg_as_spent(const crypto::key_image &key_im) const
 // via the visitor passed to it.
 template <class visitor_t>
 bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_to_key& tx_in_to_key, visitor_t &vis, const crypto::hash &tx_prefix_hash, uint64_t* pmax_related_block_height) const
+{
+  LOG_PRINT_L3("Blockchain::" << __func__);
+
+  // ND: Disable locking and make method private.
+  //CRITICAL_REGION_LOCAL(m_blockchain_lock);
+
+  // verify that the input has key offsets (that it exists properly, really)
+  if(!tx_in_to_key.key_offsets.size())
+    return false;
+
+  // cryptonote_format_utils uses relative offsets for indexing to the global
+  // outputs list.  that is to say that absolute offset #2 is absolute offset
+  // #1 plus relative offset #2.
+  // TODO: Investigate if this is necessary / why this is done.
+  std::vector<uint64_t> absolute_offsets = relative_output_offsets_to_absolute(tx_in_to_key.key_offsets);
+  std::vector<output_data_t> outputs;
+
+  bool found = false;
+  auto it = m_scan_table.find(tx_prefix_hash);
+  if (it != m_scan_table.end())
+  {
+    auto its = it->second.find(tx_in_to_key.k_image);
+    if (its != it->second.end())
+    {
+      outputs = its->second;
+      found = true;
+    }
+  }
+
+  if (!found)
+  {
+    try
+    {
+      m_db->get_output_key(epee::span<const uint64_t>(&tx_in_to_key.amount, 1), absolute_offsets, outputs, true);
+      if (absolute_offsets.size() != outputs.size())
+      {
+        MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+        return false;
+      }
+    }
+    catch (...)
+    {
+      MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+      return false;
+    }
+  }
+  else
+  {
+    // check for partial results and add the rest if needed;
+    if (outputs.size() < absolute_offsets.size() && outputs.size() > 0)
+    {
+      MDEBUG("Additional outputs needed: " << absolute_offsets.size() - outputs.size());
+      std::vector < uint64_t > add_offsets;
+      std::vector<output_data_t> add_outputs;
+      add_outputs.reserve(absolute_offsets.size() - outputs.size());
+      for (size_t i = outputs.size(); i < absolute_offsets.size(); i++)
+        add_offsets.push_back(absolute_offsets[i]);
+      try
+      {
+        m_db->get_output_key(epee::span<const uint64_t>(&tx_in_to_key.amount, 1), add_offsets, add_outputs, true);
+        if (add_offsets.size() != add_outputs.size())
+        {
+          MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+          return false;
+        }
+      }
+      catch (...)
+      {
+        MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+        return false;
+      }
+      outputs.insert(outputs.end(), add_outputs.begin(), add_outputs.end());
+    }
+  }
+
+  size_t count = 0;
+  for (const uint64_t& i : absolute_offsets)
+  {
+    try
+    {
+      output_data_t output_index;
+      try
+      {
+        // get tx hash and output index for output
+        if (count < outputs.size())
+          output_index = outputs.at(count);
+        else
+          output_index = m_db->get_output_key(tx_in_to_key.amount, i);
+
+        // call to the passed boost visitor to grab the public key for the output
+        if (!vis.handle_output(output_index.unlock_time, output_index.pubkey, output_index.commitment))
+        {
+          MERROR_VER("Failed to handle_output for output no = " << count << ", with absolute offset " << i);
+          return false;
+        }
+      }
+      catch (...)
+      {
+        MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount << ", absolute_offset = " << i);
+        return false;
+      }
+
+      // if on last output and pmax_related_block_height not null pointer
+      if(++count == absolute_offsets.size() && pmax_related_block_height)
+      {
+        // set *pmax_related_block_height to tx block height for this output
+        auto h = output_index.height;
+        if(*pmax_related_block_height < h)
+        {
+          *pmax_related_block_height = h;
+        }
+      }
+
+    }
+    catch (const OUTPUT_DNE& e)
+    {
+      MERROR_VER("Output does not exist: " << e.what());
+      return false;
+    }
+    catch (const TX_DNE& e)
+    {
+      MERROR_VER("Transaction does not exist: " << e.what());
+      return false;
+    }
+
+  }
+
+  return true;
+}
+//------------------------------------------------------------------
+template <class visitor_t>
+bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_offshore& tx_in_to_key, visitor_t &vis, const crypto::hash &tx_prefix_hash, uint64_t* pmax_related_block_height) const
+{
+  LOG_PRINT_L3("Blockchain::" << __func__);
+
+  // ND: Disable locking and make method private.
+  //CRITICAL_REGION_LOCAL(m_blockchain_lock);
+
+  // verify that the input has key offsets (that it exists properly, really)
+  if(!tx_in_to_key.key_offsets.size())
+    return false;
+
+  // cryptonote_format_utils uses relative offsets for indexing to the global
+  // outputs list.  that is to say that absolute offset #2 is absolute offset
+  // #1 plus relative offset #2.
+  // TODO: Investigate if this is necessary / why this is done.
+  std::vector<uint64_t> absolute_offsets = relative_output_offsets_to_absolute(tx_in_to_key.key_offsets);
+  std::vector<output_data_t> outputs;
+
+  bool found = false;
+  auto it = m_scan_table.find(tx_prefix_hash);
+  if (it != m_scan_table.end())
+  {
+    auto its = it->second.find(tx_in_to_key.k_image);
+    if (its != it->second.end())
+    {
+      outputs = its->second;
+      found = true;
+    }
+  }
+
+  if (!found)
+  {
+    try
+    {
+      m_db->get_output_key(epee::span<const uint64_t>(&tx_in_to_key.amount, 1), absolute_offsets, outputs, true);
+      if (absolute_offsets.size() != outputs.size())
+      {
+        MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+        return false;
+      }
+    }
+    catch (...)
+    {
+      MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+      return false;
+    }
+  }
+  else
+  {
+    // check for partial results and add the rest if needed;
+    if (outputs.size() < absolute_offsets.size() && outputs.size() > 0)
+    {
+      MDEBUG("Additional outputs needed: " << absolute_offsets.size() - outputs.size());
+      std::vector < uint64_t > add_offsets;
+      std::vector<output_data_t> add_outputs;
+      add_outputs.reserve(absolute_offsets.size() - outputs.size());
+      for (size_t i = outputs.size(); i < absolute_offsets.size(); i++)
+        add_offsets.push_back(absolute_offsets[i]);
+      try
+      {
+        m_db->get_output_key(epee::span<const uint64_t>(&tx_in_to_key.amount, 1), add_offsets, add_outputs, true);
+        if (add_offsets.size() != add_outputs.size())
+        {
+          MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+          return false;
+        }
+      }
+      catch (...)
+      {
+        MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount);
+        return false;
+      }
+      outputs.insert(outputs.end(), add_outputs.begin(), add_outputs.end());
+    }
+  }
+
+  size_t count = 0;
+  for (const uint64_t& i : absolute_offsets)
+  {
+    try
+    {
+      output_data_t output_index;
+      try
+      {
+        // get tx hash and output index for output
+        if (count < outputs.size())
+          output_index = outputs.at(count);
+        else
+          output_index = m_db->get_output_key(tx_in_to_key.amount, i);
+
+        // call to the passed boost visitor to grab the public key for the output
+        if (!vis.handle_output(output_index.unlock_time, output_index.pubkey, output_index.commitment))
+        {
+          MERROR_VER("Failed to handle_output for output no = " << count << ", with absolute offset " << i);
+          return false;
+        }
+      }
+      catch (...)
+      {
+        MERROR_VER("Output does not exist! amount = " << tx_in_to_key.amount << ", absolute_offset = " << i);
+        return false;
+      }
+
+      // if on last output and pmax_related_block_height not null pointer
+      if(++count == absolute_offsets.size() && pmax_related_block_height)
+      {
+        // set *pmax_related_block_height to tx block height for this output
+        auto h = output_index.height;
+        if(*pmax_related_block_height < h)
+        {
+          *pmax_related_block_height = h;
+        }
+      }
+
+    }
+    catch (const OUTPUT_DNE& e)
+    {
+      MERROR_VER("Output does not exist: " << e.what());
+      return false;
+    }
+    catch (const TX_DNE& e)
+    {
+      MERROR_VER("Transaction does not exist: " << e.what());
+      return false;
+    }
+
+  }
+
+  return true;
+}
+//------------------------------------------------------------------
+template <class visitor_t>
+bool Blockchain::scan_outputkeys_for_indexes(size_t tx_version, const txin_onshore& tx_in_to_key, visitor_t &vis, const crypto::hash &tx_prefix_hash, uint64_t* pmax_related_block_height) const
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
@@ -371,9 +637,9 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
   uint64_t top_block_timestamp = m_db->get_top_block_timestamp();
   uint64_t timestamp_diff = time(NULL) - top_block_timestamp;
 
-  // genesis block has no timestamp, could probably change it to have timestamp of 1397818133...
+  // genesis block has no timestamp, could probably change it to have timestamp of 1341378000...
   if(!top_block_timestamp)
-    timestamp_diff = time(NULL) - 1397818133;
+    timestamp_diff = time(NULL) - 1341378000;
 
   // create general purpose async service queue
 
@@ -1130,6 +1396,14 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
   uint64_t height = m_db->height();
   uint8_t version = get_current_hard_fork_version();
 
+  uint8_t version = get_current_hard_fork_version();
+  size_t difficulty_blocks_count;
+  if (version == 1) {
+    difficulty_blocks_count = DIFFICULTY_BLOCKS_COUNT;
+  } else {
+    difficulty_blocks_count = DIFFICULTY_BLOCKS_COUNT_V2;
+  }
+
   // if the alt chain isn't long enough to calculate the difficulty target
   // based on its blocks alone, need to get more blocks from the main chain
   if(alt_chain.size()< DIFFICULTY_BLOCKS_COUNT_V3)
@@ -1235,13 +1509,18 @@ bool Blockchain::prevalidate_miner_transaction(const block& b, uint64_t height, 
 }
 //------------------------------------------------------------------
 // This function validates the miner transaction reward
-bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_block_weight, uint64_t fee, uint64_t& base_reward, uint64_t already_generated_coins, bool &partial_block_reward, uint8_t version)
+bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_block_weight, uint64_t fee, uint64_t fee_usd, uint64_t offshore_fee, uint64_t offshore_fee_usd, uint64_t& base_reward, uint64_t already_generated_coins, bool &partial_block_reward, uint8_t version)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
   //validate reward
-  uint64_t money_in_use = 0;
-  for (auto& o: b.miner_tx.vout)
-    money_in_use += o.amount;
+  uint64_t money_in_use = 0, money_in_use_usd = 0;
+  for (auto& o: b.miner_tx.vout) {
+    if (o.target.type() == typeid(txout_offshore)) {
+      money_in_use_usd += o.amount;
+    } else {
+      money_in_use += o.amount;
+    }
+  }
   partial_block_reward = false;
   if(version == 1){
     return true;
@@ -1304,7 +1583,7 @@ if(version >= 7 && b.miner_tx.vout.size() > 2)
   // From hard fork 2, we allow a miner to claim less block reward than is allowed, in case a miner wants less dust
   if (m_hardfork->get_current_version() < 2)
   {
-    if(base_reward + fee != money_in_use)
+    if(base_reward + fee + offshore_fee != money_in_use)
     {
       MDEBUG("coinbase transaction doesn't use full amount of block reward:  spent: " << money_in_use << ",  block reward " << base_reward + fee << "(" << base_reward << "+" << fee << ")");
       return false;
@@ -1315,11 +1594,20 @@ if(version >= 7 && b.miner_tx.vout.size() > 2)
     // from hard fork 2, since a miner can claim less than the full block reward, we update the base_reward
     // to show the amount of coins that were actually generated, the remainder will be pushed back for later
     // emission. This modifies the emission curve very slightly.
-    CHECK_AND_ASSERT_MES(money_in_use - fee <= base_reward, false, "base reward calculation bug");
-    if(base_reward + fee != money_in_use)
+    CHECK_AND_ASSERT_MES(money_in_use - fee - offshore_fee <= base_reward, false, "base reward calculation bug");
+    if(base_reward + fee + offshore_fee != money_in_use)
       partial_block_reward = true;
-    base_reward = money_in_use - fee;
-  }
+    base_reward = money_in_use - fee - offshore_fee;
+
+    if (version >= HF_VERSION_OFFSHORE_FULL) {
+      // Check offshore amounts as well
+      if (fee_usd + offshore_fee_usd < money_in_use_usd) {
+	MDEBUG("miner transaction is spending too much money:  spent: " << money_in_use_usd << ",  fees " << fee_usd << ", offshore fees " << offshore_fee_usd);
+	return false;
+      }
+    }
+   }
+
   return true;
 }
 
@@ -1743,8 +2031,8 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   CHECK_AND_ASSERT_MES(diffic, false, "difficulty overhead.");
 
   size_t txs_weight;
-  uint64_t fee;
-  if (!m_tx_pool.fill_block_template(b, median_weight, already_generated_coins, txs_weight, fee, expected_reward, b.major_version))
+  uint64_t fee, fee_usd, offshore_fee, offshore_fee_usd;
+  if (!m_tx_pool.fill_block_template(b, median_weight, already_generated_coins, txs_weight, fee, fee_usd, offshore_fee, offshore_fee_usd, expected_reward, b.major_version))
   {
     return false;
   }
@@ -1756,6 +2044,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
 #if defined(DEBUG_CREATE_BLOCK_TEMPLATE)
   size_t real_txs_weight = 0;
   uint64_t real_fee = 0;
+  uint64_t offshore_fee = 0;
   for(crypto::hash &cur_hash: b.tx_hashes)
   {
     auto cur_res = m_tx_pool.m_transactions.find(cur_hash);
@@ -1767,6 +2056,12 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
     tx_memory_pool::tx_details &cur_tx = cur_res->second;
     real_txs_weight += cur_tx.weight;
     real_fee += cur_tx.fee;
+    if ((cur_tx.tx.version >= OFFSHORE_TRANSACTION_VERSION) && (cur_tx.pricing_record_height != 0)) {
+      // HERE BE DRAGONS!!!
+      // This is an offshore TX, so get the offshore fee amount as a separate number
+      
+      // LAND AHOY!!!
+    }
     if (cur_tx.weight != get_transaction_weight(cur_tx.tx))
     {
       LOG_ERROR("Creating block template: error: invalid transaction weight");
@@ -2612,14 +2907,14 @@ void Blockchain::get_output_key_mask_unlocked(const uint64_t& amount, const uint
 //------------------------------------------------------------------
 bool Blockchain::get_output_distribution(uint64_t amount, uint64_t from_height, uint64_t to_height, uint64_t &start_height, std::vector<uint64_t> &distribution, uint64_t &base) const
 {
-  // rct outputs don't exist before v4
+  // rct outputs don't exist before v5
   if (amount == 0)
   {
     switch (m_nettype)
     {
-      case STAGENET: start_height = stagenet_hard_forks[3].height; break;
-      case TESTNET: start_height = testnet_hard_forks[3].height; break;
-      case MAINNET: start_height = mainnet_hard_forks[3].height; break;
+      case STAGENET: start_height = stagenet_hard_forks[4].height; break;
+      case TESTNET: start_height = testnet_hard_forks[4].height; break;
+      case MAINNET: start_height = mainnet_hard_forks[4].height; break;
       case FAKECHAIN: start_height = 0; break;
       default: return false;
     }
@@ -2715,6 +3010,65 @@ bool Blockchain::find_blockchain_supplement(const std::list<crypto::hash>& qbloc
 
   //we start to put block ids INCLUDING last known id, just to make other side be sure
   starter_offset = split_height;
+  return true;
+}
+//------------------------------------------------------------------
+bool Blockchain::get_pricing_record(offshore::pricing_record& pr, uint64_t timestamp) const
+{
+  LOG_PRINT_L1("Requesting pricing record from Oracle - time : " << timestamp);
+
+  epee::net_utils::http::http_simple_client http_client;
+  COMMAND_RPC_GET_PRICING_RECORD::request req = AUTO_VAL_INIT(req);
+  COMMAND_RPC_GET_PRICING_RECORD::response res = AUTO_VAL_INIT(res);
+
+  std::array<std::string, 3> oracle_urls = {{"oracle.havenprotocol.org:443", "oracle2.havenprotocol.org:443", "oracle3.havenprotocol.org:443"}};
+  std::shuffle(oracle_urls.begin(), oracle_urls.end(), std::default_random_engine(crypto::rand<unsigned>()));
+  bool r = false;
+  for (size_t n=0; n<oracle_urls.size(); n++) {
+    http_client.set_server(oracle_urls[n], boost::none, epee::net_utils::ssl_support_t::e_ssl_support_autodetect);
+    std::string url = "/price/" + boost::lexical_cast<std::string>(timestamp);
+    r = epee::net_utils::invoke_http_json(url, req, res, http_client, std::chrono::seconds(10), "GET");
+    if (r) {
+      LOG_PRINT_L1("Obtained pricing record from Oracle : " << oracle_urls[n]);
+      break;
+    }
+  }
+    
+  if (!r) {
+    LOG_PRINT_L0("Failed to get pricing record from Oracle - returning empty PR");
+    res.pr = offshore::pricing_record();
+  }
+
+  // Pricing records can go in at any time - we just mustn't create txs that use them before the HF!!!
+  if (m_hardfork->get_current_version() >= HF_VERSION_OFFSHORE_PRICING) {
+
+    // Only VERIFY if full mode has been enabled
+    if (m_hardfork->get_current_version() >= HF_VERSION_OFFSHORE_FULL) {
+
+      // Verify the signature
+      if (res.pr.verifySignature()) {
+	pr = res.pr;
+      } else {
+	LOG_PRINT_L0("Failed to verify signature of pricing record from Oracle - returning empty PR");
+	pr = offshore::pricing_record();
+      }
+    } else {
+      // Do not attempt to verify this pricing record
+      pr = res.pr;
+    }
+  } else {
+    // Empty record - will only be allowed to be mined until HF_VERSION_OFFSHORE_FULL is reached
+    pr = offshore::pricing_record();
+  }
+
+  std::string sig_hex;
+  for (unsigned int i=0; i<64; i++) {
+    std::stringstream ss;
+    ss << std::hex << std::setw(2) << std::setfill('0') << (0xff & pr.signature[i]);
+    sig_hex += ss.str();
+  }
+  LOG_PRINT_L1("Received pricing record - signature = " << sig_hex);
+
   return true;
 }
 //------------------------------------------------------------------
@@ -3153,6 +3507,48 @@ bool Blockchain::check_for_double_spend(const transaction& tx, key_images_contai
       // if no double-spend detected, return true
       return true;
     }
+    bool operator()(const txin_offshore& in) const
+    {
+      const crypto::key_image& ki = in.k_image;
+
+      // attempt to insert the newly-spent key into the container of
+      // keys spent this block.  If this fails, the key was spent already
+      // in this block, return false to flag that a double spend was detected.
+      //
+      // if the insert into the block-wide spent keys container succeeds,
+      // check the blockchain-wide spent keys container and make sure the
+      // key wasn't used in another block already.
+      auto r = m_spent_keys.insert(ki);
+      if(!r.second || m_db->has_key_image(ki))
+	{
+	  //double spend detected
+	  return false;
+	}
+
+      // if no double-spend detected, return true
+      return true;
+    }
+    bool operator()(const txin_onshore& in) const
+    {
+      const crypto::key_image& ki = in.k_image;
+
+      // attempt to insert the newly-spent key into the container of
+      // keys spent this block.  If this fails, the key was spent already
+      // in this block, return false to flag that a double spend was detected.
+      //
+      // if the insert into the block-wide spent keys container succeeds,
+      // check the blockchain-wide spent keys container and make sure the
+      // key wasn't used in another block already.
+      auto r = m_spent_keys.insert(ki);
+      if(!r.second || m_db->has_key_image(ki))
+	{
+	  //double spend detected
+	  return false;
+	}
+
+      // if no double-spend detected, return true
+      return true;
+    }
 
     bool operator()(const txin_gen& tx) const
     {
@@ -3223,7 +3619,12 @@ void Blockchain::on_new_tx_from_block(const cryptonote::transaction &tx)
     TIME_MEASURE_FINISH(a);
     if(m_show_time_stats)
     {
-      size_t ring_size = !tx.vin.empty() && tx.vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(tx.vin[0]).key_offsets.size() : 0;
+      // NEAC - HERE BE DRAGONS!!!
+      // This should be able to be simplified down to using the tx_in_v VARIANT
+      size_t ring_size = !tx.vin.empty() && tx.vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(tx.vin[0]).key_offsets.size() :
+	!tx.vin.empty() && tx.vin[0].type() == typeid(txin_offshore) ? boost::get<txin_offshore>(tx.vin[0]).key_offsets.size() :
+	!tx.vin.empty() && tx.vin[0].type() == typeid(txin_onshore) ? boost::get<txin_onshore>(tx.vin[0]).key_offsets.size() : 0;
+      // LAND AHOY!!!
       MINFO("HASH: " << "-" << " I/M/O: " << tx.vin.size() << "/" << ring_size << "/" << tx.vout.size() << " H: " << 0 << " chcktx: " << a);
     }
   }
@@ -3258,7 +3659,12 @@ bool Blockchain::check_tx_inputs(transaction& tx, uint64_t& max_used_block_heigh
   TIME_MEASURE_FINISH(a);
   if(m_show_time_stats)
   {
-    size_t ring_size = !tx.vin.empty() && tx.vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(tx.vin[0]).key_offsets.size() : 0;
+    // NEAC - HERE BE DRAGONS!!!
+    // This should be able to be simplified down to using the tx_in_v VARIANT
+    size_t ring_size = !tx.vin.empty() && tx.vin[0].type() == typeid(txin_to_key) ? boost::get<txin_to_key>(tx.vin[0]).key_offsets.size() :
+      !tx.vin.empty() && tx.vin[0].type() == typeid(txin_offshore) ? boost::get<txin_offshore>(tx.vin[0]).key_offsets.size() :
+      !tx.vin.empty() && tx.vin[0].type() == typeid(txin_onshore) ? boost::get<txin_onshore>(tx.vin[0]).key_offsets.size() : 0;
+    // LAND AHOY!!!
     MINFO("HASH: " <<  get_transaction_hash(tx) << " I/M/O: " << tx.vin.size() << "/" << ring_size << "/" << tx.vout.size() << " H: " << max_used_block_height << " ms: " << a + m_fake_scan_time << " B: " << get_object_blobsize(tx) << " W: " << get_transaction_weight(tx));
   }
   if (!res)
@@ -3371,8 +3777,8 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
     }
   }
 
-  // from v4, forbid invalid pubkeys
-  if (hf_version >= 4) {
+  // from v5, forbid invalid pubkeys
+  if (hf_version >= 5) {
     for (const auto &o: tx.vout) {
       if (o.target.type() == typeid(txout_to_key)) {
         const txout_to_key& out_to_key = boost::get<txout_to_key>(o.target);
@@ -3380,6 +3786,12 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
           tvc.m_invalid_output = true;
           return false;
         }
+      } else if (o.target.type() == typeid(txout_offshore)) {
+	const txout_offshore& out_to_key = boost::get<txout_offshore>(o.target);
+	if (!crypto::check_key(out_to_key.key)) {
+	  tvc.m_invalid_output = true;
+	  return false;
+	}
       }
     }
   }
@@ -3422,7 +3834,7 @@ bool Blockchain::check_tx_outputs(const transaction& tx, tx_verification_context
     }
   }
 
-  // from v11, allow only bulletproofs v2
+  // from v5, allow only bulletproofs v2
   if (hf_version > HF_VERSION_SMALLER_BP) {
     if (tx.version >= 2) {
       if (tx.rct_signatures.type == rct::RCTTypeBulletproof)
@@ -3442,16 +3854,33 @@ bool Blockchain::have_tx_keyimges_as_spent(const transaction &tx) const
   LOG_PRINT_L3("Blockchain::" << __func__);
   for (const txin_v& in: tx.vin)
   {
+    if (tx.vin[0].type() == typeid(txin_to_key)) {
     CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, in_to_key, true);
     if(have_tx_keyimg_as_spent(in_to_key.k_image))
       return true;
+  }
+    else if (tx.vin[0].type() == typeid(txin_offshore)) {
+      CHECKED_GET_SPECIFIC_VARIANT(in, const txin_offshore, in_to_key, true);
+      if(have_tx_keyimg_as_spent(in_to_key.k_image))
+	return true;
+    } else {
+      CHECKED_GET_SPECIFIC_VARIANT(in, const txin_onshore, in_to_key, true);
+      if(have_tx_keyimg_as_spent(in_to_key.k_image))
+	return true;
+    }
   }
   return false;
 }
 bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_prefix_hash, const std::vector<std::vector<rct::ctkey>> &pubkeys) const
 {
   PERF_TIMER(expand_transaction_2);
-  CHECK_AND_ASSERT_MES(tx.version >= 2, false, "Transaction version is not 2");
+
+  // Get the current hard fork version
+  const uint8_t hf_version = m_hardfork->get_current_version();
+  
+  // If the HF version is at least 11, we require a TX version of 3, because we're using CLSAG and OFFSHORE functionality
+  uint64_t tx_min_version = (hf_version >= HF_VERSION_OFFSHORE_FULL) ? OFFSHORE_TRANSACTION_VERSION : 2;
+  CHECK_AND_ASSERT_MES(tx.version >= tx_min_version, false, "Transaction version is not at least " + boost::lexical_cast<std::string>(tx_min_version));
 
   rct::rctSig &rv = tx.rct_signatures;
 
@@ -3474,7 +3903,7 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
       }
     }
   }
-  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2)
+  else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2 || rv.type == rct::RCTTypeCLSAG)
   {
     CHECK_AND_ASSERT_MES(!pubkeys.empty() && !pubkeys[0].empty(), false, "empty pubkeys");
     rv.mixRing.resize(pubkeys.size());
@@ -3501,17 +3930,27 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
       rv.p.MGs[0].II.resize(tx.vin.size());
       for (size_t n = 0; n < tx.vin.size(); ++n)
         rv.p.MGs[0].II[n] = rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image);
+      tx.vin[n].type() == typeid(txin_offshore) ? rct::ki2rct(boost::get<txin_offshore>(tx.vin[n]).k_image) : rct::ki2rct(boost::get<txin_onshore>(tx.vin[n]).k_image);
     }
   }
   else if (rv.type == rct::RCTTypeSimple || rv.type == rct::RCTTypeBulletproof || rv.type == rct::RCTTypeBulletproof2)
   {
     if (!tx.pruned)
     {
-      CHECK_AND_ASSERT_MES(rv.p.MGs.size() == tx.vin.size(), false, "Bad MGs size");
+      rv.p.MGs[n].II.resize(1);
+      rv.p.MGs[n].II[0] = tx.vin[n].type() == typeid(txin_to_key) ? rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image) :
+	    tx.vin[n].type() == typeid(txin_offshore) ? rct::ki2rct(boost::get<txin_offshore>(tx.vin[n]).k_image) : rct::ki2rct(boost::get<txin_onshore>(tx.vin[n]).k_image);
+    }
+  }
+  else if (rv.type == rct::RCTTypeCLSAG)
+  {
+    if (!tx.pruned)
+    {
+      CHECK_AND_ASSERT_MES(rv.p.CLSAGs.size() == tx.vin.size(), false, "Bad CLSAGs size");
       for (size_t n = 0; n < tx.vin.size(); ++n)
       {
-        rv.p.MGs[n].II.resize(1);
-        rv.p.MGs[n].II[0] = rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image);
+        rv.p.CLSAGs[n].I = tx.vin[n].type() == typeid(txin_to_key) ? rct::ki2rct(boost::get<txin_to_key>(tx.vin[n]).k_image) :
+	tx.vin[n].type() == typeid(txin_offshore) ? rct::ki2rct(boost::get<txin_offshore>(tx.vin[n]).k_image) : rct::ki2rct(boost::get<txin_onshore>(tx.vin[n]).k_image);
       }
     }
   }
@@ -3532,53 +3971,48 @@ bool Blockchain::expand_transaction_2(transaction &tx, const crypto::hash &tx_pr
 //        using threads, etc.)
 bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, uint64_t* pmax_used_block_height) const
 {
-	PERF_TIMER(check_tx_inputs);
-	LOG_PRINT_L3("Blockchain::" << __func__);
-	size_t sig_index = 0;
-	if (pmax_used_block_height)
-		*pmax_used_block_height = 0;
+  PERF_TIMER(check_tx_inputs);
+  LOG_PRINT_L3("Blockchain::" << __func__);
+  size_t sig_index = 0;
+  bool bOffshore = false;
+  if(pmax_used_block_height)
+    *pmax_used_block_height = 0;
 
-	crypto::hash tx_prefix_hash = get_transaction_prefix_hash(tx);
+  crypto::hash tx_prefix_hash = get_transaction_prefix_hash(tx);
 
-	const uint8_t hf_version = m_hardfork->get_current_version();
-	
-	bool is_mint_tx, is_burn_tx;
-	get_is_mint_tx_tag_from_tx_extra(tx.extra, is_mint_tx);
+  const uint8_t hf_version = m_hardfork->get_current_version();
 
-	// from hard fork 2, we require mixin at least 2 unless one output cannot mix with 2 others
-	// if one output cannot mix with 2 others, we accept at most 1 output that can mix
-	if (hf_version >= 2 && !tx.is_deregister_tx() && !is_mint_tx)
-	{
-		size_t n_unmixable = 0, n_mixable = 0;
-		size_t mixin = std::numeric_limits<size_t>::max();
+  // from hard fork 2, we require mixin at least 2 unless one output cannot mix with 2 others
+  // if one output cannot mix with 2 others, we accept at most 1 output that can mix
+	if (hf_version >= 2 && !tx.is_deregister_tx()
+  {
+    size_t n_unmixable = 0, n_mixable = 0;
+    size_t mixin = std::numeric_limits<size_t>::max();
 		const size_t min_mixin = hf_version >= HF_VERSION_MIN_MIXIN_15 ? 15 : hf_version >= HF_VERSION_MIN_MIXIN_4 ? 4 : 2;
-		for (const auto& txin : tx.vin)
-		{
-			// non txin_to_key inputs will be rejected below
-			if (txin.type() == typeid(txin_to_key))
-			{
-				const txin_to_key& in_to_key = boost::get<txin_to_key>(txin);
-				if (in_to_key.amount == 0)
-				{
-					// always consider rct inputs mixable. Even if there's not enough rct
-					// inputs on the chain to mix with, this is going to be the case for
-					// just a few blocks right after the fork at most
-					++n_mixable;
-				}
-				else
-				{
-					MDEBUG("Found unmixable output! This should never happen in Equilibria!");
-					uint64_t n_outputs = m_db->get_num_outputs(in_to_key.amount);
-					MDEBUG("output size " << print_money(in_to_key.amount) << ": " << n_outputs << " available");
-					// n_outputs includes the output we're considering
-					if (n_outputs <= min_mixin)
-						++n_unmixable;
-					else
-						++n_mixable;
-				}
-
-				// TODO(jcktm) - remove branch if safe after fork
-				if (in_to_key.key_offsets.size() - 1 < mixin)
+    for (const auto& txin : tx.vin)
+    {
+      // non txin_to_key inputs will be rejected below
+      if (txin.type() == typeid(txin_to_key))
+      {
+        const txin_to_key& in_to_key = boost::get<txin_to_key>(txin);
+        if (in_to_key.amount == 0)
+        {
+          // always consider rct inputs mixable. Even if there's not enough rct
+          // inputs on the chain to mix with, this is going to be the case for
+          // just a few blocks right after the fork at most
+          ++n_mixable;
+        }
+        else
+        {
+          uint64_t n_outputs = m_db->get_num_outputs(in_to_key.amount);
+          MDEBUG("output size " << print_money(in_to_key.amount) << ": " << n_outputs << " available");
+          // n_outputs includes the output we're considering
+          if (n_outputs <= min_mixin)
+            ++n_unmixable;
+          else
+            ++n_mixable;
+        }
+        if (in_to_key.key_offsets.size() - 1 < mixin)
 					mixin = in_to_key.key_offsets.size() - 1;
 				if (hf_version >= SERVICE_NODE_VERSION && in_to_key.key_offsets.size() - 1 != min_mixin && n_unmixable == 0)
 				{
@@ -3586,8 +4020,37 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 					tvc.m_low_mixin = true;
 					return false;
 				}
-			}
-		}
+      }
+      else if (txin.type() == typeid(txin_offshore)) {
+      const txin_offshore& in_to_key = boost::get<txin_offshore>(txin);
+      bOffshore = true;
+      if (in_to_key.amount == 0)
+      {
+        // always consider rct inputs mixable. Even if there's not enough rct
+        // inputs on the chain to mix with, this is going to be the case for
+        // just a few blocks right after the fork at most
+        ++n_mixable;
+      }
+      else
+      {
+        uint64_t n_outputs = m_db->get_num_outputs(in_to_key.amount);
+        MDEBUG("output size " << print_money(in_to_key.amount) << ": " << n_outputs << " available");
+        // n_outputs includes the output we're considering
+        if (n_outputs <= min_mixin)
+          ++n_unmixable;
+        else
+          ++n_mixable;
+      }
+      if (in_to_key.key_offsets.size() - 1 < mixin)
+        mixin = in_to_key.key_offsets.size() - 1;
+      }
+      else if (txin.type() == typeid(txin_onshore))
+      {
+        return false;
+        MERROR("ONSHORE TX NOT ALLOWED!");
+      }
+    }
+
 
 		if (mixin < min_mixin)
 		{
@@ -3605,15 +4068,22 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 			}
 		}
 
-		// min/max tx version based on HF, and we accept v1 txes if having a non mixable
+    		// min/max tx version based on HF, and we accept v1 txes if having a non mixable
 		size_t max_tx_version;
 
-    if(hf_version <= 3 || is_mint_tx){
+    if(hf_version <= 3){
       max_tx_version= 1;
-    }else if(is_burn_tx || (hf_version < SERVICE_NODE_VERSION && !is_mint_tx)){
+    }else if(hf_version < SERVICE_NODE_VERSION))
+    {
       max_tx_version = transaction::version_2;
-    }else{
+    }
+    else if (hf_version <= 7)
+    {
       max_tx_version = transaction::version_3_per_output_unlock_times;
+    }
+    else if(hf_version == 8)
+    {
+      max_tx_version = transaction::version_4_offshore;
     }
 
 		if (tx.version > max_tx_version)
@@ -3631,56 +4101,105 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 		}
 	}
 
-	// from v4, sorted ins
-	if (hf_version >= 4) {
-		const crypto::key_image *last_key_image = NULL;
-		for (size_t n = 0; n < tx.vin.size(); ++n)
-		{
-			const txin_v &txin = tx.vin[n];
-			if (txin.type() == typeid(txin_to_key))
-			{
-				const txin_to_key& in_to_key = boost::get<txin_to_key>(txin);
-				if (last_key_image && memcmp(&in_to_key.k_image, last_key_image, sizeof(*last_key_image)) >= 0)
-				{
-					MERROR_VER("transaction has unsorted inputs");
-					tvc.m_verifivation_failed = true;
-					return false;
-				}
-				last_key_image = &in_to_key.k_image;
-			}
-		}
-	}
 
-	std::vector<std::vector<rct::ctkey>> pubkeys(tx.vin.size());
-	std::vector < uint64_t > results;
-	results.resize(tx.vin.size(), 0);
+    // min/max tx version based on HF, and we accept v1 txes if having a non mixable
+    const size_t max_tx_version = (hf_version < HF_VERSION_OFFSHORE_FULL) ? 2 : CURRENT_TRANSACTION_VERSION;
+    if (tx.version > max_tx_version)
+    {
+      MERROR_VER("transaction version " << (unsigned)tx.version << " is higher than max accepted version " << max_tx_version);
+      tvc.m_verifivation_failed = true;
+      return false;
+    }
+    const size_t min_tx_version = (n_unmixable > 0 ? 1 : (hf_version >= HF_VERSION_ENFORCE_RCT) ? 2 : 1);
+    if (tx.version < min_tx_version)
+    {
+      MERROR_VER("transaction version " << (unsigned)tx.version << " is lower than min accepted version " << min_tx_version);
+      tvc.m_verifivation_failed = true;
+      return false;
+    }
+  }
 
-	tools::threadpool& tpool = tools::threadpool::getInstance();
-	tools::threadpool::waiter waiter;
-	const auto waiter_guard = epee::misc_utils::create_scope_leave_handler([&]() { waiter.wait(&tpool); });
-	int threads = tpool.get_max_concurrency();
+  // from v7, sorted ins
+  if (hf_version >= 4) {
+    const crypto::key_image *last_key_image = NULL;
+    for (size_t n = 0; n < tx.vin.size(); ++n)
+    {
+      const txin_v &txin = tx.vin[n];
+      if (txin.type() == typeid(txin_to_key))
+      {
+        const txin_to_key& in_to_key = boost::get<txin_to_key>(txin);
+        if (last_key_image && memcmp(&in_to_key.k_image, last_key_image, sizeof(*last_key_image)) >= 0)
+        {
+          MERROR_VER("transaction has unsorted inputs");
+          tvc.m_verifivation_failed = true;
+          return false;
+        }
+        last_key_image = &in_to_key.k_image;
+      }
+      else if (txin.type() == typeid(txin_offshore))
+      {
+        const txin_offshore& in_to_key = boost::get<txin_offshore>(txin);
+        if (last_key_image && memcmp(&in_to_key.k_image, last_key_image, sizeof(*last_key_image)) >= 0)
+        {
+          MERROR_VER("transaction has unsorted inputs");
+          tvc.m_verifivation_failed = true;
+          return false;
+        }
+        last_key_image = &in_to_key.k_image;
+      }
+      else if (txin.type() == typeid(txin_onshore))
+      {
+        const txin_onshore& in_to_key = boost::get<txin_onshore>(txin);
+        if (last_key_image && memcmp(&in_to_key.k_image, last_key_image, sizeof(*last_key_image)) >= 0)
+        {
+          MERROR_VER("transaction has unsorted inputs");
+          tvc.m_verifivation_failed = true;
+          return false;
+        }
+        last_key_image = &in_to_key.k_image;
+      }
+    }
+  }
+  auto it = m_check_txin_table.find(tx_prefix_hash);
+  if(it == m_check_txin_table.end())
+  {
+    m_check_txin_table.emplace(tx_prefix_hash, std::unordered_map<crypto::key_image, bool>());
+    it = m_check_txin_table.find(tx_prefix_hash);
+    assert(it != m_check_txin_table.end());
+  }
 
-	for (const auto& txin : tx.vin)
-	{
-		// make sure output being spent is of type txin_to_key, rather than
-		// e.g. txin_gen, which is only used for miner transactions
-		CHECK_AND_ASSERT_MES(txin.type() == typeid(txin_to_key), false, "wrong type id in tx input at Blockchain::check_tx_inputs");
-		const txin_to_key& in_to_key = boost::get<txin_to_key>(txin);
+  std::vector<std::vector<rct::ctkey>> pubkeys(tx.vin.size());
+  std::vector < uint64_t > results;
+  results.resize(tx.vin.size(), 0);
 
-		// make sure tx output has key offset(s) (is signed to be used)
-		CHECK_AND_ASSERT_MES(in_to_key.key_offsets.size(), false, "empty in_to_key.key_offsets in transaction with id " << get_transaction_hash(tx));
+  tools::threadpool& tpool = tools::threadpool::getInstance();
+  tools::threadpool::waiter waiter;
+  const auto waiter_guard = epee::misc_utils::create_scope_leave_handler([&]() { waiter.wait(&tpool); });
+  int threads = tpool.get_max_concurrency();
 
-		if (have_tx_keyimg_as_spent(in_to_key.k_image))
-		{
-			MERROR_VER("Key image already spent in blockchain: " << epee::string_tools::pod_to_hex(in_to_key.k_image));
-			tvc.m_double_spend = true;
-			return false;
-		}
+  for (const auto& txin : tx.vin)
+  {
+    // make sure output being spent is of type txin_to_key, txin_offshore or txin_onshore, rather than
+    // e.g. txin_gen, which is only used for miner transactions
+    CHECK_AND_ASSERT_MES(txin.type() == typeid(txin_to_key) || txin.type() == typeid(txin_offshore) || txin.type() == typeid(txin_onshore), false, "wrong type id in tx input at Blockchain::check_tx_inputs");
 
-		if (tx.version == 1)
-		{
-			// basically, make sure number of inputs == number of signatures
-			CHECK_AND_ASSERT_MES(sig_index < tx.signatures.size(), false, "wrong transaction: not signature entry for input with index= " << sig_index);
+    if (txin.type() == typeid(txin_to_key)) {
+    const txin_to_key& in_to_key = boost::get<txin_to_key>(txin);
+
+    // make sure tx output has key offset(s) (is signed to be used)
+    CHECK_AND_ASSERT_MES(in_to_key.key_offsets.size(), false, "empty in_to_key.key_offsets in transaction with id " << get_transaction_hash(tx));
+
+    if(have_tx_keyimg_as_spent(in_to_key.k_image))
+    {
+      MERROR_VER("Key image already spent in blockchain: " << epee::string_tools::pod_to_hex(in_to_key.k_image));
+      tvc.m_double_spend = true;
+      return false;
+    }
+
+    if (tx.version == 1)
+    {
+      // basically, make sure number of inputs == number of signatures
+      CHECK_AND_ASSERT_MES(sig_index < tx.signatures.size(), false, "wrong transaction: not signature entry for input with index= " << sig_index);
 
 #if defined(CACHE_VIN_RESULTS)
 			auto itk = it->second.find(in_to_key.k_image);
@@ -3739,8 +4258,166 @@ bool Blockchain::check_tx_inputs(transaction& tx, tx_verification_context &tvc, 
 
     sig_index++;
   }
-	if (tx.version == 1 && threads > 1)
-		waiter.wait(&tpool);
+    else if (txin.type() == typeid(txin_offshore)) {
+      const txin_offshore& in_to_key = boost::get<txin_offshore>(txin);
+    
+      // make sure tx output has key offset(s) (is signed to be used)
+      CHECK_AND_ASSERT_MES(in_to_key.key_offsets.size(), false, "empty in_to_key.key_offsets in transaction with id " << get_transaction_hash(tx));
+      
+      if(have_tx_keyimg_as_spent(in_to_key.k_image))
+      {
+	MERROR_VER("Key image already spent in blockchain: " << epee::string_tools::pod_to_hex(in_to_key.k_image));
+	tvc.m_double_spend = true;
+	return false;
+      }
+      
+      if (tx.version == 1)
+      {
+	// basically, make sure number of inputs == number of signatures
+	CHECK_AND_ASSERT_MES(sig_index < tx.signatures.size(), false, "wrong transaction: not signature entry for input with index= " << sig_index);
+	
+#if defined(CACHE_VIN_RESULTS)
+	auto itk = it->second.find(in_to_key.k_image);
+	if(itk != it->second.end())
+	{
+	  if(!itk->second)
+	  {
+	    MERROR_VER("Failed ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: " << in_to_key.k_image << "  sig_index: " << sig_index);
+	    return false;
+	  }
+	  
+	  // txin has been verified already, skip
+	  sig_index++;
+	  continue;
+	}
+#endif
+      }
+    
+      // make sure that output being spent matches up correctly with the
+      // signature spending it.
+      if (!check_tx_input(tx.version, in_to_key, tx_prefix_hash, tx.version == 1 ? tx.signatures[sig_index] : std::vector<crypto::signature>(), tx.rct_signatures, pubkeys[sig_index], pmax_used_block_height))
+      {
+	it->second[in_to_key.k_image] = false;
+	MERROR_VER("Failed to check ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: " << in_to_key.k_image << "  sig_index: " << sig_index);
+	if (pmax_used_block_height) // a default value of NULL is used when called from Blockchain::handle_block_to_main_chain()
+	{
+	  MERROR_VER("  *pmax_used_block_height: " << *pmax_used_block_height);
+	}
+      
+	return false;
+      }
+      
+      if (tx.version == 1)
+      {
+	if (threads > 1)
+	{
+	  // ND: Speedup
+	  // 1. Thread ring signature verification if possible.
+	  tpool.submit(&waiter, boost::bind(&Blockchain::check_ring_signature, this, std::cref(tx_prefix_hash), std::cref(in_to_key.k_image), std::cref(pubkeys[sig_index]), std::cref(tx.signatures[sig_index]), std::ref(results[sig_index])), true);
+	}
+	else
+	{
+	  check_ring_signature(tx_prefix_hash, in_to_key.k_image, pubkeys[sig_index], tx.signatures[sig_index], results[sig_index]);
+	  if (!results[sig_index])
+	  {
+	    it->second[in_to_key.k_image] = false;
+	    MERROR_VER("Failed to check ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: " << in_to_key.k_image << "  sig_index: " << sig_index);
+	    
+	    if (pmax_used_block_height)  // a default value of NULL is used when called from Blockchain::handle_block_to_main_chain()
+	    {
+	      MERROR_VER("*pmax_used_block_height: " << *pmax_used_block_height);
+	    }
+	  
+	    return false;
+	  }
+	  it->second[in_to_key.k_image] = true;
+	}
+      }
+    
+      sig_index++;
+    }
+    else {
+      const txin_onshore& in_to_key = boost::get<txin_onshore>(txin);
+    
+      // make sure tx output has key offset(s) (is signed to be used)
+      CHECK_AND_ASSERT_MES(in_to_key.key_offsets.size(), false, "empty in_to_key.key_offsets in transaction with id " << get_transaction_hash(tx));
+    
+      if(have_tx_keyimg_as_spent(in_to_key.k_image))
+      {
+	MERROR_VER("Key image already spent in blockchain: " << epee::string_tools::pod_to_hex(in_to_key.k_image));
+	tvc.m_double_spend = true;
+	return false;
+      }
+    
+      if (tx.version == 1)
+      {
+	// basically, make sure number of inputs == number of signatures
+	CHECK_AND_ASSERT_MES(sig_index < tx.signatures.size(), false, "wrong transaction: not signature entry for input with index= " << sig_index);
+	
+#if defined(CACHE_VIN_RESULTS)
+	auto itk = it->second.find(in_to_key.k_image);
+	if(itk != it->second.end())
+	{
+	  if(!itk->second)
+	  {
+	    MERROR_VER("Failed ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: " << in_to_key.k_image << "  sig_index: " << sig_index);
+	    return false;
+	  }
+	  
+	  // txin has been verified already, skip
+	  sig_index++;
+	  continue;
+	}
+#endif
+      }
+      
+      // make sure that output being spent matches up correctly with the
+      // signature spending it.
+      if (!check_tx_input(tx.version, in_to_key, tx_prefix_hash, tx.version == 1 ? tx.signatures[sig_index] : std::vector<crypto::signature>(), tx.rct_signatures, pubkeys[sig_index], pmax_used_block_height))
+      {
+	it->second[in_to_key.k_image] = false;
+	MERROR_VER("Failed to check ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: " << in_to_key.k_image << "  sig_index: " << sig_index);
+	if (pmax_used_block_height) // a default value of NULL is used when called from Blockchain::handle_block_to_main_chain()
+	{
+	  MERROR_VER("  *pmax_used_block_height: " << *pmax_used_block_height);
+	}
+	
+	return false;
+      }
+      
+      if (tx.version == 1)
+      {
+	if (threads > 1)
+	{
+	  // ND: Speedup
+	  // 1. Thread ring signature verification if possible.
+	  tpool.submit(&waiter, boost::bind(&Blockchain::check_ring_signature, this, std::cref(tx_prefix_hash), std::cref(in_to_key.k_image), std::cref(pubkeys[sig_index]), std::cref(tx.signatures[sig_index]), std::ref(results[sig_index])), true);
+	}
+	else
+	{
+	  check_ring_signature(tx_prefix_hash, in_to_key.k_image, pubkeys[sig_index], tx.signatures[sig_index], results[sig_index]);
+	  if (!results[sig_index])
+	  {
+	    it->second[in_to_key.k_image] = false;
+	    MERROR_VER("Failed to check ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: " << in_to_key.k_image << "  sig_index: " << sig_index);
+	    
+	    if (pmax_used_block_height)  // a default value of NULL is used when called from Blockchain::handle_block_to_main_chain()
+	    {
+	      MERROR_VER("*pmax_used_block_height: " << *pmax_used_block_height);
+	    }
+	  
+	    return false;
+	  }
+	  it->second[in_to_key.k_image] = true;
+	}
+      }
+      
+      sig_index++;
+    }
+  }
+    
+  if (tx.version == 1 && threads > 1)
+    waiter.wait(&tpool);
 
 if (tx.version == 1)
   {
@@ -3784,253 +4461,215 @@ if (tx.version == 1)
 		case rct::RCTTypeSimple:
 		case rct::RCTTypeBulletproof:
     case rct::RCTTypeBulletproof2:
-		{
-			// check all this, either reconstructed (so should really pass), or not
-			{
-				if (pubkeys.size() != rv.mixRing.size())
-				{
-					MERROR_VER("Failed to check ringct signatures: mismatched pubkeys/mixRing size");
-					return false;
-				}
-				for (size_t i = 0; i < pubkeys.size(); ++i)
-				{
-					if (pubkeys[i].size() != rv.mixRing[i].size())
-					{
-						MERROR_VER("Failed to check ringct signatures: mismatched pubkeys/mixRing size");
-						return false;
-					}
-				}
+    case rct::RCTTypeCLSAG:
+    {
+      // check all this, either reconstructed (so should really pass), or not
+      {
+        if (pubkeys.size() != rv.mixRing.size())
+        {
+          MERROR_VER("Failed to check ringct signatures: mismatched pubkeys/mixRing size");
+          return false;
+        }
+        for (size_t i = 0; i < pubkeys.size(); ++i)
+        {
+          if (pubkeys[i].size() != rv.mixRing[i].size())
+          {
+            MERROR_VER("Failed to check ringct signatures: mismatched pubkeys/mixRing size");
+            return false;
+          }
+        }
 
-				for (size_t n = 0; n < pubkeys.size(); ++n)
-				{
-					for (size_t m = 0; m < pubkeys[n].size(); ++m)
-					{
-						if (pubkeys[n][m].dest != rct::rct2pk(rv.mixRing[n][m].dest))
-						{
-							MERROR_VER("Failed to check ringct signatures: mismatched pubkey at vin " << n << ", index " << m);
-							return false;
-						}
-						if (pubkeys[n][m].mask != rct::rct2pk(rv.mixRing[n][m].mask))
-						{
-							MERROR_VER("Failed to check ringct signatures: mismatched commitment at vin " << n << ", index " << m);
-							return false;
-						}
-					}
-				}
-			}
+        for (size_t n = 0; n < pubkeys.size(); ++n)
+        {
+          for (size_t m = 0; m < pubkeys[n].size(); ++m)
+          {
+            if (pubkeys[n][m].dest != rct::rct2pk(rv.mixRing[n][m].dest))
+            {
+              MERROR_VER("Failed to check ringct signatures: mismatched pubkey at vin " << n << ", index " << m);
+              return false;
+            }
+            if (pubkeys[n][m].mask != rct::rct2pk(rv.mixRing[n][m].mask))
+            {
+              MERROR_VER("Failed to check ringct signatures: mismatched commitment at vin " << n << ", index " << m);
+              return false;
+            }
+          }
+        }
+      }
 
-			if (rv.p.MGs.size() != tx.vin.size())
-			{
-				MERROR_VER("Failed to check ringct signatures: mismatched MGs/vin sizes");
-				return false;
-			}
-			for (size_t n = 0; n < tx.vin.size(); ++n)
-			{
-				if (rv.p.MGs[n].II.empty() || memcmp(&boost::get<txin_to_key>(tx.vin[n]).k_image, &rv.p.MGs[n].II[0], 32))
-				{
-					MERROR_VER("Failed to check ringct signatures: mismatched key image");
-					return false;
-				}
-			}
-
-			if (!rct::verRctNonSemanticsSimple(rv))
-			{
-				MERROR_VER("Failed to check ringct signatures!");
-				return false;
-			}
-			break;
-		}
-		case rct::RCTTypeFull:
-		{
-			// check all this, either reconstructed (so should really pass), or not
-			{
-				bool size_matches = true;
-				for (size_t i = 0; i < pubkeys.size(); ++i)
-					size_matches &= pubkeys[i].size() == rv.mixRing.size();
-				for (size_t i = 0; i < rv.mixRing.size(); ++i)
-					size_matches &= pubkeys.size() == rv.mixRing[i].size();
-				if (!size_matches)
-				{
-					MERROR_VER("Failed to check ringct signatures: mismatched pubkeys/mixRing size");
-					return false;
-				}
-
-				for (size_t n = 0; n < pubkeys.size(); ++n)
-				{
-					for (size_t m = 0; m < pubkeys[n].size(); ++m)
-					{
-						if (pubkeys[n][m].dest != rct::rct2pk(rv.mixRing[m][n].dest))
-						{
-							MERROR_VER("Failed to check ringct signatures: mismatched pubkey at vin " << n << ", index " << m);
-							return false;
-						}
-						if (pubkeys[n][m].mask != rct::rct2pk(rv.mixRing[m][n].mask))
-						{
-							MERROR_VER("Failed to check ringct signatures: mismatched commitment at vin " << n << ", index " << m);
-							return false;
-						}
-					}
-				}
-			}
-
-			if (rv.p.MGs.size() != 1)
-			{
-				MERROR_VER("Failed to check ringct signatures: Bad MGs size");
-				return false;
-			}
-			if (rv.p.MGs.empty() || rv.p.MGs[0].II.size() != tx.vin.size())
-			{
-				MERROR_VER("Failed to check ringct signatures: mismatched II/vin sizes");
-				return false;
-			}
-			for (size_t n = 0; n < tx.vin.size(); ++n)
-			{
-				if (memcmp(&boost::get<txin_to_key>(tx.vin[n]).k_image, &rv.p.MGs[0].II[n], 32))
-				{
-					MERROR_VER("Failed to check ringct signatures: mismatched II/vin sizes");
-					return false;
-				}
-			}
-
-			if (!rct::verRct(rv, false))
-			{
-				MERROR_VER("Failed to check ringct signatures!");
-				return false;
-			}
-			break;
-		}
-		default:
-			MERROR_VER("Unsupported rct type: " << rv.type);
-			return false;
-		}
-
-		// for bulletproofs, check they're only multi-output after v4
-		if (rct::is_rct_bulletproof(rv.type))
-		{
-			if (hf_version < 4)
-			{
-				for (const rct::Bulletproof &proof : rv.p.bulletproofs)
-				{
-					if (proof.V.size() > 1)
-					{
-						MERROR_VER("Multi output bulletproofs are invalid before v5");
-						return false;
-					}
-				}
-			}
-		}
+      const size_t n_sigs = rv.type == rct::RCTTypeCLSAG ? rv.p.CLSAGs.size() : rv.p.MGs.size();
+      if (n_sigs != tx.vin.size())
+      {
+        MERROR_VER("Failed to check ringct signatures: mismatched MGs/vin sizes");
+        return false;
+      }
+      for (size_t n = 0; n < tx.vin.size(); ++n)
+      {
+	if (tx.vin[n].type() == typeid(txin_onshore)) {
+	  if (rv.type == rct::RCTTypeCLSAG) {
+	    if (memcmp(&boost::get<txin_onshore>(tx.vin[n]).k_image, &rv.p.CLSAGs[n].I, 32)) {
+	      MERROR_VER("Failed to check ringct signatures: mismatched key image");
+	      return false;
+	    }
+	  } else {
+	    if (rv.p.MGs[n].II.empty() || memcmp(&boost::get<txin_onshore>(tx.vin[n]).k_image, &rv.p.MGs[n].II[0], 32)) {
+	      MERROR_VER("Failed to check ringct signatures: mismatched key image");
+	      return false;
+	    }
+	  }
 	}
-	if (tx.is_deregister_tx())
-	{
-		if (tx.rct_signatures.txnFee != 0)
-		{
-			tvc.m_invalid_input = true;
-			tvc.m_verifivation_failed = true;
-			MERROR_VER("TX version deregister should have 0 fee!");
-			return false;
-		}
+	else if (tx.vin[n].type() == typeid(txin_offshore)) {
+	  if (rv.type == rct::RCTTypeCLSAG) {
+	    if (memcmp(&boost::get<txin_offshore>(tx.vin[n]).k_image, &rv.p.CLSAGs[n].I, 32)) {
+	      MERROR_VER("Failed to check ringct signatures: mismatched key image");
+	      return false;
+	    }
+	  } else {
+	    if (rv.p.MGs[n].II.empty() || memcmp(&boost::get<txin_offshore>(tx.vin[n]).k_image, &rv.p.MGs[n].II[0], 32)) {
+	      MERROR_VER("Failed to check ringct signatures: mismatched key image");
+	      return false;
+	    }
+	  }
+	} else {
+	  if (rv.type == rct::RCTTypeCLSAG) {
+	    if (memcmp(&boost::get<txin_to_key>(tx.vin[n]).k_image, &rv.p.CLSAGs[n].I, 32)) {
+	      MERROR_VER("Failed to check ringct signatures: mismatched key image");
+	      return false;
+	    }
+	  } else {
+	    if (rv.p.MGs[n].II.empty() || memcmp(&boost::get<txin_to_key>(tx.vin[n]).k_image, &rv.p.MGs[n].II[0], 32)) {
+	      MERROR_VER("Failed to check ringct signatures: mismatched key image");
+	      return false;
+	    }
+	  }
+        }
+      }
 
-		// Check the inputs (votes) of the transaction have not been already been
-		// submitted to the blockchain under another transaction using a different
-		// combination of votes.
+      // HERE BE DRAGONS!!!
 
-		tx_extra_service_node_deregister deregister;
-		if (!get_service_node_deregister_from_tx_extra(tx.extra, deregister))
-		{
-			MERROR_VER("TX version deregister did not have the deregister metadata in the tx_extra");
-			return false;
-		}
+      // Determine whether this is an offshore / onshore / normal TX
+      bool bOffshoreTx = false;
+      tx_extra_offshore offshore_data;
 
-		const std::shared_ptr<const service_nodes::quorum_state> quorum_state = m_service_node_list.get_quorum_state(deregister.block_height);
-		if (!quorum_state)
-		{
-			MERROR_VER("TX version 3 deregister_tx could not get quorum for height: " << deregister.block_height);
-			return false;
-		}
+      // Flags to track offshore TX direction
+      bool offshore = false;
+      bool onshore = false;
+      bool offshore_to_offshore = false;
 
-		if (!triton::service_node_deregister::verify_deregister(nettype(), deregister, tvc.m_vote_ctx, *quorum_state))
-		{
-			tvc.m_verifivation_failed = true;
-			MERROR_VER("tx " << get_transaction_hash(tx) << ": version 3 deregister_tx could not be completely verified reason: " << print_vote_verification_context(tvc.m_vote_ctx));
-			return false;
-		}
-
-		// Check if deregister is too old or too new to hold onto
-		{
-		const uint64_t curr_height = get_current_blockchain_height();
-
-		if (deregister.block_height >= curr_height)
-		{
-			LOG_PRINT_L1("Received deregister tx for height: " << deregister.block_height
-				<< " and service node: " << deregister.service_node_index
-				<< ", is newer than current height: " << curr_height
-				<< " blocks and has been rejected.");
-			tvc.m_vote_ctx.m_invalid_block_height = true;
-			tvc.m_verifivation_failed = true;
-			return false;
-		}
-
-		uint64_t delta_height = curr_height - deregister.block_height;
-		if (delta_height >= triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT)
-		{
-			LOG_PRINT_L1("Received deregister tx for height: " << deregister.block_height
-				<< " and service node: " << deregister.service_node_index
-				<< ", is older than: " << triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT
-				<< " blocks and has been rejected. The current height is: " << curr_height);
-			tvc.m_vote_ctx.m_invalid_block_height = true;
-			tvc.m_verifivation_failed = true;
-			return false;
-		}
+      if (tx.extra.size()) {
+	// Check to see if this is an offshore tx
+	bOffshoreTx = get_offshore_from_tx_extra(tx.extra, offshore_data);
+	if (bOffshoreTx) {
+	  // Set the bool flags
+	  if ((offshore_data.data.at(0) > 'A') && (offshore_data.data.at(1) > 'A')) {
+	    offshore_to_offshore = true;
+	  } else if (offshore_data.data.at(0) > 'A') {
+	    onshore = true;
+	  } else {
+	    offshore = true;
+	  }
 	}
+      }
 
-	const uint64_t height = deregister.block_height;
-	const size_t num_blocks_to_check = triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT;
+      if (!rct::verRctNonSemanticsSimple(rv)) {
+        MERROR_VER("Failed to check ringct signatures!");
+        return false;
+      }
+      break;
+    }
+    case rct::RCTTypeFull:
+    {
+      // check all this, either reconstructed (so should really pass), or not
+      {
+        bool size_matches = true;
+        for (size_t i = 0; i < pubkeys.size(); ++i)
+          size_matches &= pubkeys[i].size() == rv.mixRing.size();
+        for (size_t i = 0; i < rv.mixRing.size(); ++i)
+          size_matches &= pubkeys.size() == rv.mixRing[i].size();
+        if (!size_matches)
+        {
+          MERROR_VER("Failed to check ringct signatures: mismatched pubkeys/mixRing size");
+          return false;
+        }
 
-	std::vector<std::pair<cryptonote::blobdata, block>> blocks;
-	std::vector<cryptonote::blobdata> txs;
+        for (size_t n = 0; n < pubkeys.size(); ++n)
+        {
+          for (size_t m = 0; m < pubkeys[n].size(); ++m)
+          {
+            if (pubkeys[n][m].dest != rct::rct2pk(rv.mixRing[m][n].dest))
+            {
+              MERROR_VER("Failed to check ringct signatures: mismatched pubkey at vin " << n << ", index " << m);
+              return false;
+            }
+            if (pubkeys[n][m].mask != rct::rct2pk(rv.mixRing[m][n].mask))
+            {
+              MERROR_VER("Failed to check ringct signatures: mismatched commitment at vin " << n << ", index " << m);
+              return false;
+            }
+          }
+        }
+      }
 
-	if (get_blocks(height, num_blocks_to_check, blocks, txs))
-	{
-		for (blobdata const &blob : txs)
-		{
-			transaction existing_tx;
-			if (!parse_and_validate_tx_from_blob(blob, existing_tx))
-			{
-				MERROR_VER("tx could not be validated from blob, possibly corrupt blockchain");
-				continue;
-			}
-
-			if (!existing_tx.is_deregister_tx())
-				continue;
-
-			tx_extra_service_node_deregister existing_deregister;
-			if (!get_service_node_deregister_from_tx_extra(existing_tx.extra, existing_deregister))
-			{
-				MERROR_VER("could not get service node deregister from tx extra, possibly corrupt tx");
-				continue;
-			}
-
-			const std::shared_ptr<const service_nodes::quorum_state> existing_deregister_quorum_state = m_service_node_list.get_quorum_state(existing_deregister.block_height);
-
-			if (!existing_deregister_quorum_state)
-			{
-				MERROR_VER("could not get quorum state for recent deregister tx");
-				continue;
-			}
-
-			if (existing_deregister_quorum_state->nodes_to_test[existing_deregister.service_node_index] ==
-				quorum_state->nodes_to_test[deregister.service_node_index])
-			{
-				tvc.m_double_spend = true;
-				return false;
-			}
-		}
+      if (rv.p.MGs.size() != 1)
+      {
+        MERROR_VER("Failed to check ringct signatures: Bad MGs size");
+        return false;
+      }
+      if (rv.p.MGs.empty() || rv.p.MGs[0].II.size() != tx.vin.size())
+      {
+        MERROR_VER("Failed to check ringct signatures: mismatched II/vin sizes");
+        return false;
+      }
+      for (size_t n = 0; n < tx.vin.size(); ++n)
+      {
+	if (tx.vin[n].type() == typeid(txin_onshore)) {
+	  if (memcmp(&boost::get<txin_onshore>(tx.vin[n]).k_image, &rv.p.MGs[0].II[n], 32)) {
+	    MERROR_VER("Failed to check ringct signatures: mismatched II/vin sizes");
+	    return false;
+	  }
 	}
-	else
-	{
-		return false;
+	else if (tx.vin[n].type() == typeid(txin_offshore)) {
+	  if (memcmp(&boost::get<txin_offshore>(tx.vin[n]).k_image, &rv.p.MGs[0].II[n], 32)) {
+          MERROR_VER("Failed to check ringct signatures: mismatched II/vin sizes");
+          return false;
+        }
+      }
+	else {
+	  if (memcmp(&boost::get<txin_to_key>(tx.vin[n]).k_image, &rv.p.MGs[0].II[n], 32)) {
+	    MERROR_VER("Failed to check ringct signatures: mismatched II/vin sizes");
+	    return false;
+	  }
 	}
-	}
+      }
+
+      if (!rct::verRct(rv, false))
+      {
+        MERROR_VER("Failed to check ringct signatures!");
+        return false;
+      }
+      break;
+    }
+    default:
+      MERROR_VER("Unsupported rct type: " << rv.type);
+      return false;
+    }
+
+    // for bulletproofs, check they're only multi-output after v5
+    if (rct::is_rct_bulletproof(rv.type))
+    {
+      if (hf_version < 5)
+      {
+        for (const rct::Bulletproof &proof: rv.p.bulletproofs)
+        {
+          if (proof.V.size() > 1)
+          {
+            MERROR_VER("Multi output bulletproofs are invalid before v5");
+            return false;
+          }
+        }
+      }
+    }
+  }
   return true;
 }
 
@@ -4341,6 +4980,70 @@ bool Blockchain::check_tx_input(size_t tx_version, const txin_to_key& txin, cons
   return true;
 }
 //------------------------------------------------------------------
+bool Blockchain::check_tx_input(size_t tx_version, const txin_offshore& txin, const crypto::hash& tx_prefix_hash, const std::vector<crypto::signature>& sig, const rct::rctSig &rct_signatures, std::vector<rct::ctkey> &output_keys, uint64_t* pmax_related_block_height)
+{
+  LOG_PRINT_L3("Blockchain::" << __func__);
+
+  // ND:
+  // 1. Disable locking and make method private.
+  //CRITICAL_REGION_LOCAL(m_blockchain_lock);
+
+  struct outputs_visitor
+  {
+    std::vector<rct::ctkey >& m_output_keys;
+    const Blockchain& m_bch;
+    outputs_visitor(std::vector<rct::ctkey>& output_keys, const Blockchain& bch) :
+      m_output_keys(output_keys), m_bch(bch)
+    {
+    }
+    bool handle_output(uint64_t unlock_time, const crypto::public_key &pubkey, const rct::key &commitment)
+    {
+      //check tx unlock time
+      if (!m_bch.is_tx_spendtime_unlocked(unlock_time))
+      {
+        MERROR_VER("One of outputs for one of inputs has wrong tx.unlock_time = " << unlock_time);
+        return false;
+      }
+
+      // The original code includes a check for the output corresponding to this input
+      // to be a txout_to_key. This is removed, as the database does not store this info,
+      // but only txout_to_key outputs are stored in the DB in the first place, done in
+      // Blockchain*::add_output
+
+      m_output_keys.push_back(rct::ctkey({rct::pk2rct(pubkey), commitment}));
+      return true;
+    }
+  };
+
+  output_keys.clear();
+
+  // collect output keys
+  outputs_visitor vi(output_keys, *this);
+  if (!scan_outputkeys_for_indexes(tx_version, txin, vi, tx_prefix_hash, pmax_related_block_height))
+  {
+    MERROR_VER("Failed to get output keys for tx with amount = " << print_money(txin.amount) << " and count indexes " << txin.key_offsets.size());
+    return false;
+  }
+
+  if(txin.key_offsets.size() != output_keys.size())
+  {
+    MERROR_VER("Output keys for tx with amount = " << txin.amount << " and count indexes " << txin.key_offsets.size() << " returned wrong keys count " << output_keys.size());
+    return false;
+  }
+  if (tx_version == 1) {
+    CHECK_AND_ASSERT_MES(sig.size() == output_keys.size(), false, "internal error: tx signatures count=" << sig.size() << " mismatch with outputs keys count for inputs=" << output_keys.size());
+  }
+  // rct_signatures will be expanded after this
+  return true;
+}
+//------------------------------------------------------------------
+bool Blockchain::check_tx_input(size_t tx_version, const txin_onshore& txin, const crypto::hash& tx_prefix_hash, const std::vector<crypto::signature>& sig, const rct::rctSig &rct_signatures, std::vector<rct::ctkey> &output_keys, uint64_t* pmax_related_block_height)
+{
+  LOG_PRINT_L3("Blockchain::" << __func__);
+  MERROR_VER("Onshore transactions not allowed!");
+  return false;
+}
+//------------------------------------------------------------------
 //TODO: Is this intended to do something else?  Need to look into the todo there.
 uint64_t Blockchain::get_adjusted_time() const
 {
@@ -4431,10 +5134,12 @@ bool Blockchain::flush_txes_from_pool(const std::vector<crypto::hash> &txids)
     cryptonote::transaction tx;
     cryptonote::blobdata txblob;
     size_t tx_weight;
-    uint64_t fee;
-    bool relayed, do_not_relay, double_spend_seen, pruned;
+    uint64_t fee = 0;
+    uint64_t fee_usd = 0;
+    uint64_t offshore_fee = 0;
+    uint64_t offshore_fee_usd = 0;    bool relayed, do_not_relay, double_spend_seen, pruned;
     MINFO("Removing txid " << txid << " from the pool");
-    if(m_tx_pool.have_tx(txid, relay_category::all) && !m_tx_pool.take_tx(txid, tx, txblob, tx_weight, fee, relayed, do_not_relay, double_spend_seen, pruned))
+    if(m_tx_pool.have_tx(txid, relay_category::all) && !m_tx_pool.take_tx(txid, tx, txblob, tx_weight, fee, fee_usd, offshore_fee, offshore_fee_usd, relayed, do_not_relay, double_spend_seen, pruned))
     {
       MERROR("Failed to remove txid " << txid << " from the pool");
       res = false;
@@ -4502,6 +5207,20 @@ leave:
   }
 
   TIME_MEASURE_FINISH(t2);
+
+  if (m_hardfork->get_current_version() >= HF_VERSION_OFFSHORE_PRICING) {
+    
+    TIME_MEASURE_START(pricing_record);
+    
+    if (!bl.pricing_record.verifySignature()) {
+      MERROR_VER("Block with id: " << id << std::endl << "has invalid pricing record signature: " << std::hex << bl.pricing_record.signature);
+      bvc.m_verifivation_failed = true;
+      goto leave;
+    }
+
+    TIME_MEASURE_FINISH(pricing_record);
+  }
+
   //check proof of work
   TIME_MEASURE_START(target_calculating_time);
 
@@ -4605,7 +5324,10 @@ leave:
   std::vector<std::pair<transaction, blobdata>> txs;
   key_images_container keys;
 
-  uint64_t fee_summary = 0;
+  uint64_t tx_fee_summary = 0;
+  uint64_t tx_fee_summary_usd = 0;
+  uint64_t offshore_fee_summary = 0;
+  uint64_t offshore_fee_summary_usd = 0;
   uint64_t t_checktx = 0;
   uint64_t t_exists = 0;
   uint64_t t_pool = 0;
@@ -4626,6 +5348,9 @@ leave:
     blobdata txblob;
     size_t tx_weight = 0;
     uint64_t fee = 0;
+    uint64_t fee_usd = 0;
+    uint64_t offshore_fee = 0;
+    uint64_t offshore_fee_usd = 0;
     bool relayed = false, do_not_relay = false, double_spend_seen = false, pruned = false;
     TIME_MEASURE_START(aa);
 
@@ -4643,7 +5368,7 @@ leave:
     TIME_MEASURE_START(bb);
 
     // get transaction with hash <tx_id> from tx_pool
-    if(!m_tx_pool.take_tx(tx_id, tx_tmp, txblob, tx_weight, fee, relayed, do_not_relay, double_spend_seen, pruned))
+    if(!m_tx_pool.take_tx(tx_id, tx_tmp, txblob, tx_weight, fee, fee_usd, offshore_fee, offshore_fee_usd, relayed, do_not_relay, double_spend_seen, pruned))
     {
       MERROR_VER("Block with id: " << id  << " has at least one unknown transaction with id: " << tx_id);
       bvc.m_verifivation_failed = true;
@@ -4718,7 +5443,10 @@ leave:
 #endif
     TIME_MEASURE_FINISH(cc);
     t_checktx += cc;
-    fee_summary += fee;
+    tx_fee_summary += fee;
+    offshore_fee_summary += offshore_fee;
+    tx_fee_summary_usd += fee_usd;
+    offshore_fee_summary_usd += offshore_fee_usd;
     cumulative_block_weight += tx_weight;
   }
 
@@ -4738,7 +5466,7 @@ leave:
   TIME_MEASURE_START(vmt);
   uint64_t base_reward = 0;
   uint64_t already_generated_coins = blockchain_height ? m_db->get_block_already_generated_coins(blockchain_height - 1) : 0;
-  if(!validate_miner_transaction(bl, cumulative_block_weight, fee_summary, base_reward, already_generated_coins, bvc.m_partial_block_reward, m_hardfork->get_current_version()))
+  if(!validate_miner_transaction(bl, cumulative_block_weight, tx_fee_summary, tx_fee_summary_usd, offshore_fee_summary, offshore_fee_summary_usd, base_reward, already_generated_coins, bvc.m_partial_block_reward, m_hardfork->get_current_version()))
   {
     MERROR_VER("Block with id: " << id << " has incorrect miner transaction");
     bvc.m_verifivation_failed = true;
@@ -4819,7 +5547,7 @@ leave:
     return false;
   }
 
-  MINFO("+++++ BLOCK SUCCESSFULLY ADDED" << std::endl << "id:\t" << id << std::endl << "PoW:\t" << proof_of_work << std::endl << "HEIGHT " << new_height-1 << ", difficulty:\t" << current_diffic << std::endl << "block reward: " << print_money(fee_summary + base_reward) << "(" << print_money(base_reward) << " + " << print_money(fee_summary) << "), coinbase_weight: " << coinbase_weight << ", cumulative weight: " << cumulative_block_weight << ", " << block_processing_time << "(" << target_calculating_time << "/" << longhash_calculating_time << ")ms");
+  MINFO("+++++ BLOCK SUCCESSFULLY ADDED" << std::endl << "id:\t" << id << std::endl << "PoW:\t" << proof_of_work << std::endl << "HEIGHT " << new_height-1 << ", difficulty:\t" << current_diffic << std::endl << "block reward: " << print_money(tx_fee_summary + base_reward) << "(" << print_money(base_reward) << " + " << print_money(tx_fee_summary) << "), coinbase_weight: " << coinbase_weight << ", cumulative weight: " << cumulative_block_weight << ", " << block_processing_time << "(" << target_calculating_time << "/" << longhash_calculating_time << ")ms");
   if(m_show_time_stats)
   {
     MINFO("Height: " << new_height << " coinbase weight: " << coinbase_weight << " cumm: "
@@ -5544,14 +6272,36 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
       // get all amounts from tx.vin(s)
       for (const auto &txin : tx.vin)
       {
-        const txin_to_key &in_to_key = boost::get < txin_to_key > (txin);
+	if (txin.type() == typeid(cryptonote::txin_to_key)) {
+	  const txin_to_key &in_to_key = boost::get < txin_to_key > (txin);
 
-        // check for duplicate
-        auto it = its->second.find(in_to_key.k_image);
-        if (it != its->second.end())
-          SCAN_TABLE_QUIT("Duplicate key_image found from incoming blocks.");
+	  // check for duplicate
+	  auto it = its->second.find(in_to_key.k_image);
+	  if (it != its->second.end())
+	    SCAN_TABLE_QUIT("Duplicate key_image found from incoming blocks.");
+	  
+	  amounts.push_back(in_to_key.amount);
+	}
+	else if (txin.type() == typeid(cryptonote::txin_offshore)) {
+	  const txin_offshore &in_to_key = boost::get < txin_offshore > (txin);
 
-        amounts.push_back(in_to_key.amount);
+	  // check for duplicate
+	  auto it = its->second.find(in_to_key.k_image);
+	  if (it != its->second.end())
+	    SCAN_TABLE_QUIT("Duplicate key_image found from incoming blocks.");
+	  
+	  amounts.push_back(in_to_key.amount);
+	}
+	else if (txin.type() == typeid(cryptonote::txin_onshore)) {
+	  const txin_onshore &in_to_key = boost::get < txin_onshore > (txin);
+
+	  // check for duplicate
+	  auto it = its->second.find(in_to_key.k_image);
+	  if (it != its->second.end())
+	    SCAN_TABLE_QUIT("Duplicate key_image found from incoming blocks.");
+	  
+	  amounts.push_back(in_to_key.amount);
+	}
       }
 
       // sort and remove duplicate amounts from amounts list
@@ -5572,12 +6322,27 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
       // add new absolute_offsets to offset_map
       for (const auto &txin : tx.vin)
       {
-        const txin_to_key &in_to_key = boost::get < txin_to_key > (txin);
-        // no need to check for duplicate here.
-        auto absolute_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
-        for (const auto & offset : absolute_offsets)
-          offset_map[in_to_key.amount].push_back(offset);
-
+	if (txin.type() == typeid(cryptonote::txin_to_key)) {
+	  const txin_to_key &in_to_key = boost::get < txin_to_key > (txin);
+	  // no need to check for duplicate here.
+	  auto absolute_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
+	  for (const auto & offset : absolute_offsets)
+	    offset_map[in_to_key.amount].push_back(offset);
+	}
+	else if (txin.type() == typeid(cryptonote::txin_offshore)) {
+	  const txin_offshore &in_to_key = boost::get < txin_offshore > (txin);
+	  // no need to check for duplicate here.
+	  auto absolute_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
+	  for (const auto & offset : absolute_offsets)
+	    offset_map[in_to_key.amount].push_back(offset);
+	}
+	else if (txin.type() == typeid(cryptonote::txin_onshore)) {
+	  const txin_onshore &in_to_key = boost::get < txin_onshore > (txin);
+	  // no need to check for duplicate here.
+	  auto absolute_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
+	  for (const auto & offset : absolute_offsets)
+	    offset_map[in_to_key.amount].push_back(offset);
+	}
       }
     }
     ++block_index;
@@ -5637,33 +6402,93 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
 
       for (const auto &txin : tx.vin)
       {
-        const txin_to_key &in_to_key = boost::get < txin_to_key > (txin);
-        auto needed_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
+	if (txin.type() == typeid(cryptonote::txin_to_key)) {
+	  const txin_to_key &in_to_key = boost::get < txin_to_key > (txin);
+	  auto needed_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
 
-        std::vector<output_data_t> outputs;
-        for (const uint64_t & offset_needed : needed_offsets)
-        {
-          size_t pos = 0;
-          bool found = false;
+	  std::vector<output_data_t> outputs;
+	  for (const uint64_t & offset_needed : needed_offsets)
+	  {
+	    size_t pos = 0;
+	    bool found = false;
+	    
+	    for (const uint64_t &offset_found : offset_map[in_to_key.amount])
+	    {
+	      if (offset_needed == offset_found)
+	      {
+		found = true;
+		break;
+	      }
+	      
+	      ++pos;
+	    }
+	    
+	    if (found && pos < tx_map[in_to_key.amount].size())
+	      outputs.push_back(tx_map[in_to_key.amount].at(pos));
+	    else
+	      break;
+	  }
+	  
+	  its->second.emplace(in_to_key.k_image, outputs);
+	}
+	else if (txin.type() == typeid(cryptonote::txin_offshore)) {
+	  const txin_offshore &in_to_key = boost::get < txin_offshore > (txin);
+	  auto needed_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
 
-          for (const uint64_t &offset_found : offset_map[in_to_key.amount])
-          {
-            if (offset_needed == offset_found)
-            {
-              found = true;
-              break;
-            }
+	  std::vector<output_data_t> outputs;
+	  for (const uint64_t & offset_needed : needed_offsets)
+	  {
+	    size_t pos = 0;
+	    bool found = false;
+	    
+	    for (const uint64_t &offset_found : offset_map[in_to_key.amount])
+	    {
+	      if (offset_needed == offset_found)
+	      {
+		found = true;
+		break;
+	      }
+	      
+	      ++pos;
+	    }
+	    
+	    if (found && pos < tx_map[in_to_key.amount].size())
+	      outputs.push_back(tx_map[in_to_key.amount].at(pos));
+	    else
+	      break;
+	  }
+	  
+	  its->second.emplace(in_to_key.k_image, outputs);
+	}
+	else if (txin.type() == typeid(cryptonote::txin_onshore)) {
+	  const txin_onshore &in_to_key = boost::get < txin_onshore > (txin);
+	  auto needed_offsets = relative_output_offsets_to_absolute(in_to_key.key_offsets);
 
-            ++pos;
-          }
-
-          if (found && pos < tx_map[in_to_key.amount].size())
-            outputs.push_back(tx_map[in_to_key.amount].at(pos));
-          else
-            break;
-        }
-
-        its->second.emplace(in_to_key.k_image, outputs);
+	  std::vector<output_data_t> outputs;
+	  for (const uint64_t & offset_needed : needed_offsets)
+	  {
+	    size_t pos = 0;
+	    bool found = false;
+	    
+	    for (const uint64_t &offset_found : offset_map[in_to_key.amount])
+	    {
+	      if (offset_needed == offset_found)
+	      {
+		found = true;
+		break;
+	      }
+	      
+	      ++pos;
+	    }
+	    
+	    if (found && pos < tx_map[in_to_key.amount].size())
+	      outputs.push_back(tx_map[in_to_key.amount].at(pos));
+	    else
+	      break;
+	  }
+	  
+	  its->second.emplace(in_to_key.k_image, outputs);
+	}
       }
     }
   }
@@ -5910,14 +6735,14 @@ void Blockchain::load_compiled_in_block_hashes(const GetCheckpointsCallback& get
         m_tx_pool.get_transactions(txs, true);
 
         size_t tx_weight;
-        uint64_t fee;
+        uint64_t fee, fee_usd, offshore_fee, offshore_fee_usd;
         bool relayed, do_not_relay, double_spend_seen, pruned;
         transaction pool_tx;
         blobdata txblob;
         for(const transaction &tx : txs)
         {
           crypto::hash tx_hash = get_transaction_hash(tx);
-          m_tx_pool.take_tx(tx_hash, pool_tx, txblob, tx_weight, fee, relayed, do_not_relay, double_spend_seen, pruned);
+          m_tx_pool.take_tx(tx_hash, pool_tx, txblob, tx_weight, fee, fee_usd, offshore_fee, offshore_fee_usd, relayed, do_not_relay, double_spend_seen, pruned);
         }
       }
     }

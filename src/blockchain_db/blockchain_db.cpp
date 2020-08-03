@@ -188,6 +188,14 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair
     {
       add_spent_key(boost::get<txin_to_key>(tx_input).k_image);
     }
+    else if (tx_input.type() == typeid(txin_onshore))
+    {
+      add_spent_key(boost::get<txin_onshore>(tx_input).k_image);
+    }
+    else if (tx_input.type() == typeid(txin_offshore))
+    {
+      add_spent_key(boost::get<txin_offshore>(tx_input).k_image);
+    }
     else if (tx_input.type() == typeid(txin_gen))
     {
       /* nothing to do here */
@@ -202,6 +210,14 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair
         {
           remove_spent_key(boost::get<txin_to_key>(tx_input).k_image);
         }
+        else if (tx_input.type() == typeid(txin_onshore))
+	{
+	  remove_spent_key(boost::get<txin_onshore>(tx_input).k_image);
+	}
+	else if (tx_input.type() == typeid(txin_offshore))
+	{
+	  remove_spent_key(boost::get<txin_offshore>(tx_input).k_image);
+	}
       }
       return;
     }
@@ -236,8 +252,8 @@ void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair
     }
     else
     {
-      amount_output_indices[i] = add_output(tx_hash, tx.vout[i], i, unlock_time,
-        tx.version > 1 ? &tx.rct_signatures.outPk[i].mask : NULL);
+      amount_output_indices[i] = add_output(tx_hash, tx.vout[i], i, tx.unlock_time,
+					    tx.version > 1 ? ((tx.vout[i].target.type() == typeid(txout_offshore)) ? &tx.rct_signatures.outPk_usd[i].mask : &tx.rct_signatures.outPk[i].mask) : NULL);
     }
   }
   add_tx_amount_output_indices(tx_id, amount_output_indices);
@@ -337,6 +353,14 @@ void BlockchainDB::remove_transaction(const crypto::hash& tx_hash)
     if (tx_input.type() == typeid(txin_to_key))
     {
       remove_spent_key(boost::get<txin_to_key>(tx_input).k_image);
+    }
+    else if (tx_input.type() == typeid(txin_onshore))
+    {
+      remove_spent_key(boost::get<txin_onshore>(tx_input).k_image);
+    }
+    else if (tx_input.type() == typeid(txin_offshore))
+    {
+      remove_spent_key(boost::get<txin_offshore>(tx_input).k_image);
     }
   }
 

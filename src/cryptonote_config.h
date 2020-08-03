@@ -33,6 +33,7 @@
 #include <stdexcept>
 #include <string>
 #include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #define CRYPTONOTE_DNS_TIMEOUT_MS                       20000
 
@@ -40,6 +41,7 @@
 #define CRYPTONOTE_GETBLOCKTEMPLATE_MAX_BLOCK_SIZE	    196608 //size of block (bytes) that is the maximum that miners will produce
 #define CRYPTONOTE_MAX_TX_SIZE                          1000000
 #define CRYPTONOTE_MAX_TX_PER_BLOCK                     0x10000000
+#define CRYPTONOTE_MAX_TX_SIZE                          1000000000
 #define CRYPTONOTE_PUBLIC_ADDRESS_TEXTBLOB_VER          0
 #define CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW            60
 #define CURRENT_TRANSACTION_VERSION                     3
@@ -107,6 +109,7 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 
 #define ORPHANED_BLOCKS_MAX_COUNT                       100
 
+#define PRICING_RECORD_VALID_BLOCKS                     10
 
 #define DIFFICULTY_TARGET_V2                            180  // seconds
 #define DIFFICULTY_TARGET_V3                            120  // seconds
@@ -134,7 +137,7 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 #define BLOCKS_SYNCHRONIZING_DEFAULT_COUNT              20     //by default, blocks count in blocks downloading
 #define BLOCKS_SYNCHRONIZING_MAX_COUNT                  2048   //must be a power of 2, greater than 128, equal to SEEDHASH_EPOCH_BLOCKS
 
-#define CRYPTONOTE_MEMPOOL_TX_LIVETIME                    (86400*3) //seconds, three days
+#define CRYPTONOTE_MEMPOOL_TX_LIVETIME                    86400 //seconds, one day
 #define CRYPTONOTE_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME     604800 //seconds, one week
 
 
@@ -166,6 +169,7 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 #define P2P_DEFAULT_PEERS_IN_HANDSHAKE                  250
 #define P2P_DEFAULT_CONNECTION_TIMEOUT                  5000       //5 seconds
 #define P2P_DEFAULT_SOCKS_CONNECT_TIMEOUT               45         // seconds
+#define P2P_DEFAULT_TOR_CONNECT_TIMEOUT                 20         // seconds
 #define P2P_DEFAULT_PING_CONNECTION_TIMEOUT             2000       //2 seconds
 #define P2P_DEFAULT_INVOKE_TIMEOUT                      60*2*1000  //2 minutes
 #define P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT            5000       //5 seconds
@@ -212,6 +216,16 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 #define HF_VERSION_REJECT_SIGS_IN_COINBASE      12
 #define HF_VERSION_ENFORCE_MIN_AGE              12
 #define HF_VERSION_EFFECTIVE_SHORT_TERM_MEDIAN_IN_PENALTY 12
+
+#define HF_VERSION_CLSAG                        9
+
+#define HF_VERSION_OFFSHORE_PRICING             8
+#define HF_VERSION_OFFSHORE_FULL                9
+
+#define STAGENET_VERSION                        0x05
+#define TESTNET_VERSION                         0x05
+
+#define OFFSHORE_PRICING_BLOCKS_TO_AVERAGE      30
 
 #define PER_KB_FEE_QUANTIZATION_DECIMALS       4
 
@@ -263,6 +277,14 @@ namespace config
   uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 5;
 
   std::string const GOVERNANCE_WALLET_ADDRESS = "TvziQSEi93chTMViBzw8Y4eerEjmGq2Q6ajekvgyTyqkGcsj97YJDzF8TMnTWdv7NXQ2ZXfeWJPwRAbVHUjbgFcN2AvU35KfX";
+
+  std::string const GOVERNANCE_WALLET_ADDRESS = "hvxy7YfeE8SdTrCmSqLB59WoQn3ZQun1aLX36X3eb1R7Fb26VuNpc235q4fguGUxfGKerywFPnweu15S8RB8DzTJ8Q4hGJCgvv";
+  std::string const GOVERNANCE_WALLET_ADDRESS_MULTI = "hvxy3f2PhAhimkeLf617BsbVn6UTbofVcMzofXGsSNLoMFr2SrSxRJ9f52Am1QLVddKetXPKHoTLbBaLNT1kMU6Q3kYRc3t6pF";
+
+  // Hash domain separators
+  const unsigned char HASH_KEY_CLSAG_ROUND[] = "CLSAG_round";
+  const unsigned char HASH_KEY_CLSAG_AGG_0[] = "CLSAG_agg_0";
+  const unsigned char HASH_KEY_CLSAG_AGG_1[] = "CLSAG_agg_1";
 
   namespace testnet
   {

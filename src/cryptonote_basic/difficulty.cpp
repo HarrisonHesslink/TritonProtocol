@@ -33,6 +33,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <boost/math/special_functions/round.hpp>
 
 #include "int-util.h"
 #include "crypto/hash.h"
@@ -299,6 +300,7 @@ namespace cryptonote {
       return 0; // to behave like previous implementation, may be better return max128bit?
     return res.convert_to<difficulty_type>();
   }
+  
 
   std::string hex(difficulty_type v)
   {

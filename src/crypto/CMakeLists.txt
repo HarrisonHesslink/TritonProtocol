@@ -98,5 +98,3 @@ if (ANDROID OR IOS)
   endif()
 endif()
 
-# cheat because cmake and ccache hate each other
-set_property(SOURCE CryptonightR_template.S PROPERTY LANGUAGE C)

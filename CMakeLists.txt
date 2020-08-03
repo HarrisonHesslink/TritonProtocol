@@ -208,6 +208,10 @@ if(NOT MANUAL_SUBMODULES)
   endif()
 endif()
 
+# HERE BE DRAGONS!!!
+cmake_policy(SET CMP0074 NEW)
+# LAND AHOY!!!
+
 set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 
@@ -451,7 +455,7 @@ if(STATIC AND NOT IOS)
   endif()
   if(MINGW)
   endif()
-  
+
 endif()
 
 find_package(HIDAPI)
@@ -869,7 +873,9 @@ if(STATIC)
   if(MINGW)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
   endif()
-
+  # HERE BE DRAGONS!!!
+  set(Boost_NO_BOOST_CMAKE ON)
+  # LAND AHOY!!!
   set(Boost_USE_STATIC_LIBS ON)
   set(Boost_USE_STATIC_RUNTIME ON)
 endif()

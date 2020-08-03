@@ -104,7 +104,13 @@ namespace boost
   {
     a & x.key;
   }
-
+    
+  template <class Archive>
+  inline void serialize(Archive &a, cryptonote::txout_offshore &x, const boost::serialization::version_type ver)
+  {
+    a & x.key;
+  }
+    
   template <class Archive>
   inline void serialize(Archive &a, cryptonote::txout_to_scripthash &x, const boost::serialization::version_type ver)
   {
@@ -143,6 +149,22 @@ namespace boost
   }
 
   template <class Archive>
+  inline void serialize(Archive &a, cryptonote::txin_offshore &x, const boost::serialization::version_type ver)
+  {
+    a & x.amount;
+    a & x.key_offsets;
+    a & x.k_image;
+  }
+
+  template <class Archive>
+  inline void serialize(Archive &a, cryptonote::txin_onshore &x, const boost::serialization::version_type ver)
+  {
+    a & x.amount;
+    a & x.key_offsets;
+    a & x.k_image;
+  }
+
+  template <class Archive>
   inline void serialize(Archive &a, cryptonote::tx_out &x, const boost::serialization::version_type ver)
   {
     a & x.amount;
@@ -163,6 +185,12 @@ namespace boost
     a & x.vin;
     a & x.vout;
     a & x.extra;
+    if (x.version >= OFFSHORE_TRANSACTION_VERSION) {
+      a & x.pricing_record_height;
+      a & x.offshore_data;
+      a & x.amount_burnt;
+      a & x.amount_minted;
+    }
   }
 
   template <class Archive>
@@ -178,6 +206,12 @@ namespace boost
     a & x.vin;
     a & x.vout;
     a & x.extra;
+    if (x.version >= OFFSHORE_TRANSACTION_VERSION) {
+      a & x.pricing_record_height;
+      a & x.offshore_data;
+      a & x.amount_burnt;
+      a & x.amount_minted;
+    }
     if (x.version == 1)
     {
       a & x.signatures;
@@ -198,7 +232,7 @@ namespace boost
     a & b.timestamp;
     a & b.prev_id;
     a & b.nonce;
-    if (b.major_version > 5)
+    if (b.major_version > 7)
     {
       a & b.ribbon_green;
       a & b.ribbon_blue;
@@ -266,6 +300,15 @@ namespace boost
   }
 
   template <class Archive>
+  inline void serialize(Archive &a, rct::clsag &x, const boost::serialization::version_type ver)
+  {
+    a & x.s;
+    a & x.c1;
+    // a & x.I; // not serialized, we can recover it from the tx vin
+    a & x.D;
+  }
+
+  template <class Archive>
   inline void serialize(Archive &a, rct::ecdhTuple &x, const boost::serialization::version_type ver)
   {
     a & x.mask;
@@ -285,6 +328,9 @@ namespace boost
   inline void serialize(Archive &a, rct::multisig_out &x, const boost::serialization::version_type ver)
   {
     a & x.c;
+    if (ver < 1u)
+      return;
+    a & x.mu_p;
   }
 
   template <class Archive>
@@ -315,7 +361,7 @@ namespace boost
     a & x.type;
     if (x.type == rct::RCTTypeNull)
       return;
-    if (x.type != rct::RCTTypeFull && x.type != rct::RCTTypeSimple && x.type != rct::RCTTypeBulletproof && x.type != rct::RCTTypeBulletproof2)
+    if (x.type != rct::RCTTypeFull && x.type != rct::RCTTypeSimple && x.type != rct::RCTTypeBulletproof && x.type != rct::RCTTypeBulletproof2 && x.type != rct::RCTTypeCLSAG)
       throw boost::archive::archive_exception(boost::archive::archive_exception::other_exception, "Unsupported rct type");
     // a & x.message; message is not serialized, as it can be reconstructed from the tx data
     // a & x.mixRing; mixRing is not serialized, as it can be reconstructed from the offsets
@@ -323,7 +369,14 @@ namespace boost
       a & x.pseudoOuts;
     a & x.ecdhInfo;
     serializeOutPk(a, x.outPk, ver);
+    if (ver >= 1u)
+      serializeOutPk(a, x.outPk_usd, ver);
     a & x.txnFee;
+    if (ver >= 1u) {
+      a & x.txnFee_usd;
+      a & x.txnOffshoreFee;
+      a & x.txnOffshoreFee_usd;
+    }
   }
 
   template <class Archive>
@@ -333,6 +386,8 @@ namespace boost
     if (x.rangeSigs.empty())
       a & x.bulletproofs;
     a & x.MGs;
+    if (ver >= 1u)
+      a & x.CLSAGs;
     if (x.rangeSigs.empty())
       a & x.pseudoOuts;
   }
@@ -343,7 +398,7 @@ namespace boost
     a & x.type;
     if (x.type == rct::RCTTypeNull)
       return;
-    if (x.type != rct::RCTTypeFull && x.type != rct::RCTTypeSimple && x.type != rct::RCTTypeBulletproof && x.type != rct::RCTTypeBulletproof2)
+    if (x.type != rct::RCTTypeFull && x.type != rct::RCTTypeSimple && x.type != rct::RCTTypeBulletproof && x.type != rct::RCTTypeBulletproof2 && x.type != rct::RCTTypeCLSAG)
       throw boost::archive::archive_exception(boost::archive::archive_exception::other_exception, "Unsupported rct type");
     // a & x.message; message is not serialized, as it can be reconstructed from the tx data
     // a & x.mixRing; mixRing is not serialized, as it can be reconstructed from the offsets
@@ -351,13 +406,22 @@ namespace boost
       a & x.pseudoOuts;
     a & x.ecdhInfo;
     serializeOutPk(a, x.outPk, ver);
+    if (ver >= 1u)
+      serializeOutPk(a, x.outPk_usd, ver);
     a & x.txnFee;
+    if (ver >= 1u) {
+      a & x.txnFee_usd;
+      a & x.txnOffshoreFee;
+      a & x.txnOffshoreFee_usd;
+    }
     //--------------
     a & x.p.rangeSigs;
     if (x.p.rangeSigs.empty())
       a & x.p.bulletproofs;
     a & x.p.MGs;
-    if (x.type == rct::RCTTypeBulletproof || x.type == rct::RCTTypeBulletproof2)
+    if (ver >= 1u)
+      a & x.p.CLSAGs;
+    if (x.type == rct::RCTTypeBulletproof || x.type == rct::RCTTypeBulletproof2 || x.type == rct::RCTTypeCLSAG)
       a & x.p.pseudoOuts;
   }
 
@@ -395,7 +459,35 @@ namespace boost
     }
   }
 
+  template <class Archive>
+  inline void serialize(Archive &a, offshore::pricing_record &x, const boost::serialization::version_type ver)
+  {
+    a & x.xAG;
+    a & x.xAU;
+    a & x.xAUD;
+    a & x.xBTC;
+    a & x.xCAD;
+    a & x.xCHF;
+    a & x.xCNY;
+    a & x.xEUR;
+    a & x.xGBP;
+    a & x.xJPY;
+    a & x.xNOK;
+    a & x.xNZD;
+    a & x.xUSD;
+    a & x.unused1;
+    a & x.unused2;
+    a & x.unused3;
+    a & x.signature;
+  }
+
 }
 }
+
+
+BOOST_CLASS_VERSION(rct::rctSigPrunable, 1)
+BOOST_CLASS_VERSION(rct::rctSigBase, 1)
+BOOST_CLASS_VERSION(rct::rctSig, 1)
+BOOST_CLASS_VERSION(rct::multisig_out, 1)
 
 //}

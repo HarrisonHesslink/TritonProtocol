@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2019, Haven Protocol
 // 
 // All rights reserved.
 // 
@@ -30,35 +30,40 @@
 
 #pragma once
 
-#include <cstdint>
 #include <vector>
-#include <string>
-#include <boost/multiprecision/cpp_int.hpp>
-#include "crypto/hash.h"
 
-namespace cryptonote
+#include "serialization.h"
+#include "debug_archive.h"
+#include "offshore/pricing_record.h"
+
+/*
+// read
+template <template <bool> class Archive>
+bool do_serialize(Archive<false> &ar, offshore::pricing_record &pr)
 {
-    typedef boost::multiprecision::uint128_t difficulty_type;
+  // very basic sanity check
+  if (ar.remaining_bytes() < sizeof(offshore::pricing_record)) {
+    ar.stream().setstate(std::ios::failbit);
+    return false;
+  }
 
-    /**
-     * @brief checks if a hash fits the given difficulty
-     *
-     * The hash passes if (hash * difficulty) < 2^256.
-     * Phrased differently, if (hash * difficulty) fits without overflow into
-     * the least significant 256 bits of the 320 bit multiplication result.
-     *
-     * @param hash the hash to check
-     * @param difficulty the difficulty to check against
-     *
-     * @return true if valid, else false
-     */
-    bool check_hash_64(const crypto::hash &hash, uint64_t difficulty);
-    uint64_t next_difficulty_64(std::vector<std::uint64_t> timestamps, std::vector<uint64_t> cumulative_difficulties, size_t target_seconds);
-
-    bool check_hash_128(const crypto::hash &hash, difficulty_type difficulty);
-    bool check_hash(const crypto::hash &hash, difficulty_type difficulty);
-    difficulty_type next_difficulty(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds);
-
-    std::string hex(difficulty_type v);
-    difficulty_type next_difficulty_v2(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds);
+  ar.serialize_blob(&pr, sizeof(offshore::pricing_record), "");
+  if (!ar.stream().good())
+    return false;
+  return true;
 }
+
+// write
+template <template <bool> class Archive>
+bool do_serialize(Archive<true> &ar, offshore::pricing_record &pr)
+{
+  ar.begin_string();
+  ar.serialize_blob(&pr, sizeof(offshore::pricing_record), "");
+  if (!ar.stream().good())
+    return false;
+  ar.end_string();
+  return true;
+}
+*/
+
+BLOB_SERIALIZER(offshore::pricing_record);

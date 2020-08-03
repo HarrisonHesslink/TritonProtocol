@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
 /*
  * The default output can be plotted with GnuPlot using these commands:
 set key autotitle columnhead
-set title "Monero Blockchain Growth"
+set title "Haven Blockchain Growth"
 set timefmt "%Y-%m-%d"
 set xdata time
 set xrange ["2014-04-17":*]

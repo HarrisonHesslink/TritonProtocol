@@ -137,6 +137,9 @@ namespace cryptonote
      * @param txblob return-by-reference the transaction as a blob
      * @param tx_weight return-by-reference the transaction's weight
      * @param fee the transaction fee
+     * @param fee_usd return-by-reference the total of offshore TX fees from the included transactions
+     * @param offshore_fee return-by-reference the total of XHV offshore conversion fees from the included transactions
+     * @param offshore_fee_usd return-by-reference the total of xUSD offshore conversion fees from the included transactions
      * @param relayed return-by-reference was transaction relayed to us by the network?
      * @param do_not_relay return-by-reference is transaction not to be relayed to the network?
      * @param double_spend_seen return-by-reference was a double spend seen for that transaction?
@@ -228,12 +231,15 @@ namespace cryptonote
      * @param already_generated_coins the current total number of coins "minted"
      * @param total_weight return-by-reference the total weight of the new block
      * @param fee return-by-reference the total of fees from the included transactions
+     * @param fee_usd return-by-reference the total of offshore TX fees from the included transactions
+     * @param offshore_fee return-by-reference the total of XHV offshore conversion fees from the included transactions
+     * @param offshore_fee_usd return-by-reference the total of xUSD offshore conversion fees from the included transactions
      * @param expected_reward return-by-reference the total reward awarded to the miner finding this block, including transaction fees
      * @param version hard fork version to use for consensus rules
      *
      * @return true
      */
-    bool fill_block_template(block &bl, size_t median_weight, uint64_t already_generated_coins, size_t &total_weight, uint64_t &fee, uint64_t &expected_reward, uint8_t version, network_type nettype);
+    bool fill_block_template(block &bl, size_t median_weight, uint64_t already_generated_coins, size_t &total_weight, uint64_t &fee, uint64_t &fee_usd, uint64_t &offshore_fee, uint64_t &offshore_fee_usd, uint64_t &expected_reward, uint8_t version, network_type nettype);
 
     /**
      * @brief get a list of all transactions in the pool

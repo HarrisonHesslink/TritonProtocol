@@ -104,10 +104,10 @@ namespace cryptonote
   void add_service_node_contributor_to_tx_extra(std::vector<uint8_t>& tx_extra, const cryptonote::account_public_address& address);
   std::vector<crypto::public_key> get_additional_tx_pub_keys_from_extra(const std::vector<uint8_t>& tx_extra);
   std::vector<crypto::public_key> get_additional_tx_pub_keys_from_extra(const transaction_prefix& tx);
+  bool get_offshore_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::tx_extra_offshore& offshore);
   bool add_additional_tx_pub_keys_to_extra(std::vector<uint8_t>& tx_extra, const std::vector<crypto::public_key>& additional_pub_keys);
   bool add_extra_nonce_to_tx_extra(std::vector<uint8_t>& tx_extra, const blobdata& extra_nonce);
-  bool add_viewkey_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::secret_key& viewkey);
-  crypto::secret_key get_viewkey_from_tx_extra(const std::vector<uint8_t>& tx_extra);
+  bool add_offshore_to_tx_extra(std::vector<uint8_t>& tx_extra, cryptonote::tx_extra_offshore& extra_offshore);
   bool remove_field_from_tx_extra(std::vector<uint8_t>& tx_extra, const std::type_info &type);
   void set_payment_id_to_tx_extra_nonce(blobdata& extra_nonce, const crypto::hash& payment_id);
   void set_encrypted_payment_id_to_tx_extra_nonce(blobdata& extra_nonce, const crypto::hash8& payment_id);
@@ -179,7 +179,7 @@ namespace cryptonote
   char const *print_vote_verification_context(vote_verification_context const &vvc, triton::service_node_deregister::vote const *vote = nullptr);
 
   std::string print_money(uint64_t amount, unsigned int decimal_point = -1);
-  std::string print_money(const boost::multiprecision::uint128_t &amount, unsigned int decimal_point = -1);
+  std::string print_offshore_money(uint64_t amount, unsigned int decimal_point = -1);
   //---------------------------------------------------------------
   template<class t_object>
   bool t_serializable_object_from_blob(t_object& to, const blobdata& b_blob)

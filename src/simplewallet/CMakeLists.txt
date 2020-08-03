@@ -64,3 +64,4 @@ set_property(TARGET simplewallet
   PROPERTY
     OUTPUT_NAME "wallet-cli")
 install(TARGETS simplewallet DESTINATION bin)
+add_definitions(-D__STDC_FORMAT_MACROS)

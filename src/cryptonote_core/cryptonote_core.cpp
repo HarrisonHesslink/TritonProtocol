@@ -505,7 +505,7 @@ namespace cryptonote
       if (boost::filesystem::exists(old_files / "blockchain.bin"))
       {
         MWARNING("Found old-style blockchain.bin in " << old_files.string());
-        MWARNING("Triton now uses a new format. You can either remove blockchain.bin to start syncing");
+        MWARNING("Equilibria now uses a new format. You can either remove blockchain.bin to start syncing");
         MWARNING("the blockchain anew, or use triton-blockchain-export and triton-blockchain-import to");
         MWARNING("convert your existing blockchain.bin to the new format. See README.md for instructions.");
         return false;
@@ -521,7 +521,14 @@ namespace cryptonote
       return false;
     }
 
+    if (m_nettype == STAGENET) {
+      folder /= std::to_string(STAGENET_VERSION);
+    } else if (m_nettype == TESTNET) {
+      folder /= std::to_string(TESTNET_VERSION);
+    }
+    
     folder /= db->get_db_name();
+
     MGINFO("Loading blockchain from folder " << folder.string() << " ...");
 
     const std::string filename = folder.string();
@@ -869,12 +876,14 @@ namespace cryptonote
     uint8_t version = m_blockchain_storage.get_current_hard_fork_version();
     unsigned int max_tx_version = (version == 1) ? 1 : (version < 5)
       ? transaction::version_2
-      : transaction::version_3_per_output_unlock_times;
+      : (version < 7) ? transaction::version_4_offshore : transaction::version_3_per_output_unlock_times;
+      
     if (tx.version == 0 || tx.version > max_tx_version)
     {
       // v3 is the latest one we know
       MERROR_VER("Bad tx version (" << tx.version << ", max is " << max_tx_version << ")");
       tvc.m_verifivation_failed = true;
+      LOG_PRINT_L1("Wrong max transaction version, verifivation failed : tx.version = " << tx.version << " (max_tx_version = " << max_tx_version << ")");
       return false;
     }
 
@@ -928,6 +937,31 @@ namespace cryptonote
     std::vector<const rct::rctSig*> rvv;
     for (size_t n = 0; n < tx_info.size(); ++n)
     {
+      // Get the pricing_record_height for any offshore TX
+      uint64_t pricing_record_height = tx_info[n].tx->pricing_record_height;
+    
+      // Set the offshore TX type flags
+      bool offshore = false, onshore = false, offshore_to_offshore = false;
+      offshore::pricing_record pr;
+      if (pricing_record_height) {
+	if ((tx_info[n].tx->offshore_data.at(0) > 'A') && (tx_info[n].tx->offshore_data.at(1) > 'A')) {
+	  offshore_to_offshore = true;
+	} else if (tx_info[n].tx->offshore_data.at(0) > 'A') {
+	  onshore = true;
+	} else {
+	  offshore = true;
+	}
+
+	// Get the correct pricing record here, given the height
+	std::vector<std::pair<cryptonote::blobdata,block>> blocks_pr;
+	bool b = m_blockchain_storage.get_blocks(pricing_record_height, 1, blocks_pr);
+	if (!b) {
+	  MERROR_VER("Failed to obtain pricing record for block: " << pricing_record_height);
+	  return false;
+	}
+	pr = blocks_pr[0].second.pricing_record;
+      }
+    
       if (!check_tx_semantic(*tx_info[n].tx, keeped_by_block))
       {
         set_semantics_failed(tx_info[n].tx_hash);
@@ -948,7 +982,7 @@ namespace cryptonote
           tx_info[n].result = false;
           break;
         case rct::RCTTypeSimple:
-          if (!rct::verRctSemanticsSimple(rv))
+          if (!rct::verRctSemanticsSimple(rv, pr, offshore, onshore, offshore_to_offshore))
           {
             MERROR_VER("rct signature semantics check failed");
             set_semantics_failed(tx_info[n].tx_hash);
@@ -969,6 +1003,7 @@ namespace cryptonote
           break;
         case rct::RCTTypeBulletproof:
         case rct::RCTTypeBulletproof2:
+        case rct::RCTTypeCLSAG:
           if (!is_canonical_bulletproof_layout(rv.p.bulletproofs))
           {
             MERROR_VER("Bulletproof does not have canonical form");
@@ -987,18 +1022,43 @@ namespace cryptonote
           break;
       }
     }
-    if (!rvv.empty() && !rct::verRctSemanticsSimple(rvv))
+
+    if (!rvv.empty()/* && !rct::verRctSemanticsSimple(rvv, pr, offshore, onshore, offshore_to_offshore)*/)
     {
-      LOG_PRINT_L1("One transaction among this group has bad semantics, verifying one at a time");
+      LOG_PRINT_L1("Verifying one transaction at a time");
       ret = false;
-      const bool assumed_bad = rvv.size() == 1; // if there's only one tx, it must be the bad one
       for (size_t n = 0; n < tx_info.size(); ++n)
       {
+	// Get the pricing_record_height for any offshore TX
+	uint64_t pricing_record_height = tx_info[n].tx->pricing_record_height;
+    
+	// Set the offshore TX type flags
+	bool offshore = false, onshore = false, offshore_to_offshore = false;
+	offshore::pricing_record pr;
+	if (pricing_record_height) {
+	  if ((tx_info[n].tx->offshore_data.at(0) > 'A') && (tx_info[n].tx->offshore_data.at(1) > 'A')) {
+	    offshore_to_offshore = true;
+	  } else if (tx_info[n].tx->offshore_data.at(0) > 'A') {
+	    onshore = true;
+	  } else {
+	    offshore = true;
+	  }
+
+	  // Get the correct pricing record here, given the height
+	  std::vector<std::pair<cryptonote::blobdata,block>> blocks_pr;
+	  bool b = m_blockchain_storage.get_blocks(pricing_record_height, 1, blocks_pr);
+	  if (!b) {
+	    MERROR_VER("Failed to obtain pricing record for block: " << pricing_record_height);
+	    return false;
+	  }
+	  pr = blocks_pr[0].second.pricing_record;
+	}
+    
         if (!tx_info[n].result)
           continue;
-        if (tx_info[n].tx->rct_signatures.type != rct::RCTTypeBulletproof && tx_info[n].tx->rct_signatures.type != rct::RCTTypeBulletproof2)
+        if (tx_info[n].tx->rct_signatures.type != rct::RCTTypeBulletproof && tx_info[n].tx->rct_signatures.type != rct::RCTTypeBulletproof2 && tx_info[n].tx->rct_signatures.type != rct::RCTTypeCLSAG)
           continue;
-        if (assumed_bad || !rct::verRctSemanticsSimple(tx_info[n].tx->rct_signatures))
+        if (!rct::verRctSemanticsSimple(tx_info[n].tx->rct_signatures, pr, offshore, onshore, offshore_to_offshore))
         {
           set_semantics_failed(tx_info[n].tx_hash);
           tx_info[n].tvc.m_verifivation_failed = true;
@@ -1265,11 +1325,26 @@ namespace cryptonote
   bool core::check_tx_inputs_keyimages_diff(const transaction& tx) const
   {
     std::unordered_set<crypto::key_image> ki;
-    for(const auto& in: tx.vin)
-    {
-      CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
-      if(!ki.insert(tokey_in.k_image).second)
-        return false;
+    if (tx.vin[0].type() == typeid(txin_to_key)) {
+      for(const auto& in: tx.vin) {
+	CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
+	if(!ki.insert(tokey_in.k_image).second)
+	  return false;
+      }
+    }
+    else if (tx.vin[0].type() == typeid(txin_offshore)) {
+      for(const auto& in: tx.vin) {
+	CHECKED_GET_SPECIFIC_VARIANT(in, const txin_offshore, tokey_in, false);
+	if(!ki.insert(tokey_in.k_image).second)
+	  return false;
+      }
+    }
+    else if (tx.vin[0].type() == typeid(txin_onshore)) {
+      for(const auto& in: tx.vin) {
+	CHECKED_GET_SPECIFIC_VARIANT(in, const txin_onshore, tokey_in, false);
+	if(!ki.insert(tokey_in.k_image).second)
+	  return false;
+      }
     }
     return true;
   }
@@ -1277,14 +1352,28 @@ namespace cryptonote
   bool core::check_tx_inputs_ring_members_diff(const transaction& tx) const
   {
     const uint8_t version = m_blockchain_storage.get_current_hard_fork_version();
-    if (version >= 6)
-    {
-      for(const auto& in: tx.vin)
-      {
-        CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
-        for (size_t n = 1; n < tokey_in.key_offsets.size(); ++n)
-          if (tokey_in.key_offsets[n] == 0)
-            return false;
+    if (tx.vin[0].type() == typeid(txin_to_key)) {
+      for(const auto& in: tx.vin) {
+	CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
+	for (size_t n = 1; n < tokey_in.key_offsets.size(); ++n)
+	  if (tokey_in.key_offsets[n] == 0)
+	    return false;
+      }
+    }
+    else if (tx.vin[0].type() == typeid(txin_offshore)) {
+      for(const auto& in: tx.vin) {
+	CHECKED_GET_SPECIFIC_VARIANT(in, const txin_offshore, tokey_in, false);
+	for (size_t n = 1; n < tokey_in.key_offsets.size(); ++n)
+	  if (tokey_in.key_offsets[n] == 0)
+	    return false;
+      }
+    }
+    else if (tx.vin[0].type() == typeid(txin_onshore)) {
+      for(const auto& in: tx.vin) {
+	CHECKED_GET_SPECIFIC_VARIANT(in, const txin_onshore, tokey_in, false);
+	for (size_t n = 1; n < tokey_in.key_offsets.size(); ++n)
+	  if (tokey_in.key_offsets[n] == 0)
+	    return false;
       }
     }
     return true;
@@ -1293,11 +1382,29 @@ namespace cryptonote
   bool core::check_tx_inputs_keyimages_domain(const transaction& tx) const
   {
     std::unordered_set<crypto::key_image> ki;
-    for(const auto& in: tx.vin)
-    {
-      CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
-      if (!(rct::scalarmultKey(rct::ki2rct(tokey_in.k_image), rct::curveOrder()) == rct::identity()))
-        return false;
+    if (tx.vin[0].type() == typeid(txin_to_key)) {
+      for(const auto& in: tx.vin)
+	{
+	  CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, false);
+	  if (!(rct::scalarmultKey(rct::ki2rct(tokey_in.k_image), rct::curveOrder()) == rct::identity()))
+	    return false;
+	}
+    }
+    else if (tx.vin[0].type() == typeid(txin_offshore)) {
+      for(const auto& in: tx.vin)
+	{
+	  CHECKED_GET_SPECIFIC_VARIANT(in, const txin_offshore, tokey_in, false);
+	  if (!(rct::scalarmultKey(rct::ki2rct(tokey_in.k_image), rct::curveOrder()) == rct::identity()))
+	    return false;
+	}
+    }
+    else if (tx.vin[0].type() == typeid(txin_onshore)) {
+      for(const auto& in: tx.vin)
+	{
+	  CHECKED_GET_SPECIFIC_VARIANT(in, const txin_onshore, tokey_in, false);
+	  if (!(rct::scalarmultKey(rct::ki2rct(tokey_in.k_image), rct::curveOrder()) == rct::identity()))
+	    return false;
+	}
     }
     return true;
   }
@@ -2108,7 +2215,7 @@ namespace cryptonote
     const time_t now = time(NULL);
     const std::vector<time_t> timestamps = m_blockchain_storage.get_last_block_timestamps(max_blocks_checked);
 
-    static const unsigned int seconds[] = { 5400, 3600, 1800, 1200, 600 };
+    static const unsigned int seconds[] = { 5400, 1800, 600 };
     for (size_t n = 0; n < sizeof(seconds)/sizeof(seconds[0]); ++n)
     {
       unsigned int b = 0;

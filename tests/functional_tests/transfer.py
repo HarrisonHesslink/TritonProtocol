@@ -563,6 +563,9 @@ class TransferTest():
         res = self.wallet[1].get_payments(payment_id = '1111111122222222' + '0'*48)
         assert len(res.payments) >= 1 # one tx to integrated address
 
+        res = self.wallet[1].get_bulk_payments(["1111111122222222"])
+        assert len(res.payments) >= 1 # we have one of these
+
     def check_double_spend_detection(self):
         print('Checking double spend detection')
         txes = [[None, None], [None, None]]
