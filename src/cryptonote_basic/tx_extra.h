@@ -284,10 +284,7 @@ struct tx_extra_service_node_deregister
 	 tx_extra_service_node_contributor,
 	 tx_extra_service_node_winner,
 	 tx_extra_service_node_deregister,
-	 tx_extra_tx_secret_key,
-	 tx_extra_mint_key,
-	 tx_extra_is_mint_tx,
-   tx_extra_is_burn_tx, tx_extra_offshore> tx_extra_field;
+	 tx_extra_tx_secret_key, tx_extra_offshore> tx_extra_field;
   }
 
   BLOB_SERIALIZER(cryptonote::tx_extra_service_node_deregister::vote);

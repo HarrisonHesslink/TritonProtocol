@@ -296,9 +296,8 @@ namespace
   const char* USAGE_STOP_MINING_FOR_RPC("stop_mining_for_rpc");
   const char* USAGE_VERSION("version");
   const char* USAGE_HELP("help [<command>]");
-  const char* USAGE_OFFSHORE("offshore [index=<N1>[,<N2>,...]] [<priority>] [<ring_size>] (<URI> | <address> <XHV amount>)");
+  const char* USAGE_OFFSHORE("offshore [index=<N1>[,<N2>,...]] [<priority>] [<ring_size>] (<URI> | <address> <XEQ amount>)");
   const char* USAGE_OFFSHORE_TRANSFER("offshore_transfer [index=<N1>[,<N2>,...]] [<priority>] [<ring_size>] (<URI> | <address> <xUSD amount>)");
-  const char* USAGE_ONSHORE("onshore [index=<N1>[,<N2>,...]] [<priority>] [<ring_size>] (<URI> | <address> <XHV amount>)");
 
   std::string input_line(const std::string& prompt, bool yesno = false)
   {
@@ -3688,18 +3687,14 @@ simple_wallet::simple_wallet()
   m_cmd_binder.set_unknown_command_handler(boost::bind(&simple_wallet::on_command, this, &simple_wallet::on_unknown_command, _1));
   m_cmd_binder.set_empty_command_handler(boost::bind(&simple_wallet::on_empty_command, this));
   m_cmd_binder.set_cancel_handler(boost::bind(&simple_wallet::on_cancelled_command, this));
-  m_cmd_binder.set_handler("offshore",
+  m_cmd_binder.set_handler("exchange",
                            boost::bind(&simple_wallet::offshore, this, _1),
                            tr(USAGE_OFFSHORE),
-                           tr("Converts <amount> Haven (XHV) to Haven Dollars (XUSD), with optional <priority> [0-5]"));
+                           tr("Converts <amount> Equilibria (XEQ) to USDI, with optional <priority> [0-5]"));
   m_cmd_binder.set_handler("offshore_transfer",
                            boost::bind(&simple_wallet::offshore_transfer, this, _1),
                            tr(USAGE_OFFSHORE_TRANSFER),
-                           tr("Transfer <amount> xUSD from current offshore balance to <address>. If the parameter \"index=<N1>[,<N2>,...]\" is specified, the wallet uses outputs received by addresses of those indices. If omitted, the wallet randomly chooses address indices to be used. In any case, it tries its best not to combine outputs across multiple addresses. <priority> is the priority of the transaction. The higher the priority, the higher the transaction fee. Valid values in priority order (from lowest to highest) are: unimportant, normal, elevated, priority. If omitted, the default value (see the command \"set priority\") is used. <ring_size> is the number of inputs to include for untraceability. Multiple payments can be made at once by adding URI_2 or <address_2> <amount_2> etcetera (before the payment ID, if it's included)"));
-  m_cmd_binder.set_handler("onshore",
-                           boost::bind(&simple_wallet::onshore, this, _1),
-                           tr(USAGE_ONSHORE),
-                           tr("Converts <amount> Haven Dollars (XUSD) to Haven (XHV), with optional <priority> [0-5]"));
+                           tr("Transfer <amount> USDi from current balance to <address>. If the parameter \"index=<N1>[,<N2>,...]\" is specified, the wallet uses outputs received by addresses of those indices. If omitted, the wallet randomly chooses address indices to be used. In any case, it tries its best not to combine outputs across multiple addresses. <priority> is the priority of the transaction. The higher the priority, the higher the transaction fee. Valid values in priority order (from lowest to highest) are: unimportant, normal, elevated, priority. If omitted, the default value (see the command \"set priority\") is used. <ring_size> is the number of inputs to include for untraceability. Multiple payments can be made at once by adding URI_2 or <address_2> <amount_2> etcetera (before the payment ID, if it's included)"));
 }
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::set_variable(const std::vector<std::string> &args)
@@ -5545,12 +5540,12 @@ void simple_wallet::on_new_block(uint64_t height, const cryptonote::block& block
     m_refresh_progress_reporter.update(height, false);
 }
 //----------------------------------------------------------------------------------------------------
-void simple_wallet::on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, uint64_t unlock_time, bool offshore)
+void simple_wallet::on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, bool is_change, uint64_t unlock_time, bool offshore)
 {
   message_writer(offshore ? console_color_blue : console_color_green, false) << "\r" <<
     tr("Height ") << height << ", " <<
     tr("txid ") << txid << ", " <<
-    print_money(amount) << (offshore ? " XUSD, " : " XHV, ") <<
+    print_money(amount) << (offshore ? " USDi, " : " XEQ, ") <<
     tr("idx ") << subaddr_index;
 
   const uint64_t warn_height = m_wallet->nettype() == TESTNET ? 1000000 : m_wallet->nettype() == STAGENET ? 50000 : 1650000;
@@ -5602,7 +5597,7 @@ void simple_wallet::on_money_spent(uint64_t height, const crypto::hash &txid, co
   message_writer(offshore ? console_color_cyan : console_color_magenta, false) << "\r" <<
     tr("Height ") << height << ", " <<
     tr("txid ") << txid << ", " <<
-    tr("spent ") << print_money(amount) << (offshore ? " XUSD, " : " XHV, ") <<
+    tr("spent ") << print_money(amount) << (offshore ? " USDi, " : " XEQ, ") <<
     tr("idx ") << subaddr_index;
   if (m_auto_refresh_refreshing)
     m_cmd_binder.print_prompt();
@@ -5845,12 +5840,12 @@ bool simple_wallet::show_balance_unlocked(bool detailed)
   std::string unlock_time_message_offshore;
   if (blocks_to_unlock_offshore > 0)
     unlock_time_message_offshore = (boost::format(" (%lu block(s) to unlock)") % blocks_to_unlock_offshore).str();
-  success_msg_writer() << tr("ONSHORE  - balance: ") << print_money(m_wallet->balance(m_current_subaddress_account)) << ", "
+  success_msg_writer() << tr("ONSHORE  - balance: ") << print_money(m_wallet->balance(m_current_subaddress_account, false)) << ", "
     << tr("unlocked balance: ") << print_money(unlocked_balance) << unlock_time_message << ",\n"
     << tr("OFFSHORE - balance: ") << print_offshore_money(m_wallet->offshore_balance(m_current_subaddress_account)) << " xUSD, "
     << tr("unlocked balance: ") << print_offshore_money(unlocked_balance_offshore) << " xUSD " << unlock_time_message_offshore << extra;
-  std::map<uint32_t, uint64_t> balance_per_subaddress = m_wallet->balance_per_subaddress(m_current_subaddress_account);
-  std::map<uint32_t, std::pair<uint64_t, uint64_t>> unlocked_balance_per_subaddress = m_wallet->unlocked_balance_per_subaddress(m_current_subaddress_account);
+  std::map<uint32_t, uint64_t> balance_per_subaddress = m_wallet->balance_per_subaddress(m_current_subaddress_account, false);
+  std::map<uint32_t, std::pair<uint64_t, uint64_t>> unlocked_balance_per_subaddress = m_wallet->unlocked_balance_per_subaddress(m_current_subaddress_account, true);
   if (!detailed || balance_per_subaddress.empty())
     return true;
   success_msg_writer() << tr("Balance per address:");
@@ -6798,14 +6793,9 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
 	if (offshore) {
 	  offshore_fee = m_wallet->get_offshore_fee(dsts, priority);
 	  total_sent = dsts.back().amount;
-	  uint64_t xusd_estimate = m_wallet->get_xusd_amount(total_sent, bc_height-1);
-	  prompt << boost::format(tr("Offshoring %s xUSD by burning %s XHV (plus conversion fee %s XHV).  ")) % print_money(xusd_estimate) % print_money(total_sent) % print_money(offshore_fee);
-	} else if (onshore) {
-	  offshore_fee = m_wallet->get_xusd_amount(m_wallet->get_offshore_fee(dsts, priority), bc_height-1);
-	  total_sent = dsts.back().amount;
-	  uint64_t usd_estimate = m_wallet->get_xusd_amount(total_sent, bc_height-1);
-	  prompt << boost::format(tr("Onshoring %s XHV by burning %s xUSD (plus conversion fee %s xUSD).  ")) % print_money(total_sent) % print_money(usd_estimate) % print_money(offshore_fee);
-	} else if (offshore_to_offshore) {
+	  uint64_t usdi_estimate = m_wallet->get_xusd_amount(total_sent, bc_height-1);
+	  prompt << boost::format(tr("Exchanging %s USDi by burning %s XEQ (plus conversion fee %s XEQ).  ")) % print_money(usdi_estimate) % print_money(total_sent) % print_money(offshore_fee);
+	}  else if (offshore_to_offshore) {
 	  total_sent = dsts.back().amount;
 	  prompt << boost::format(tr("Sending %s xUSD.  ")) % print_money(total_sent);
 	} else {
@@ -8568,7 +8558,7 @@ bool simple_wallet::sweep_below(const std::vector<std::string> &args_)
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::offshore_sweep_all(const std::vector<std::string> &args_)
 {
-  return sweep_main(0, false, args_, true);
+  sweep_main(m_current_subaddress_account, 0, false, args_);
 }
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::offshore_sweep_below(const std::vector<std::string> &args_)
@@ -8584,7 +8574,7 @@ bool simple_wallet::offshore_sweep_below(const std::vector<std::string> &args_)
     fail_msg_writer() << tr("invalid amount threshold");
     return true;
   }
-  return sweep_main(below, false, std::vector<std::string>(++args_.begin(), args_.end()), true);
+  return sweep_main(m_current_subaddress_account, below, false, std::vector<std::string>(++args_.begin(), args_.end()), true);
 }
 //----------------------------------------------------------------------------------------------------
 bool simple_wallet::donate(const std::vector<std::string> &args_)

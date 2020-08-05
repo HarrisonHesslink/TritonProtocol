@@ -528,9 +528,12 @@ int main(int argc, char* argv[])
 		tx_memory_pool m_mempool;
 		service_nodes::service_node_list m_service_node_list;
 		triton::deregister_vote_pool m_deregister_vote_pool;
+    service_nodes::quorum_cop m_quorum_cop;
+    crypto::public_key m_service_node_key;
 		BlockchainObjects() :
-			m_blockchain(m_mempool, m_service_node_list, m_deregister_vote_pool),
-			m_service_node_list(m_blockchain),
+			m_blockchain(m_mempool, m_service_node_list, m_deregister_vote_pool, m_service_node_key),
+      m_quorum_cop(nullptr),
+			m_service_node_list(m_blockchain, m_quorum_cop),
 			m_mempool(m_blockchain) { }
 	};
   std::array<Blockchain *, 2> core_storage;

@@ -2640,7 +2640,7 @@ skip:
  template<class t_core>
  bool t_cryptonote_protocol_handler<t_core>::relay_ribbon_data(NOTIFY_RIBBON_DATA::request& arg, cryptonote_connection_context& exclude_context)
  {
-   return relay_post_notify<NOTIFY_RIBBON_DATA>(arg, exclude_context);
+   return relay_to_synchronized_peers<NOTIFY_RIBBON_DATA>(arg, exclude_context);
  }
  //------------------------------------------------------------------------------------------------------------------------
  template<class t_core>

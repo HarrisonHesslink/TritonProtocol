@@ -219,6 +219,9 @@ namespace cryptonote
      uint64_t already_generated_coins,
      size_t current_block_size,
      uint64_t fee,
+     uint64_t fee_usd, 
+     uint64_t offshore_fee, 
+     uint64_t offshore_fee_usd,
      const account_public_address &miner_address,
      transaction& tx,
      const blobdata& extra_nonce,
@@ -265,6 +268,11 @@ namespace cryptonote
 
 	miner_reward_context block_reward_context = {};
 	block_reward_context.fee = fee;
+
+	if (hard_fork_version >= HF_VERSION_OFFSHORE_FULL) {
+	  block_reward_context.fee += offshore_fee;
+	}
+
 	block_reward_context.height = height;
 	block_reward_context.snode_winner_info = miner_context.snode_winner_info;
 
@@ -278,6 +286,23 @@ namespace cryptonote
     LOG_PRINT_L1("Creating block template: reward " << block_reward <<
       ", fee " << fee);
 #endif
+
+  uint64_t block_reward_usd = fee_usd;
+  uint64_t sn_reward_usd = 0;
+  if (hard_fork_version >= HF_VERSION_OFFSHORE_FULL) {
+      
+    // Add outputs for the USDi amounts
+    if (fee_usd != 0) {
+
+      sn_reward_usd = service_node_reward_formula(fee_usd, hard_fork_version);
+    }
+
+    if (offshore_fee_usd != 0) {
+      sn_reward_usd += offshore_fee_usd;
+    }
+
+  }
+
 
 	uint64_t summary_amounts = 0;
 	// Miner Reward
@@ -299,6 +324,23 @@ namespace cryptonote
 		out.target = tk;
 		tx.vout.push_back(out);
 		tx.output_unlock_times.push_back(height + CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
+
+    if (hard_fork_version >= HF_VERSION_OFFSHORE_FULL)
+    {
+      // Miner component of the offshore fee
+      r = crypto::derive_public_key(derivation, 2, miner_address.m_spend_public_key, out_eph_public_key);
+      CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to derive_public_key(" << derivation << ", " << "2" << ", "<< miner_address.m_spend_public_key << ")");
+
+    	txout_offshore tk_off;
+    	tk_off.key = out_eph_public_key;
+    
+    	tx_out out_off;
+    	out_off.amount = block_reward_usd;
+    	out_off.target = tk_off;
+    	tx.vout.push_back(out_off);
+    }
+
+
 	}
 
 	if (hard_fork_version >= SERVICE_NODE_VERSION) // Service Node Reward
@@ -319,6 +361,26 @@ namespace cryptonote
 			out.target = tk;
 			tx.vout.push_back(out);
 			tx.output_unlock_times.push_back(height + CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
+
+      if (hard_fork_version >= HF_VERSION_OFFSHORE_FULL)
+      {
+        crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
+        crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
+        bool r = crypto::generate_key_derivation(service_node_info[i].first.m_view_public_key, sn_key.sec, derivation);
+        CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to generate_key_derivation(" << service_node_info[i].first.m_view_public_key << ", "<< sn_key.sec << ")");
+        r = crypto::derive_public_key(derivation, 1 + i, service_node_info[i].first.m_spend_public_key, out_eph_public_key);
+        CHECK_AND_ASSERT_MES(r, false, "while creating outs: failed to derive_public_key(" << derivation << ", " << (1 + i) << ", " << service_node_info[i].first.m_spend_public_key << ")");
+
+        txout_to_key tk;
+        tk.key = out_eph_public_key;
+        tx_out out;
+        summary_amounts += out.amount = get_portion_of_reward(service_node_info[i].second, sn_reward_usd);
+        out.target = tk;
+        tx.vout.push_back(out);
+        tx.output_unlock_times.push_back(height + CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
+      }
+
+
 		}
 	}
 
@@ -360,7 +422,7 @@ namespace cryptonote
   {
 	  result = {};
 	  uint64_t base_reward;
-	  if (!get_block_reward(median_weight, current_block_weight, already_generated_coins, base_reward, hard_fork_version, nettype, height))
+	  if (!get_block_reward(median_weight, current_block_weight, already_generated_coins, base_reward, hard_fork_version))
 	  {
 		  MERROR("Failed to calculate base block reward");
 		  return false;
@@ -424,7 +486,8 @@ namespace cryptonote
     return addr.m_view_public_key;
   }
   //---------------------------------------------------------------
-  bool get_offshore_fee(const std::vector<cryptonote::tx_destination_entry> dsts, const uint32_t unlock_time, const offshore::pricing_record &pr, uint64_t &fee_estimate) {
+  bool get_offshore_fee(const std::vector<cryptonote::tx_destination_entry> dsts, const uint32_t unlock_time, uint64_t &fee_estimate)
+  {
 
     // Calculate the amount being sent
     uint64_t amount = 0;
@@ -438,45 +501,14 @@ namespace cryptonote
 	      amount += dt.amount;
       }
     }
-
-    // Get the delta
-    // abs() implementation for uint64_t's
-    uint64_t delta = (pr.unused1 > pr.xUSD) ? pr.unused1 - pr.xUSD : pr.xUSD - pr.unused1;
-
     // Estimate the fee
-    fee_estimate = delta * exp((M_PI / -1000.0) * (unlock_time - 60) * 1.2) * amount / 10000;
+    fee_estimate = (.003 * amount) / 10000;
 
     // Return the fee
     return fee_estimate;
   }
   //---------------------------------------------------------------
-  bool get_onshore_fee(const std::vector<cryptonote::tx_destination_entry> dsts, const uint32_t unlock_time, const offshore::pricing_record &pr, uint64_t &fee_estimate) {
-
-    // Calculate the amount being sent
-    uint64_t amount_usd = 0;
-    for (auto dt: dsts) {
-      if (0 == dt.amount_usd) {
-        MERROR("No USDi amount specified for destination");
-        return false;
-      }
-      // Filter out the change, which is never converted
-      if (dt.amount != 0) {
-	      amount_usd += dt.amount_usd;
-      }
-    }
-
-    // Get the delta
-    // abs() implementation for uint64_t's
-    uint64_t delta = (pr.unused1 > pr.xUSD) ? pr.unused1 - pr.xUSD : pr.xUSD - pr.unused1;
-
-    // Estimate the fee
-    fee_estimate = delta * exp((M_PI / -1000.0) * (unlock_time - 60) * 1.2) * amount_usd / 10000;
-
-    // Return the fee
-    return fee_estimate;
-  }
-  //---------------------------------------------------------------
-  bool construct_tx_with_tx_key(const account_keys& sender_account_keys, const std::unordered_map<crypto::public_key, subaddress_index>& subaddresses, std::vector<tx_source_entry>& sources, std::vector<tx_destination_entry>& destinations, const boost::optional<cryptonote::account_public_address>& change_addr, const std::vector<uint8_t> &extra, transaction& tx, uint64_t unlock_time, const crypto::secret_key &tx_key, const std::vector<crypto::secret_key> &additional_tx_keys, uint64_t current_height, offshore::pricing_record pr, bool use_offshore_tx_version, bool rct, const rct::RCTConfig &rct_config, rct::multisig_out *msout, bool shuffle_outs, bool per_output_unlock)
+  bool construct_tx_with_tx_key(const account_keys& sender_account_keys, const std::unordered_map<crypto::public_key, subaddress_index>& subaddresses, std::vector<tx_source_entry>& sources, std::vector<tx_destination_entry>& destinations, const boost::optional<cryptonote::account_public_address>& change_addr, const std::vector<uint8_t> &extra, transaction& tx, uint64_t unlock_time, const crypto::secret_key &tx_key, const std::vector<crypto::secret_key> &additional_tx_keys, uint64_t current_height, std::tuple<uint64_t, uint64_t, uint64_t> pr, bool use_offshore_tx_version, bool rct, const rct::RCTConfig &rct_config, rct::multisig_out *msout, bool shuffle_outs, bool per_output_unlock)
   {
     hw::device &hwdev = sender_account_keys.get_device();
 
@@ -494,9 +526,6 @@ namespace cryptonote
       msout->c.clear();
     }
     
-    bool is_burn_tx = ((pub_mint_key != crypto::null_pkey) && (sec_mint_key == crypto::null_skey));
-    bool is_mint_tx = (sec_mint_key != crypto::null_skey);
-
     if(use_offshore_tx_version)
     {
       tx.version = 4;
@@ -783,48 +812,50 @@ namespace cryptonote
       out.amount = dst_entr_clone.amount;
 
       if (offshore_to_offshore) {
-	txout_offshore tk;
-	tk.key = out_eph_public_key;
-	out.target = tk;
-	out.amount = dst_entr_clone.amount_usd;
-	outamounts.push_back(std::pair<uint64_t,uint64_t>(0, dst_entr_clone.amount_usd));
+        txout_offshore tk;
+        tk.key = out_eph_public_key;
+        out.target = tk;
+        out.amount = dst_entr_clone.amount_usd;
+        outamounts.push_back(std::pair<uint64_t,uint64_t>(0, dst_entr_clone.amount_usd));
       } else if (onshore) {
-	if (output_index == (destinations.size()-1)) {
-	  // CHANGE
-	  txout_offshore tk;
-	  tk.key = out_eph_public_key;
-	  out.target = tk;
-	  out.amount = dst_entr_clone.amount_usd;
-	  outamounts.push_back(std::pair<uint64_t,uint64_t>(0, dst_entr_clone.amount_usd));
-	} else {
-	  // OUTPUT (dest / conversion fee)
-	  txout_to_key tk;
-	  tk.key = out_eph_public_key;
-	  out.target = tk;
-	  outamounts.push_back(std::pair<uint64_t,uint64_t>(dst_entr_clone.amount, 0));
-	}
-      } else if (offshore) {
-	if (output_index == destinations.size()-1) {
-	  // CHANGE
-	  txout_to_key tk;
-	  tk.key = out_eph_public_key;
-	  out.target = tk;
-	  outamounts.push_back(std::pair<uint64_t,uint64_t>(dst_entr_clone.amount, 0));
-	} else {
-	  // OUTPUT
-	  txout_offshore tk;
-	  tk.key = out_eph_public_key;
-	  out.target = tk;
-	  out.amount = dst_entr_clone.amount_usd;
-	  outamounts.push_back(std::pair<uint64_t,uint64_t>(0, dst_entr_clone.amount_usd));
-	}
+      if (output_index == (destinations.size()-1)) {
+        // CHANGE
+        txout_offshore tk;
+        tk.key = out_eph_public_key;
+        out.target = tk;
+        out.amount = dst_entr_clone.amount_usd;
+        outamounts.push_back(std::pair<uint64_t,uint64_t>(0, dst_entr_clone.amount_usd));
       } else {
-	// Normal TX
-	txout_to_key tk;
-	tk.key = out_eph_public_key;
-	out.target = tk;
-	outamounts.push_back(std::pair<uint64_t,uint64_t>(dst_entr_clone.amount, 0));
+        // OUTPUT (dest / conversion fee)
+        txout_to_key tk;
+        tk.key = out_eph_public_key;
+        out.target = tk;
+        outamounts.push_back(std::pair<uint64_t,uint64_t>(dst_entr_clone.amount, 0));
       }
+      } 
+      else if (offshore) 
+      {
+      if (output_index == destinations.size()-1) {
+        // CHANGE
+        txout_to_key tk;
+        tk.key = out_eph_public_key;
+        out.target = tk;
+        outamounts.push_back(std::pair<uint64_t,uint64_t>(dst_entr_clone.amount, 0));
+      } else {
+        // OUTPUT
+        txout_offshore tk;
+        tk.key = out_eph_public_key;
+        out.target = tk;
+        out.amount = dst_entr_clone.amount_usd;
+        outamounts.push_back(std::pair<uint64_t,uint64_t>(0, dst_entr_clone.amount_usd));
+      }
+      } else {
+      // Normal TX
+      txout_to_key tk;
+      tk.key = out_eph_public_key;
+      out.target = tk;
+      outamounts.push_back(std::pair<uint64_t,uint64_t>(dst_entr_clone.amount, 0));
+          }
       
       tx.vout.push_back(out);
       output_index++;
@@ -906,7 +937,7 @@ namespace cryptonote
       MDEBUG("Null secret key, skipping signatures");
     }
 
-    if (tx.version == 1 && !is_mint_tx)
+    if (tx.version == 1)
     {
       //generate ring signatures
       crypto::hash tx_prefix_hash;
@@ -940,16 +971,6 @@ namespace cryptonote
       }
 
       MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << ENDL << obj_to_json_str(tx) << ENDL << ss_ring_s.str());
-    }
-    else if (is_mint_tx)
-    {
-      crypto::hash mint_hash = get_mint_hash(tx);
-      crypto::signature sig;
-      std::vector<crypto::signature> sigs;
-      crypto::generate_signature(mint_hash, pub_mint_key, sec_mint_key, sig);
-      sigs.push_back(sig);
-      tx.signatures.push_back(sigs);
-      MCINFO("construct_tx", "transaction_created: " << get_transaction_hash(tx) << ENDL << obj_to_json_str(tx) << ENDL);
     }
     else
     {
@@ -993,7 +1014,7 @@ namespace cryptonote
       std::vector<rct::multisig_kLRki> kLRki;
       for (size_t i = 0; i < sources.size(); ++i)
       {
-	rct::ctkey ctkey, ctkey_usd;
+	      rct::ctkey ctkey, ctkey_usd;
         rct::ctkeyV ctkeyV; // LA
         amount_in += sources[i].amount; //????
         inamounts.push_back(std::pair<uint64_t,uint64_t>(sources[i].amount, sources[i].amount_usd));
@@ -1003,11 +1024,11 @@ namespace cryptonote
         //HBD ctkey.mask = sources[i].mask;
         ctkey.dest = rct::sk2rct(in_contexts[i].in_ephemeral.sec);
         ctkey.mask = sources[i].mask;
-	ctkeyV.push_back(ctkey);
+	      ctkeyV.push_back(ctkey);
         memwipe(&ctkey, sizeof(rct::ctkey));
         ctkey_usd.dest = rct::sk2rct(in_contexts[i].in_ephemeral.sec);
         ctkey_usd.mask = sources[i].mask_usd;
-	ctkeyV.push_back(ctkey_usd);
+	      ctkeyV.push_back(ctkey_usd);
         memwipe(&ctkey_usd, sizeof(rct::ctkey));
         //HBD inSk.push_back(ctkey);
         inSk.push_back(ctkeyV);
@@ -1049,23 +1070,21 @@ namespace cryptonote
       uint64_t fee_usd = 0;
       uint64_t offshore_fee = 0;
       uint64_t offshore_fee_usd = 0;
-      bool r =
-	(offshore) ? get_offshore_fee(destinations, unlock_time-current_height-1, pr, offshore_fee) :
-	(onshore) ? get_onshore_fee(destinations, unlock_time-current_height-1, pr, offshore_fee_usd) : true;
+      bool r =  get_offshore_fee(destinations, unlock_time-current_height-1, offshore_fee);
       if (!r) {
-	LOG_ERROR("failed to get offshore fee - aborting");
-	return false;
+        LOG_ERROR("failed to get offshore fee - aborting");
+        return false;
       }
       if (summary_inputs_money > summary_outs_money) {
-	fee = summary_inputs_money - summary_outs_money - offshore_fee;
-	if (!use_simple_rct) {
-	  outamounts.push_back(std::pair<uint64_t, uint64_t>(fee, 0));
-	}
-      } else if (summary_inputs_money_usd > summary_outs_money_usd) {
-	fee_usd = summary_inputs_money_usd - summary_outs_money_usd - offshore_fee_usd;
-	if (!use_simple_rct) {
-	  outamounts.push_back(std::pair<uint64_t, uint64_t>(fee, 0));
-	}
+        fee = summary_inputs_money - summary_outs_money - offshore_fee;
+        if (!use_simple_rct) {
+          outamounts.push_back(std::pair<uint64_t, uint64_t>(fee, 0));
+        }
+            } else if (summary_inputs_money_usd > summary_outs_money_usd) {
+        fee_usd = summary_inputs_money_usd - summary_outs_money_usd - offshore_fee_usd;
+        if (!use_simple_rct) {
+          outamounts.push_back(std::pair<uint64_t, uint64_t>(fee, 0));
+        }
       }
       
       // zero out all amounts to mask rct outputs, real amounts are now encrypted
@@ -1101,7 +1120,7 @@ namespace cryptonote
       if (bOffshoreTx) {
         if (offshore) {
           double d_xusd_amount = boost::lexical_cast<double>(tx.amount_minted);
-          double d_exchange_rate = boost::lexical_cast<double>(pr.unused1);
+          double d_exchange_rate = boost::lexical_cast<double>(std::get<1>(pr) / 10000 * std::get<2>(pr));
           tx.amount_burnt = (uint64_t)((d_xusd_amount / d_exchange_rate) * 1000000000000.0);
         } else if (onshore) {
 
@@ -1125,7 +1144,7 @@ namespace cryptonote
       else
         tx.rct_signatures = rct::genRct(rct::hash2rct(tx_prefix_hash), inSk, destination_keys, outamounts, mixRing, amount_keys, msout ? &kLRki[0] : NULL, msout, sources[0].real_output, outSk, rct_config, hwdev); // same index assumption
       for (size_t i=0; i<inSk.size(); i++) {
-	memwipe(&inSk[i], sizeof(rct::ctkeyV));
+	      memwipe(&inSk[i], sizeof(rct::ctkeyV));
       }
       
       CHECK_AND_ASSERT_MES(tx.vout.size() == outSk.size(), false, "outSk size does not match vout");
@@ -1138,7 +1157,7 @@ namespace cryptonote
     return true;
   }
   //---------------------------------------------------------------
-  bool construct_tx_and_get_tx_key(const account_keys& sender_account_keys, const std::unordered_map<crypto::public_key, subaddress_index>& subaddresses, std::vector<tx_source_entry>& sources, std::vector<tx_destination_entry>& destinations, const boost::optional<cryptonote::account_public_address>& change_addr, const std::vector<uint8_t> &extra, transaction& tx, uint64_t unlock_time, crypto::secret_key &tx_key, std::vector<crypto::secret_key> &additional_tx_keys, uint64_t current_height, offshore::pricing_record pr, bool use_offshore_tx_version, bool rct, const rct::RCTConfig &rct_config, rct::multisig_out *msout, bool is_staking_tx, bool per_output_unlock)
+  bool construct_tx_and_get_tx_key(const account_keys& sender_account_keys, const std::unordered_map<crypto::public_key, subaddress_index>& subaddresses, std::vector<tx_source_entry>& sources, std::vector<tx_destination_entry>& destinations, const boost::optional<cryptonote::account_public_address>& change_addr, std::vector<uint8_t> extra, transaction& tx, uint64_t unlock_time, crypto::secret_key &tx_key, std::vector<crypto::secret_key> &additional_tx_keys, uint64_t current_height, std::tuple<uint64_t, uint64_t, uint64_t> pr, bool use_offshore_tx_version, bool rct, const rct::RCTConfig &rct_config, rct::multisig_out *msout, bool is_staking_tx, bool per_output_unlock)
   {
     hw::device &hwdev = sender_account_keys.get_device();
     hwdev.open_tx(tx_key);
@@ -1175,7 +1194,7 @@ namespace cryptonote
      std::unordered_map<crypto::public_key, cryptonote::subaddress_index> subaddresses;
      subaddresses[sender_account_keys.m_account_address.m_spend_public_key] = {0,0};
      crypto::secret_key tx_key;
-     offshore::pricing_record pr;
+     std::tuple<uint64_t, uint64_t, uint64_t> pr;
      std::vector<crypto::secret_key> additional_tx_keys;
      std::vector<tx_destination_entry> destinations_copy = destinations;
      return construct_tx_and_get_tx_key(sender_account_keys, subaddresses, sources, destinations_copy, change_addr, extra, tx, unlock_time, tx_key, additional_tx_keys, 0, pr, false, false, { rct::RangeProofBorromean, 0}, NULL, is_staking, per_output_unlock);
@@ -1186,7 +1205,6 @@ namespace cryptonote
       block& bl
     , std::string const & genesis_tx
     , uint32_t nonce
-    , cryptonote::network_type nettype
     )
   {
     //genesis block

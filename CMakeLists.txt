@@ -442,16 +442,10 @@ find_package(OpenSSL REQUIRED)
 message(STATUS "Using OpenSSL include dir at ${OPENSSL_INCLUDE_DIR}")
 include_directories(${OPENSSL_INCLUDE_DIR})
 
-find_package(CURL REQUIRED)
-message(STATUS "Using OpenSSL include dir at ${CURL_INCLUDE_DIRS}")
-include_directories(${CURL_INCLUDE_DIRS})
-set(CURL_LIBRARIES "${CURL_LIBRARIES}")
-
 
 if(STATIC AND NOT IOS)
   if(UNIX)
     set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};${CMAKE_DL_LIBS};${CMAKE_THREAD_LIBS_INIT}")
-    set(CURL_LIBRARIES "${CURL_LIBRARIES}")
   endif()
   if(MINGW)
   endif()

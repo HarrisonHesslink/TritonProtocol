@@ -33,7 +33,6 @@
 #include "cryptonote_basic/difficulty.h"
 #include "ringct/rctSigs.h"
 #include "rpc/rpc_handler.h"
-#include "offshore/pricing_record.h"
 
 #include <unordered_map>
 #include <vector>
@@ -165,7 +164,6 @@ namespace rpc
     uint64_t timestamp;
     crypto::hash  prev_id;
     uint32_t nonce;
-    offshore::pricing_record pricing_record;
     uint64_t height;
     uint64_t depth;
     crypto::hash hash;

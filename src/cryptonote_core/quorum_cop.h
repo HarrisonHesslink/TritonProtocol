@@ -48,7 +48,7 @@ namespace service_nodes
 {
 	struct ribbon_data_v2 {
 		uint64_t height;
-		uint64_t ribbon_green;
+		uint64_t spot;
 		uint64_t ribbon_blue;
 		uint64_t ribbon_volume;
 		uint64_t btc_a;
@@ -67,7 +67,7 @@ namespace service_nodes
 		void block_added(const cryptonote::block& block, const std::vector<std::pair<cryptonote::transaction, cryptonote::blobdata>>& txs) override;
 		void blockchain_detached(uint64_t height) override;
 
-		bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof);
+		bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmatio);
 		bool handle_ribbon_data_received(const cryptonote::NOTIFY_RIBBON_DATA::request &data);
 
 		static const uint64_t REORG_SAFETY_BUFFER_IN_BLOCKS = 20;

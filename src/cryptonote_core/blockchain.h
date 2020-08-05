@@ -65,7 +65,6 @@ namespace triton
 {
   class deregister_vote_pool;
 };
-#include "offshore/pricing_handler.h"
 
 namespace tools { class Notify; }
 
@@ -659,7 +658,7 @@ namespace cryptonote
      *
      * @return false if any input is invalid, otherwise true
      */
-    bool check_tx_inputs(transaction& tx, uint64_t& pmax_used_block_height, crypto::hash& max_used_block_id, tx_verification_context &tvc, bool kept_by_block = false) const;
+    bool check_tx_inputs(transaction& tx, uint64_t& pmax_used_block_height, crypto::hash& max_used_block_id, tx_verification_context &tvc, bool kept_by_block = false);
 
     /**
      * @brief get fee quantization mask
@@ -726,7 +725,7 @@ namespace cryptonote
      *
      * @return false if any outputs do not conform, otherwise true
      */
-    bool check_tx_outputs(const transaction& tx, tx_verification_context &tvc) const;
+    bool check_tx_outputs(const transaction& tx, tx_verification_context &tvc);
 
     /**
      * @brief gets the block weight limit based on recent blocks
@@ -767,7 +766,6 @@ namespace cryptonote
      *
      * @return false if method failed to obtain pricing record from oracle, otherwise true
      */
-    bool get_pricing_record(offshore::pricing_record& pr, uint64_t timestamp) const;
 
     /**
      * @brief gets the difficulty of the block with a given height
@@ -1224,8 +1222,6 @@ namespace cryptonote
 
     HardFork *m_hardfork;
 
-    offshore::PricingHandler *m_pricing_handler;
-
     network_type m_nettype;
     bool m_offline;
     difficulty_type m_fixed_difficulty;
@@ -1246,9 +1242,6 @@ namespace cryptonote
     bool m_btc_valid;
     crypto::public_key m_service_node_pubkey;
     
-
-
-    bool m_batch_success;
 
 
     bool m_batch_success;
@@ -1334,7 +1327,7 @@ namespace cryptonote
      *
      * @return false if any validation step fails, otherwise true
      */
-    bool check_tx_inputs(transaction& tx, tx_verification_context &tvc, uint64_t* pmax_used_block_height = NULL) const;
+    bool check_tx_inputs(transaction& tx, tx_verification_context &tvc, uint64_t* pmax_used_block_height = NULL);
 
     /**
      * @brief performs a blockchain reorganization according to the longest chain rule
@@ -1527,17 +1520,6 @@ namespace cryptonote
      */
      bool is_output_spendtime_unlocked(uint64_t unlock_time) const;
      
-    /**
-     * @brief checks if a transaction is burnt
-     *
-     * This function checks to see if a transaction is burnt.
-     * 
-     *
-     * @param txid TXHASH
-     *
-     * @return true if burnt, otherwise false
-     */
-    bool is_burn_tx(crypto::hash txid) const;
 
     /**
      * @brief fetches txs from mixins according to key offsets and an amount
@@ -1662,7 +1644,7 @@ namespace cryptonote
      * @param result false if the ring signature is invalid, otherwise true
      */
     void check_ring_signature(const crypto::hash &tx_prefix_hash, const crypto::key_image &key_image,
-        const std::vector<rct::ctkey> &pubkeys, const std::vector<crypto::signature> &sig, uint64_t &result) const;
+        const std::vector<rct::ctkey> &pubkeys, const std::vector<crypto::signature> &sig, uint64_t &result);
 
     /**
      * @brief loads block hashes from compiled-in data set
@@ -1682,7 +1664,7 @@ namespace cryptonote
      * can be reconstituted by the receiver. This function expands
      * that implicit data.
      */
-    bool expand_transaction_2(transaction &tx, const crypto::hash &tx_prefix_hash, const std::vector<std::vector<rct::ctkey>> &pubkeys) const;
+    bool expand_transaction_2(transaction &tx, const crypto::hash &tx_prefix_hash, const std::vector<std::vector<rct::ctkey>> &pubkeys);
 
     /**
      * @brief invalidates any cached block template

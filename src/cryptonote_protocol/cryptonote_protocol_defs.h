@@ -426,11 +426,11 @@ namespace cryptonote
   {
     const static int ID = BC_COMMANDS_POOL_BASE + 12;
 
-    struct request
+    struct request_t
     {
       uint64_t timestamp;
       uint64_t height;
-      uint64_t ribbon_green;
+      uint64_t spot;
       uint64_t ribbon_blue;
       uint64_t ribbon_volume;
       uint64_t btc_a;
@@ -440,7 +440,7 @@ namespace cryptonote
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(timestamp)
         KV_SERIALIZE(height)
-        KV_SERIALIZE(ribbon_green)
+        KV_SERIALIZE(spot)
         KV_SERIALIZE(ribbon_blue)
         KV_SERIALIZE(ribbon_volume)
         KV_SERIALIZE(btc_a)

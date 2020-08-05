@@ -42,7 +42,6 @@
 #include "serialization/json_archive.h"
 #include "serialization/debug_archive.h"
 #include "serialization/crypto.h"
-#include "serialization/pricing_record.h"
 #include "serialization/keyvalue_serialization.h" // eepe named serialization
 #include "cryptonote_config.h"
 #include "crypto/crypto.h"
@@ -50,7 +49,6 @@
 #include "misc_language.h"
 #include "ringct/rctTypes.h"
 #include "device/device.hpp"
-#include "offshore/pricing_record.h"
 
 namespace cryptonote
 {
@@ -539,10 +537,9 @@ namespace cryptonote
     uint64_t timestamp;
     crypto::hash  prev_id;
     uint32_t nonce;
-    offshore::pricing_record pricing_record;
 
     //Ribbon Prices
-    uint64_t ribbon_green;
+    uint64_t spot;
     uint64_t ribbon_blue;
     uint64_t ribbon_red;
     uint64_t ribbon_volume;
@@ -559,7 +556,7 @@ namespace cryptonote
       FIELD(nonce)
       if (major_version > 7)
       {
-        FIELD(ribbon_green)
+        FIELD(spot)
         FIELD(ribbon_blue)
         FIELD(ribbon_red)
         FIELD(ribbon_volume)

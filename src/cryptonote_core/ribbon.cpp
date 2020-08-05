@@ -1,38 +1,14 @@
 #include <vector>
-#define CURL_STATICLIB
-#include <curl/curl.h>
 #include <iostream>
 #include <math.h>
 
+#include "net/http_client.h"
 #include "int-util.h"
 #include "rapidjson/document.h"
 #include "cryptonote_core.h"
 #include "ribbon.h"
 
 namespace service_nodes {
-
-
-size_t curl_write_callback(char *contents, size_t size, size_t nmemb, void *userp)
-{
-    ((std::string*)userp)->append((char*)contents, size * nmemb);
-    return size * nmemb;
-}
-
-// TODO: use http_client from net tools
-std::string make_curl_http_get(std::string url)
-{
-  std::string read_buffer;
-  CURL* curl = curl_easy_init(); 
-  curl_global_init(CURL_GLOBAL_ALL); 
-  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); //Fix this before launching...Should verify tradeogre
-  curl_easy_setopt(curl, CURLOPT_URL, url.c_str()); 
-  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback);
-  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &read_buffer);
-  curl_easy_setopt(curl, CURLOPT_FAILONERROR, true);
-  CURLcode res = curl_easy_perform(curl); 
-  curl_easy_cleanup(curl);
-  return read_buffer;
-}
 
 ribbon_protocol::ribbon_protocol(cryptonote::core& core) : m_core(core){};
 
@@ -57,164 +33,151 @@ std::vector<exchange_trade> ribbon_protocol::trades_during_latest_1_block()
 
 bool get_trades_from_ogre(std::vector<exchange_trade> *trades)
 {
-  std::string data = make_curl_http_get(std::string(TRADE_OGRE_API) + std::string("/history/BTC-XEQ"));
+  std::string url = "tradeogre.com";
+  std::string uri = "/api/v1/orders/BTC-XEQ";
 
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-  for (size_t i = 0; i < document.Size(); i++)
-  {
-    exchange_trade trade;
-    trade.date = document[i]["date"].GetUint64();
-    trade.type = document[i]["type"].GetString();
-    trade.price = std::stod(document[i]["price"].GetString()); // trade ogre gives this info as a string
-    trade.quantity = std::stod(document[i]["quantity"].GetString());
-    trades->push_back(trade);
-  }
-  
-  return true;
-}
+  epee::net_utils::http::http_simple_client http_client;
+  const epee::net_utils::http::http_response_info *res_info = nullptr;
+  epee::net_utils::http::fields_list fields;
+  std::string body;
 
-bool get_trades_from_tritonex(std::vector<exchange_trade> *trades)
-{
-  std::string data = make_curl_http_get(std::string(TRITON_EX) + std::string("/get_trades"));
-    
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-  for (size_t i = 0; i < document.Size(); i++)
+  http_client.set_server(url, "443",  boost::none);
+  http_client.connect(std::chrono::seconds(10));
+  bool r = true;
+  r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
+
+  if(res_info)
   {
-    exchange_trade trade;
-    trade.date = std::stoull(document[i]["TimeStamp"].GetString());
-    trade.type = document[i]["TradeType"].GetString();
-    trade.price = std::stod(document[i]["Price"].GetString()); // tritonex gives this info as a string
-    trade.quantity = std::stod(document[i]["Amount"].GetString());
-    trades->push_back(trade);
+    rapidjson::Document document;
+    document.Parse(res_info->m_body.c_str());
+    for (size_t i = 0; i < document.Size(); i++)
+    {
+      exchange_trade trade;
+      trade.date = document[i]["date"].GetUint64();
+      trade.type = document[i]["type"].GetString();
+      trade.price = std::stod(document[i]["price"].GetString()); // trade ogre gives this info as a string
+      trade.quantity = std::stod(document[i]["quantity"].GetString());
+      trades->push_back(trade);
+    }
   }
-  
+  else
+  {
+    return false;
+  }
+
   return true;
 }
 
 bool get_orders_from_ogre(std::vector<exchange_order> *orders)
 {
-  std::string data = make_curl_http_get(std::string(TRADE_OGRE_API) + std::string("/orders/BTC-XEQ"));
-    
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-
-  if(document.HasMember("buy")){
-    const rapidjson::Value& buyJson = document["buy"];
-    size_t get_top_25_orders = buyJson.Size() - 25;
-    for (rapidjson::Value::ConstMemberIterator iter = buyJson.MemberBegin() + get_top_25_orders; iter != buyJson.MemberEnd(); ++iter)
-    {
-      exchange_order order;
-      order.price = std::stod(iter->name.GetString());
-      order.quantity = std::stod(iter->value.GetString());
-      orders->push_back(order);
-    }
-  }  
-
-  return true;
+  return false;
 }
 
-std::pair<double, double> get_coinbase_pro_btc_usd()
-{
-  std::string data = make_curl_http_get(std::string(COINBASE_PRO) + std::string("/products/BTC-USD/ticker"));
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-  double btc_usd = 0;
-  double vol_usd = 0;
-  for (size_t i = 0; i < document.Size(); i++)
-  {  
-    btc_usd = std::stod(document["price"].GetString());
-    vol_usd = std::stod(document["volume"].GetString());
-  }
-  return {btc_usd, vol_usd};
-}
 
 std::pair<double, double> get_gemini_btc_usd()
 {
-  std::string data = make_curl_http_get(std::string(GEMINI_API) + std::string("/pubticker/btcusd"));
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-  double btc_usd = 0;
-  double vol_usd = 0;
-  for (size_t i = 0; i < document.Size(); i++)
-  {
-    btc_usd = std::stod(document["last"].GetString());;
-    vol_usd = std::stod(document["volume"]["USD"].GetString());;
-  }
-  return {btc_usd, vol_usd};
-}
-
-std::pair<double, double> get_bitfinex_btc_usd()
-{
-  std::string data = make_curl_http_get(std::string(BITFINEX_API) + std::string("/pubticker/btcusd"));
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-  double btc_usd = 0;
-  double vol_usd = 0;
-  for (size_t i = 0; i < document.Size(); i++)
-  {
-    btc_usd = std::stod(document["last_price"].GetString());
-    vol_usd = std::stod(document["volume"].GetString());
-  }
-  return {btc_usd, vol_usd};
+  return {0,0};
 }
 
 std::pair<double, double> get_nance_btc_usd()
 {
-  std::string data = make_curl_http_get(std::string(NANCE_API) + std::string("/ticker/24hr?symbol=BTCUSDT"));
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-  double btc_usd = 0;
-  double vol_usd = 0;
-  for (size_t i = 0; i < document.Size(); i++)
-  {
-    btc_usd = std::stod(document["lastPrice"].GetString());
-    vol_usd = std::stod(document["quoteVolume"].GetString());
-  }
-  return {btc_usd, vol_usd};
+    std::string url = "api.binance.com";
+    std::string uri = "/api/v3/ticker/24hr?symbol=BTCUSDT";
+
+    epee::net_utils::http::http_simple_client http_client;
+    const epee::net_utils::http::http_response_info *res_info = nullptr;
+    epee::net_utils::http::fields_list fields;
+    std::string body;
+
+    http_client.set_server(url, "443",  boost::none);
+    http_client.connect(std::chrono::seconds(10));
+    bool r = true;
+    r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
+    if(res_info)
+    {
+      rapidjson::Document document;
+      document.Parse(res_info->m_body.c_str());
+      double btc_usd = 0;
+      double vol_usd = 0;
+      for (size_t i = 0; i < document.Size(); i++)
+      {
+        btc_usd = std::stod(document["price"].GetString()) * 100000000;
+        vol_usd = std::stod(document["quoteVolume"].GetString());
+      }
+      return {btc_usd, vol_usd};
+    }
+    return {0,0};
 }
+
+uint64_t get_bittrex_price(std::pair<std::string, std::string> pair)
+{
+
+  std::string url = "api.bittrex.com";
+  std::string uri = "/v3/markets/" + pair.second + "-" + pair.first + "/ticker" ;
+
+  epee::net_utils::http::http_simple_client http_client;
+  const epee::net_utils::http::http_response_info *res_info = nullptr;
+  epee::net_utils::http::fields_list fields;
+  std::string body;
+
+  http_client.set_server(url, "443",  boost::none);
+  http_client.connect(std::chrono::seconds(10));
+  bool r = true;
+  r = http_client.invoke_get(uri, std::chrono::seconds(1), "", &res_info, fields);
+  if(res_info)
+  {
+      rapidjson::Document d;
+      d.Parse(res_info->m_body.c_str());
+      if(d.Size() < 0)
+          return 0;
+      for (size_t i = 0; i < d.Size(); i++)
+      {  
+          return static_cast<uint64_t>(std::stod(d["lastTradeRate"].GetString()) * 100000000);
+      }
+
+  }
+  else
+  {
+      return 0;
+  }
+  
+
+  return 0;
+}
+
 
 std::pair<double, double> get_stamp_btc_usd()
 {
-  std::string data = make_curl_http_get(std::string(STAMP_API) + std::string("/ticker/"));
-  rapidjson::Document document;
-  document.Parse(data.c_str());
-  double btc_usd = 0;
-  double vol_usd = 0;
-  for (size_t i = 0; i < document.Size(); i++)
-  {
-    btc_usd = std::stod(document["last"].GetString());
-    vol_usd = std::stod(document["volume"].GetString());
-  }
-  return {btc_usd, vol_usd};
+   return {0,0};
 }
 
 uint64_t create_bitcoin_a(){
-  std::pair<double, double> gemini_usd = get_gemini_btc_usd();
-  std::pair<double, double> coinbase_pro_usd = get_coinbase_pro_btc_usd();
-  std::pair<double, double> bitfinex_usd = get_bitfinex_btc_usd();
+  //std::pair<double, double> gemini_usd = get_gemini_btc_usd();
+  //std::pair<double, double> coinbase_pro_usd = get_coinbase_pro_btc_usd();
   std::pair<double, double> nance_usd = get_nance_btc_usd();
-  std::pair<double, double> stamp_usd = get_stamp_btc_usd();
-
-  double t_vol = gemini_usd.second + coinbase_pro_usd.second + bitfinex_usd.second + nance_usd.second + stamp_usd.second;
-  double weighted_values = (gemini_usd.first * gemini_usd.second) + (coinbase_pro_usd.first * coinbase_pro_usd.second) + (bitfinex_usd.first * bitfinex_usd.second) + (nance_usd.first * nance_usd.second) + (stamp_usd.first * stamp_usd.second);
+  uint64_t bittrex_usd = get_bittrex_price({"BTC", "USD"});
+  return static_cast<uint64_t>((bittrex_usd + nance_usd.first) / 2);
+  //double t_vol = gemini_usd.second + coinbase_pro_usd.second + bitfinex_usd.second + nance_usd.second + stamp_usd.second;
+  //double weighted_values = (gemini_usd.first * gemini_usd.second) + (coinbase_pro_usd.first * coinbase_pro_usd.second) + (bitfinex_usd.first * bitfinex_usd.second) + (nance_usd.first * nance_usd.second) + (stamp_usd.first * stamp_usd.second);
   
-  return static_cast<uint64_t>(weighted_values / t_vol);
+  //return static_cast<uint64_t>(weighted_values / t_vol);
 }
 
 double get_usd_average(){
-  std::pair<double, double> gemini_usd = get_gemini_btc_usd();
-  std::pair<double, double> coinbase_pro_usd = get_coinbase_pro_btc_usd();
-  std::pair<double, double> bitfinex_usd = get_bitfinex_btc_usd();
+  // std::pair<double, double> gemini_usd = get_gemini_btc_usd();
+  // std::pair<double, double> coinbase_pro_usd = get_coinbase_pro_btc_usd();
+  // std::pair<double, double> bitfinex_usd = get_bitfinex_btc_usd();
+  // std::pair<double, double> nance_usd = get_nance_btc_usd();
+  // std::pair<double, double> stamp_usd = get_stamp_btc_usd();
+
+  // //Sometimes coinbase pro returns 0? Need to look into this.
+  // if(coinbase_pro_usd.first == 0)
+  //   return (gemini_usd.first + bitfinex_usd.first + nance_usd.first + stamp_usd.first) / 4;
+
+  // return (gemini_usd.first + coinbase_pro_usd.first + bitfinex_usd.first + nance_usd.first + stamp_usd.first) / 5;
   std::pair<double, double> nance_usd = get_nance_btc_usd();
-  std::pair<double, double> stamp_usd = get_stamp_btc_usd();
-
-  //Sometimes coinbase pro returns 0? Need to look into this.
-  if(coinbase_pro_usd.first == 0)
-    return (gemini_usd.first + bitfinex_usd.first + nance_usd.first + stamp_usd.first) / 4;
-
-  return (gemini_usd.first + coinbase_pro_usd.first + bitfinex_usd.first + nance_usd.first + stamp_usd.first) / 5;
+  uint64_t bittrex_usd = get_bittrex_price({"BTC", "USD"});
+  return (bittrex_usd + nance_usd.first) / 2;
 }
 
 double ribbon_protocol::get_btc_b(){
@@ -249,12 +212,14 @@ uint64_t create_ribbon_blue(std::vector<exchange_trade> trades)
 }
 
 //Volume Weighted Average
-uint64_t create_ribbon_green(std::vector<exchange_trade> trades){
+uint64_t create_ribbon_green(std::vector<exchange_trade> trades)
+{
   double weighted_mean = trades_weighted_mean(trades);
   return convert_btc_to_usd(weighted_mean);
 }
 
-uint64_t get_volume_for_block(std::vector<exchange_trade> trades){
+uint64_t get_volume_for_block(std::vector<exchange_trade> trades)
+{
   double volume = 0;
   if(trades.size() == 0)
     return 0;
@@ -310,9 +275,6 @@ std::vector<exchange_trade> get_recent_trades()
   std::vector<service_nodes::exchange_trade> trades;
   if(!service_nodes::get_trades_from_ogre(&trades))
     MERROR("Error getting trades from Ogre");
-
-  if(!service_nodes::get_trades_from_tritonex(&trades))
-    MERROR("Error getting trades from TritonEX");
 
   return trades;
 }

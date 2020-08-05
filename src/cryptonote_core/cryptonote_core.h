@@ -66,7 +66,7 @@ namespace cryptonote
   struct ribbon_data_core {
 		uint64_t ribbon_red;
 		uint64_t ribbon_blue;
-    uint64_t ribbon_green;
+    uint64_t spot;
 		uint64_t ribbon_volume;
 	};
 
@@ -126,7 +126,7 @@ namespace cryptonote
      *
      * @return true if we haven't seen it before and thus need to relay.
      */
-     bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof);
+     bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation);
     /**
      * @brief handles incoming ribbon data
      *
@@ -288,8 +288,8 @@ namespace cryptonote
      /**
     * @brief mark the deregister vote as having been relayed in the vote pool
     */
-   virtual void set_deregister_votes_relayed(const std::vector<triton::service_node_deregister::vote>& votes);
-     virtual void on_transactions_relayed(epee::span<const cryptonote::blobdata> tx_blobs, relay_method tx_relay) final;
+    virtual void set_deregister_votes_relayed(const std::vector<triton::service_node_deregister::vote>& votes);
+    virtual void on_transactions_relayed(epee::span<const cryptonote::blobdata> tx_blobs, relay_method tx_relay) final;
 
 
      /**
@@ -297,14 +297,14 @@ namespace cryptonote
       *
       * @return a reference to the miner instance
       */
-     miner& get_miner(){return m_miner;}
+    miner& get_miner(){return m_miner;}
 
      /**
       * @brief gets the miner instance (const)
       *
       * @return a const reference to the miner instance
       */
-     const miner& get_miner()const{return m_miner;}
+    const miner& get_miner()const{return m_miner;}
 
      /**
       * @brief adds command line options to the given options set
@@ -314,7 +314,7 @@ namespace cryptonote
       *
       * @param desc return-by-reference the command line options set to add to
       */
-     static void init_options(boost::program_options::options_description& desc);
+    static void init_options(boost::program_options::options_description& desc);
 
      /**
       * @brief initializes the core as needed
@@ -328,14 +328,14 @@ namespace cryptonote
       *
       * @return false if one of the init steps fails, otherwise true
       */
-     bool init(const boost::program_options::variables_map& vm, const test_options *test_options = NULL, const GetCheckpointsCallback& get_checkpoints = nullptr);
+    bool init(const boost::program_options::variables_map& vm, const test_options *test_options = NULL, const GetCheckpointsCallback& get_checkpoints = nullptr);
 
      /**
       * @copydoc Blockchain::reset_and_set_genesis_block
       *
       * @note see Blockchain::reset_and_set_genesis_block
       */
-     bool set_genesis_block(const block& b);
+    bool set_genesis_block(const block& b);
 
      /**
       * @brief performs safe shutdown steps for core and core components
@@ -344,7 +344,7 @@ namespace cryptonote
       *
       * @return true
       */
-     bool deinit();
+    bool deinit();
 
      /**
       * @brief sets to drop blocks downloaded (for testing)

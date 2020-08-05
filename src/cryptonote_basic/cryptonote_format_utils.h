@@ -91,13 +91,7 @@ namespace cryptonote
   bool get_service_node_contributor_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::account_public_address& address);
   bool add_service_node_register_to_tx_extra(std::vector<uint8_t>& tx_extra, const std::vector<cryptonote::account_public_address>& addresses, uint64_t  portions_for_operator, const std::vector<uint64_t >& portions, uint64_t expiration_timestamp, const crypto::signature& signature);
   bool get_tx_secret_key_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::secret_key& key);
-  bool get_mint_key_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::public_key& mint_key);
-  bool get_is_mint_tx_tag_from_tx_extra(const std::vector<uint8_t>& tx_extra, bool& is_mint_tx);
-  bool get_is_burn_tx_tag_from_tx_extra(const std::vector<uint8_t>& tx_extra, bool& is_burn_tx);
   void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::secret_key& key);
-  void add_mint_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& mint_key);
-  void add_is_mint_tx_tag_to_tx_extra(std::vector<uint8_t>& tx_extra, bool is_mint_tx);
-  void add_is_burn_tx_tag_to_tx_extra(std::vector<uint8_t>& tx_extra, bool is_burn_tx);
   void add_service_node_winner_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& winner);
   crypto::public_key get_service_node_winner_from_tx_extra(const std::vector<uint8_t>& tx_extra);
   void add_service_node_pubkey_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& pubkey);
@@ -124,10 +118,6 @@ namespace cryptonote
   bool lookup_acc_outs(const account_keys& acc, const transaction& tx, const crypto::public_key& tx_pub_key, const std::vector<crypto::public_key>& additional_tx_public_keys, std::vector<size_t>& outs, uint64_t& money_transfered);
   bool lookup_acc_outs(const account_keys& acc, const transaction& tx, std::vector<size_t>& outs, uint64_t& money_transfered);
   bool get_tx_fee(const transaction& tx, uint64_t & fee);
-  void get_burn_keys(crypto::public_key& burn_pubkey, crypto::secret_key& burn_sec_key);
-  void get_burn_pubkey(crypto::public_key& pubkey);
-  uint64_t coins_burned_in_tx(cryptonote::transaction tx);
-  uint64_t coins_burned_in_txs(std::vector<cryptonote::transaction> txs);
   uint64_t get_tx_fee(const transaction& tx);
   bool generate_key_image_helper(const account_keys& ack, const std::unordered_map<crypto::public_key, subaddress_index>& subaddresses, const crypto::public_key& out_key, const crypto::public_key& tx_public_key, const std::vector<crypto::public_key>& additional_tx_public_keys, size_t real_output_index, keypair& in_ephemeral, crypto::key_image& ki, hw::device &hwdev);
   bool generate_key_image_helper_precomp(const account_keys& ack, const crypto::public_key& out_key, const crypto::key_derivation& recv_derivation, size_t real_output_index, const subaddress_index& received_index, keypair& in_ephemeral, crypto::key_image& ki, hw::device &hwdev);
@@ -179,6 +169,7 @@ namespace cryptonote
   char const *print_vote_verification_context(vote_verification_context const &vvc, triton::service_node_deregister::vote const *vote = nullptr);
 
   std::string print_money(uint64_t amount, unsigned int decimal_point = -1);
+  std::string print_money(const boost::multiprecision::uint128_t &amount, unsigned int decimal_point = -1);
   std::string print_offshore_money(uint64_t amount, unsigned int decimal_point = -1);
   //---------------------------------------------------------------
   template<class t_object>

@@ -1331,28 +1331,6 @@ namespace cryptonote
   };
 
   //-----------------------------------------------
-  struct COMMAND_RPC_GET_PRICING_RECORD
-  {
-    struct request_t
-    {
-      BEGIN_KV_SERIALIZE_MAP()
-      END_KV_SERIALIZE_MAP()
-    };
-    typedef epee::misc_utils::struct_init<request_t> request;
-    
-
-    struct response_t
-    {
-      offshore::pricing_record pr;
-      
-      BEGIN_KV_SERIALIZE_MAP()
-      KV_SERIALIZE(pr)
-      END_KV_SERIALIZE_MAP()
-    };
-    typedef epee::misc_utils::struct_init<response_t> response;
-  };
-
-  //-----------------------------------------------
   struct COMMAND_RPC_SAVE_BC
   {
     struct request_t: public rpc_request_base
@@ -1504,6 +1482,7 @@ namespace cryptonote
       uint64_t timestamp;
       std::string prev_hash;
       uint32_t nonce;
+      uint64_t spot;
       uint64_t ribbon_blue;
       uint64_t ribbon_red;
       uint64_t ribbon_volume;
@@ -1533,6 +1512,7 @@ namespace cryptonote
         KV_SERIALIZE(timestamp)
         KV_SERIALIZE(prev_hash)
         KV_SERIALIZE(nonce)
+        KV_SERIALIZE(spot)
         KV_SERIALIZE(ribbon_blue)
         KV_SERIALIZE(ribbon_red)
         KV_SERIALIZE(ribbon_volume)

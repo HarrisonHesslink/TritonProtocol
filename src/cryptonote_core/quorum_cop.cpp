@@ -251,7 +251,7 @@ namespace service_nodes
 	
 	bool quorum_cop::handle_ribbon_data_received(const cryptonote::NOTIFY_RIBBON_DATA::request &data)
 	{		
-		crypto::hash hash = make_ribbon_hash(data.timestamp, data.height, data.ribbon_green, data.ribbon_blue, data.ribbon_volume, data.btc_a, data.pubkey);
+		crypto::hash hash = make_ribbon_hash(data.timestamp, data.height, data.spot, data.ribbon_blue, data.ribbon_volume, data.btc_a, data.pubkey);
 
 		if (!crypto::check_signature(hash, data.pubkey, data.sig)){
 			std::cout << "Ribbon Signature Failure" << std::endl;
@@ -285,11 +285,11 @@ namespace service_nodes
 		std::vector<service_nodes::exchange_trade> recent_trades = rp.trades_during_latest_1_block();
 
 		if(recent_trades.size() == 0){
-			req.ribbon_green = 0;
+			req.spot = 0;
 			req.ribbon_blue = 0;
 			req.ribbon_volume = 0;
 		}else{
-			req.ribbon_green = service_nodes::create_ribbon_green(recent_trades);
+			req.spot = service_nodes::create_ribbon_green(recent_trades);
 			req.ribbon_blue = service_nodes::create_ribbon_blue(recent_trades);
 			req.ribbon_volume = service_nodes::get_volume_for_block(recent_trades);
 		}
@@ -297,7 +297,7 @@ namespace service_nodes
 
 		req.pubkey = pubkey;
 
-		crypto::hash hash = make_ribbon_hash(req.timestamp, req.height, req.ribbon_green, req.ribbon_blue, req.ribbon_volume, req.btc_a, req.pubkey);
+		crypto::hash hash = make_ribbon_hash(req.timestamp, req.height, req.spot, req.ribbon_blue, req.ribbon_volume, req.btc_a, req.pubkey);
 		crypto::generate_signature(hash, pubkey, seckey, req.sig);
 
 		crypto::hash pair_hash = make_ribbon_key_hash(pubkey, req.height);

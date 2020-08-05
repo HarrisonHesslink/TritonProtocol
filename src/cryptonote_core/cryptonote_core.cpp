@@ -942,24 +942,27 @@ namespace cryptonote
     
       // Set the offshore TX type flags
       bool offshore = false, onshore = false, offshore_to_offshore = false;
-      offshore::pricing_record pr;
+      std::tuple<uint64_t, uint64_t,uint64_t> pr;
       if (pricing_record_height) {
-	if ((tx_info[n].tx->offshore_data.at(0) > 'A') && (tx_info[n].tx->offshore_data.at(1) > 'A')) {
-	  offshore_to_offshore = true;
-	} else if (tx_info[n].tx->offshore_data.at(0) > 'A') {
-	  onshore = true;
-	} else {
-	  offshore = true;
-	}
 
-	// Get the correct pricing record here, given the height
-	std::vector<std::pair<cryptonote::blobdata,block>> blocks_pr;
-	bool b = m_blockchain_storage.get_blocks(pricing_record_height, 1, blocks_pr);
-	if (!b) {
-	  MERROR_VER("Failed to obtain pricing record for block: " << pricing_record_height);
-	  return false;
-	}
-	pr = blocks_pr[0].second.pricing_record;
+        if ((tx_info[n].tx->offshore_data.at(0) > 'A') && (tx_info[n].tx->offshore_data.at(1) > 'A')) {
+          offshore_to_offshore = true;
+        } else if (tx_info[n].tx->offshore_data.at(0) > 'A') {
+          onshore = true;
+        } else {
+          offshore = true;
+        }
+
+        // Get the correct pricing record here, given the height
+        std::vector<std::pair<cryptonote::blobdata,block>> blocks_pr;
+        bool b = m_blockchain_storage.get_blocks(pricing_record_height, 1, blocks_pr);
+        if (!b) {
+          MERROR_VER("Failed to obtain pricing record for block: " << pricing_record_height);
+          return false;
+        }
+        std::get<0>(pr) = blocks_pr[0].second.spot;
+        std::get<1>(pr) = blocks_pr[0].second.ribbon_red;
+        std::get<2>(pr) = blocks_pr[0].second.btc_b;
       }
     
       if (!check_tx_semantic(*tx_info[n].tx, keeped_by_block))
@@ -1029,30 +1032,33 @@ namespace cryptonote
       ret = false;
       for (size_t n = 0; n < tx_info.size(); ++n)
       {
-	// Get the pricing_record_height for any offshore TX
-	uint64_t pricing_record_height = tx_info[n].tx->pricing_record_height;
-    
-	// Set the offshore TX type flags
-	bool offshore = false, onshore = false, offshore_to_offshore = false;
-	offshore::pricing_record pr;
-	if (pricing_record_height) {
-	  if ((tx_info[n].tx->offshore_data.at(0) > 'A') && (tx_info[n].tx->offshore_data.at(1) > 'A')) {
-	    offshore_to_offshore = true;
-	  } else if (tx_info[n].tx->offshore_data.at(0) > 'A') {
-	    onshore = true;
-	  } else {
-	    offshore = true;
-	  }
+      // Get the pricing_record_height for any offshore TX
+      uint64_t pricing_record_height = tx_info[n].tx->pricing_record_height;
+        
+      // Set the offshore TX type flags
+      bool offshore = false, onshore = false, offshore_to_offshore = false;
+      std::tuple<uint64_t, uint64_t, uint64_t> pr;
 
-	  // Get the correct pricing record here, given the height
-	  std::vector<std::pair<cryptonote::blobdata,block>> blocks_pr;
-	  bool b = m_blockchain_storage.get_blocks(pricing_record_height, 1, blocks_pr);
-	  if (!b) {
-	    MERROR_VER("Failed to obtain pricing record for block: " << pricing_record_height);
-	    return false;
-	  }
-	  pr = blocks_pr[0].second.pricing_record;
-	}
+      if (pricing_record_height) {
+        if ((tx_info[n].tx->offshore_data.at(0) > 'A') && (tx_info[n].tx->offshore_data.at(1) > 'A')) {
+          offshore_to_offshore = true;
+        } else if (tx_info[n].tx->offshore_data.at(0) > 'A') {
+          onshore = true;
+        } else {
+          offshore = true;
+        }
+
+        // Get the correct pricing record here, given the height
+        std::vector<std::pair<cryptonote::blobdata,block>> blocks_pr;
+        bool b = m_blockchain_storage.get_blocks(pricing_record_height, 1, blocks_pr);
+        if (!b) {
+          MERROR_VER("Failed to obtain pricing record for block: " << pricing_record_height);
+          return false;
+        }
+        std::get<0>(pr) = blocks_pr[0].second.spot;
+        std::get<1>(pr) = blocks_pr[0].second.ribbon_red;
+        std::get<2>(pr) = blocks_pr[0].second.btc_b;
+      }
     
         if (!tx_info[n].result)
           continue;
@@ -1164,8 +1170,6 @@ namespace cryptonote
 
       if(tvc[i].m_verifivation_failed)
       {MERROR_VER("Transaction verification failed: " << results[i].hash);}
-      else if(tvc[i].m_verifivation_impossible)
-      {MERROR_VER("Transaction verification impossible: " << results[i].hash);}
 
       if(tvc[i].m_added_to_pool)
         MDEBUG("tx added: " << results[i].hash);
@@ -1520,7 +1524,7 @@ namespace cryptonote
         return false;
       }else{
 		    MGINFO("Submitted ribbon-data at height: " << r.height << " for service node (yours): " << m_service_node_pubkey << std::endl << 
-        "Ribbon Green Price: $" << ((float) r.ribbon_green / 1000) << std::endl << 
+        "Spot Price: $" << ((float) r.spot / 1000) << std::endl << 
         "Ribbon Blue Price: $" << ((float) r.ribbon_blue / 1000) << std::endl <<
         "Volume: $" << ((float) r.ribbon_volume / 1000) << std::endl <<
         "Bitcoin: $" << ((float) r.btc_a) << std::endl);
@@ -2371,33 +2375,35 @@ bool core::get_service_node_keys(crypto::public_key &pub_key, crypto::secret_key
 	}
 	return m_service_node;
 }
-  uint32_t core::get_blockchain_pruning_seed() const
-  {
-    return get_blockchain_storage().get_blockchain_pruning_seed();
-  }
-  //-----------------------------------------------------------------------------------------------
-  bool core::prune_blockchain(uint32_t pruning_seed)
-  {
-    return get_blockchain_storage().prune_blockchain(pruning_seed);
-  }
-  //-----------------------------------------------------------------------------------------------
-  bool core::is_within_compiled_block_hash_area(uint64_t height) const
-  {
-    return get_blockchain_storage().is_within_compiled_block_hash_area(height);
-  }
-  //-----------------------------------------------------------------------------------------------
-  bool core::has_block_weights(uint64_t height, uint64_t nblocks) const
-  {
-    return get_blockchain_storage().has_block_weights(height, nblocks);
-  }
-  //-----------------------------------------------------------------------------------------------
-  std::time_t core::get_start_time() const
-  {
-    return start_time;
-  }
-  //-----------------------------------------------------------------------------------------------
-  void core::graceful_exit()
-  {
-    raise(SIGTERM);
-  }
+//-----------------------------------------------------------------------------------------------
+
+uint32_t core::get_blockchain_pruning_seed() const
+{
+  return get_blockchain_storage().get_blockchain_pruning_seed();
+}
+//-----------------------------------------------------------------------------------------------
+bool core::prune_blockchain(uint32_t pruning_seed)
+{
+  return get_blockchain_storage().prune_blockchain(pruning_seed);
+}
+//-----------------------------------------------------------------------------------------------
+bool core::is_within_compiled_block_hash_area(uint64_t height) const
+{
+  return get_blockchain_storage().is_within_compiled_block_hash_area(height);
+}
+//-----------------------------------------------------------------------------------------------
+bool core::has_block_weights(uint64_t height, uint64_t nblocks) const
+{
+  return get_blockchain_storage().has_block_weights(height, nblocks);
+}
+//-----------------------------------------------------------------------------------------------
+std::time_t core::get_start_time() const
+{
+  return start_time;
+}
+//-----------------------------------------------------------------------------------------------
+void core::graceful_exit()
+{
+  raise(SIGTERM);
+}
 }

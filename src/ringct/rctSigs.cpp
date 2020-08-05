@@ -1242,7 +1242,7 @@ namespace rct {
     
     //RCT simple    
     //for post-rct only
-  rctSig genRctSimple(const key &message, const ctkeyM & inSk, const keyV & destinations, const vector<std::pair<xmr_amount,xmr_amount>> &inamounts, const vector<std::pair<xmr_amount,xmr_amount>> &outamounts, xmr_amount txnFee, xmr_amount txnFee_usd, xmr_amount txnOffshoreFee, xmr_amount txnOffshoreFee_usd, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, const std::vector<unsigned int> & index, ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev, const offshore::pricing_record pr) {
+  rctSig genRctSimple(const key &message, const ctkeyM & inSk, const keyV & destinations, const vector<std::pair<xmr_amount,xmr_amount>> &inamounts, const vector<std::pair<xmr_amount,xmr_amount>> &outamounts, xmr_amount txnFee, xmr_amount txnFee_usd, xmr_amount txnOffshoreFee, xmr_amount txnOffshoreFee_usd, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, const std::vector<unsigned int> & index, ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev, const std::tuple<uint64_t, uint64_t, uint64_t> pr) {
         const bool bulletproof = rct_config.range_proof_type != RangeProofBorromean;
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() > 0, "Empty inamounts");
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() == inSk.size(), "Different number of inamounts/inSk");
@@ -1426,15 +1426,15 @@ namespace rct {
         }
 
         key sumout = zero();
-	key atomic = d2h(1000000000000);
-	key rate = d2h(pr.unused1);
-	key inverse_atomic = invert(atomic);
-	key inverse_rate = invert(rate);
+        key atomic = d2h(10000);
+        key rate = d2h(std::get<1>(pr) * std::get<2>(pr));
+        key inverse_atomic = invert(atomic);
+        key inverse_rate = invert(rate);
         for (i = 0; i < outSk.size(); ++i)
         {
-	  key outSk_scaled = zero();
-	  key tempkey = zero();
-	  if (offshore || (!onshore && !offshore_to_offshore)) {
+        key outSk_scaled = zero();
+        key tempkey = zero();
+        if (offshore || (!onshore && !offshore_to_offshore)) {
 	    // SPENDING XHV
 	    if ((outamounts[i].first == 0) && (outamounts[i].second != 0)) {
 	      // Convert output amount to XHV for equalKeys() testing
@@ -1519,7 +1519,7 @@ namespace rct {
         return rv;
     }
 
-  rctSig genRctSimple(const key &message, const ctkeyM & inSk, const ctkeyV & inPk, const keyV & destinations, const vector<pair<xmr_amount,xmr_amount>> &inamounts, const vector<pair<xmr_amount,xmr_amount>> &outamounts, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, xmr_amount txnFee, xmr_amount txnFee_usd, xmr_amount txnOffshoreFee, xmr_amount txnOffshoreFee_usd, unsigned int mixin, const RCTConfig &rct_config, hw::device &hwdev, const offshore::pricing_record pr) {
+  rctSig genRctSimple(const key &message, const ctkeyM & inSk, const ctkeyV & inPk, const keyV & destinations, const vector<pair<xmr_amount,xmr_amount>> &inamounts, const vector<pair<xmr_amount,xmr_amount>> &outamounts, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, xmr_amount txnFee, xmr_amount txnFee_usd, xmr_amount txnOffshoreFee, xmr_amount txnOffshoreFee_usd, unsigned int mixin, const RCTConfig &rct_config, hw::device &hwdev, const std::tuple<uint64_t, uint64_t, uint64_t> pr) {
         std::vector<unsigned int> index;
         index.resize(inPk.size());
         ctkeyM mixRing;
@@ -1613,7 +1613,7 @@ namespace rct {
     //
     //ver RingCT simple
     //assumes only post-rct style inputs (at least for max anonymity)
-  bool verRctSemanticsSimple(const std::vector<const rctSig*> & rvv, const offshore::pricing_record pr, const bool offshore, const bool onshore, const bool offshore_to_offshore) {
+  bool verRctSemanticsSimple(const std::vector<const rctSig*> & rvv, const std::tuple<uint64_t, uint64_t, uint64_t> pr, const bool offshore, const bool onshore, const bool offshore_to_offshore) {
       try
       {
         PERF_TIMER(verRctSemanticsSimple);
@@ -1721,13 +1721,13 @@ namespace rct {
 	  // NEAC: attempt to only calculate forward
 	  // CALCULATE Zi
 	  if (offshore) {
-	    key D_scaled = scalarmultKey(sumUSD, d2h(1000000000000));
-	    key yC_invert = invert(d2h(pr.unused1));
+	    key D_scaled = scalarmultKey(sumUSD, d2h(10000));
+	    key yC_invert = invert(d2h((std::get<1>(pr) / 10000) * std::get<2>(pr)));
 	    key D_final = scalarmultKey(D_scaled, yC_invert);
 	    Zi = addKeys(sumXHV, D_final);
 	  } else if (onshore) {
-	    key C_scaled = scalarmultKey(sumXHV, d2h(pr.unused1));
-	    key yD_invert = invert(d2h(1000000000000));
+	    key C_scaled = scalarmultKey(sumXHV, d2h(std::get<1>(pr) / 10000 * std::get<2>(pr)));
+	    key yD_invert = invert(d2h(10000));
 	    key C_final = scalarmultKey(C_scaled, yD_invert);
 	    Zi = addKeys(C_final, sumUSD);
 	  } else if (offshore_to_offshore) {
@@ -1783,7 +1783,7 @@ namespace rct {
       }
     }
 
-    bool verRctSemanticsSimple(const rctSig & rv, const offshore::pricing_record pr, const bool offshore, const bool onshore, const bool offshore_to_offshore)
+    bool verRctSemanticsSimple(const rctSig & rv, const std::tuple<uint64_t, uint64_t, uint64_t> pr, const bool offshore, const bool onshore, const bool offshore_to_offshore)
     {
       return verRctSemanticsSimple(std::vector<const rctSig*>(1, &rv), pr, offshore, onshore, offshore_to_offshore);
     }

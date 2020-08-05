@@ -326,6 +326,9 @@ namespace cryptonote
           m_blockchain.add_txpool_tx(id, blob, meta);
           m_txs_by_fee_and_receive_time.emplace(std::tuple<bool, double, std::time_t>(tx.is_deregister_tx(), fee / (double)(tx_weight), receive_time), id);
           lock.commit();
+        }
+        catch (const std::exception &e)
+        {
           MERROR("Error adding transaction to txpool: " << e.what());
           return false;
         }
@@ -399,9 +402,9 @@ namespace cryptonote
         if((meta.fee > 0 || tx.is_deregister_tx())){
           tvc.m_relay = tx_relay;
         }
-        else if (!do_not_relay && ((tx.version >= OFFSHORE_TRANSACTION_VERSION) && (tx.pricing_record_height != 0))) {
+        else if (((tx.version >= OFFSHORE_TRANSACTION_VERSION) && (tx.pricing_record_height != 0))) {
           LOG_PRINT_L1("tx meta.fee is 0, but this is an offshore TX, so relaying enabled");
-          tvc.m_should_be_relayed = true;
+          tvc.m_relay = tx_relay;
         }
       }
 
@@ -513,11 +516,23 @@ namespace cryptonote
       {
         CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, txin, false);
         std::unordered_set<crypto::hash>& kei_image_set = m_spent_key_images[txin.k_image];
-        CHECK_AND_ASSERT_MES(kept_by_block || kei_image_set.size() == 0, false, "internal error: kept_by_block=" << kept_by_block
-                << ",  kei_image_set.size()=" << kei_image_set.size() << ENDL << "txin.k_image=" << txin.k_image << ENDL
-                << "tx_id=" << id );
-        auto ins_res = kei_image_set.insert(id);
-        CHECK_AND_ASSERT_MES(ins_res.second, false, "internal error: try to insert duplicate iterator in key_image set");
+
+        // Only allow multiple txes per key-image if kept-by-block. Only allow
+        // the same txid if going from local/stem->fluff.
+
+        if (tx_relay != relay_method::block)
+        {
+          const bool one_txid =
+            (kei_image_set.empty() || (kei_image_set.size() == 1 && *(kei_image_set.cbegin()) == id));
+          CHECK_AND_ASSERT_MES(one_txid, false, "internal error: tx_relay=" << unsigned(tx_relay)
+                                            << ", kei_image_set.size()=" << kei_image_set.size() << ENDL << "txin.k_image=" << txin.k_image << ENDL
+                                            << "tx_id=" << id);
+        }
+
+        const bool new_or_previously_private =
+          kei_image_set.insert(id).second ||
+          !m_blockchain.txpool_tx_matches_category(id, relay_category::legacy);
+        CHECK_AND_ASSERT_MES(new_or_previously_private, false, "internal error: try to insert duplicate iterator in key_image set");
       }
     }
     else if (tx.vin[0].type() == typeid(txin_offshore))
@@ -525,20 +540,30 @@ namespace cryptonote
       for(const auto& in: tx.vin)
       {
         CHECKED_GET_SPECIFIC_VARIANT(in, const txin_offshore, txin, false);
-        std::unordered_set<crypto::hash>& kei_image_set = m_spent_key_images[txin.k_image];
-        CHECK_AND_ASSERT_MES(kept_by_block || kei_image_set.size() == 0, false, "internal error: kept_by_block=" << kept_by_block
-                << ",  kei_image_set.size()=" << kei_image_set.size() << ENDL << "txin.k_image=" << txin.k_image << ENDL
-                << "tx_id=" << id );
-        auto ins_res = kei_image_set.insert(id);
-        CHECK_AND_ASSERT_MES(ins_res.second, false, "internal error: try to insert duplicate iterator in key_image set");
+         std::unordered_set<crypto::hash>& kei_image_set = m_spent_key_images[txin.k_image];
+
+        // Only allow multiple txes per key-image if kept-by-block. Only allow
+        // the same txid if going from local/stem->fluff.
+
+        if (tx_relay != relay_method::block)
+        {
+          const bool one_txid =
+            (kei_image_set.empty() || (kei_image_set.size() == 1 && *(kei_image_set.cbegin()) == id));
+          CHECK_AND_ASSERT_MES(one_txid, false, "internal error: tx_relay=" << unsigned(tx_relay)
+                                            << ", kei_image_set.size()=" << kei_image_set.size() << ENDL << "txin.k_image=" << txin.k_image << ENDL
+                                            << "tx_id=" << id);
+        }
+
+        const bool new_or_previously_private =
+          kei_image_set.insert(id).second ||
+          !m_blockchain.txpool_tx_matches_category(id, relay_category::legacy);
+        CHECK_AND_ASSERT_MES(new_or_previously_private, false, "internal error: try to insert duplicate iterator in key_image set");
       }
     }
     else if (tx.vin[0].type() == typeid(txin_onshore))
     {
-      for(const auto& in: tx.vin)
-      {
-        CHECK_AND_ASSERT_MES(ins_res.second, false, "Tried to insert onshore key image. Not allowed!");
-      }
+      MERROR("Can not insert onfshore key images!");
+      return false;
     }
     ++m_cookie;
     return true;
@@ -1232,7 +1257,7 @@ namespace cryptonote
       for(const auto& in: tx.vin)
       {
         CHECKED_GET_SPECIFIC_VARIANT(in, const txin_to_key, tokey_in, true);//should never fail
-        if(have_tx_keyimg_as_spent(tokey_in.k_image))
+        if(have_tx_keyimg_as_spent(tokey_in.k_image, txid))
           return true;
       }
     }
@@ -1240,7 +1265,7 @@ namespace cryptonote
       for(const auto& in: tx.vin)
       {
         CHECKED_GET_SPECIFIC_VARIANT(in, const txin_offshore, tokey_in, true);//should never fail
-        if(have_tx_keyimg_as_spent(tokey_in.k_image))
+        if(have_tx_keyimg_as_spent(tokey_in.k_image, txid))
           return true;
       }
     }
@@ -1248,7 +1273,7 @@ namespace cryptonote
       for(const auto& in: tx.vin)
       {
         CHECKED_GET_SPECIFIC_VARIANT(in, const txin_onshore, tokey_in, true);//should never fail
-        if(have_tx_keyimg_as_spent(tokey_in.k_image))
+        if(have_tx_keyimg_as_spent(tokey_in.k_image, txid))
           return true;
       }
     }
@@ -1540,7 +1565,7 @@ namespace cryptonote
   }
   //---------------------------------------------------------------------------------
   //TODO: investigate whether boolean return is appropriate
-  bool tx_memory_pool::fill_block_template(block &bl, size_t median_weight, uint64_t already_generated_coins, size_t &total_weight, uint64_t &fee, uint64_t &fee_usd, uint64_t &offshore_fee, uint64_t &offshore_fee_usd, uint64_t &expected_reward, uint8_t version, uint8_t version, network_type nettype)
+  bool tx_memory_pool::fill_block_template(block &bl, size_t median_weight, uint64_t already_generated_coins, size_t &total_weight, uint64_t &fee, uint64_t &fee_usd, uint64_t &offshore_fee, uint64_t &offshore_fee_usd, uint64_t &expected_reward, uint8_t version, network_type nettype)
   {
     CRITICAL_REGION_LOCAL(m_transactions_lock);
     CRITICAL_REGION_LOCAL1(m_blockchain);
