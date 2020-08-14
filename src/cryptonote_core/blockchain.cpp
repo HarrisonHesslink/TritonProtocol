@@ -2002,7 +2002,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
     MGINFO_GREEN("Ribbon price winner for next block (" << height << "): " << ((float)b.ribbon_blue / 1000) << "! Bitcoin Price winner for next block (" << height << "): " << b.btc_a);
 
     // give ribbon red a buffer after the fork for the required window of ribbon blue data
-    if (b.major_version > 8)
+    if (b.major_version > 9)
     {
       b.ribbon_red = create_ribbon_red(height - 1);
     }
