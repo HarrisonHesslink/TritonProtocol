@@ -1441,9 +1441,9 @@ namespace cryptonote
      * @param b the block containing the miner transaction to be validated
      * @param cumulative_block_weight the block's weight
      * @param fee the total TX fees collected in XHV in the block
-     * @param fee_usd the total TX fees collected in xUSD in the block
+     * @param fee_usd the total TX fees collected in USDi in the block
      * @param offshore_fee the total offshore fees collected in XHV in the block
-     * @param offshore_fee_usd the total offshore fees collected in xUSD in the block
+     * @param offshore_fee_usd the total offshore fees collected in USDi in the block
      * @param base_reward return-by-reference the new block's generated coins
      * @param already_generated_coins the amount of currency generated prior to this block
      * @param partial_block_reward return-by-reference true if miner accepted only partial reward

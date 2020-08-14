@@ -911,15 +911,15 @@ namespace cryptonote
       // OFFSHORE TX
       // Check that summary_inputs_money makes up the difference
       if (summary_inputs_money <= summary_outs_money) {
-	LOG_ERROR("Transaction inputs xUSD ("<< summary_inputs_money_usd << ") less than outputs xUSD (" << summary_outs_money_usd << ")");
+	LOG_ERROR("Transaction inputs USDi ("<< summary_inputs_money_usd << ") less than outputs USDi (" << summary_outs_money_usd << ")");
 	return false;
       }
       uint64_t diff = summary_inputs_money - summary_outs_money;
       uint64_t diff_usd = summary_outs_money_usd - summary_inputs_money_usd;
 
-      boost::multiprecision::uint128_t diff_xusd_128 = diff_usd;
+      boost::multiprecision::uint128_t diff_USDi_128 = diff_usd;
       boost::multiprecision::uint128_t exchange_128 = pr.unused1;
-      boost::multiprecision::uint128_t diff_xhv_128 = diff_xusd_128 * 1000000000000;
+      boost::multiprecision::uint128_t diff_xhv_128 = diff_USDi_128 * 1000000000000;
       diff_xhv_128 /= exchange_128;
       if (diff != (uint64_t)diff_xhv_128) {
 	LOG_ERROR("Transaction inputs wrong - diff:"<< diff << " != diff_usd:" << diff_usd << ", exchange rate:" << pr.unused1);
@@ -1119,9 +1119,9 @@ namespace cryptonote
       // Calculate amount_burnt from the amount_minted
       if (bOffshoreTx) {
         if (offshore) {
-          double d_xusd_amount = boost::lexical_cast<double>(tx.amount_minted);
+          double d_USDi_amount = boost::lexical_cast<double>(tx.amount_minted);
           double d_exchange_rate = boost::lexical_cast<double>(std::get<1>(pr) / 10000 * std::get<2>(pr));
-          tx.amount_burnt = (uint64_t)((d_xusd_amount / d_exchange_rate) * 1000000000000.0);
+          tx.amount_burnt = (uint64_t)((d_USDi_amount / d_exchange_rate) * 1000000000000.0);
         } else if (onshore) {
 
         //should never happen

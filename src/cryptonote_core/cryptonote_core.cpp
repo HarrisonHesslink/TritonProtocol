@@ -478,14 +478,7 @@ namespace cryptonote
     uint64_t blocks_threads = command_line::get_arg(vm, arg_prep_blocks_threads);
     std::string check_updates_string = command_line::get_arg(vm, arg_check_updates);
     size_t max_txpool_weight = command_line::get_arg(vm, arg_max_txpool_weight);
-    if (m_service_node)
-    {
-      r = init_service_node_key();
-      CHECK_AND_ASSERT_MES(r, false, "Failed to create or load service node key");
-	    m_service_node_list.set_my_service_node_keys(&m_service_node_pubkey);
 
-    }
-    
     //Pruning
     bool prune_blockchain = command_line::get_arg(vm, arg_prune_blockchain);
     bool keep_alt_blocks = command_line::get_arg(vm, arg_keep_alt_blocks);
@@ -666,7 +659,6 @@ namespace cryptonote
     {
       MERROR("Failed to parse block rate notify spec: " << e.what());
     }
-
     const std::pair<uint8_t, uint64_t> regtest_hard_forks[3] = {std::make_pair(1, 0), std::make_pair(mainnet_hard_forks[num_mainnet_hard_forks-1].version, 1), std::make_pair(0, 0)};
     const cryptonote::test_options regtest_test_options = {
       regtest_hard_forks,
@@ -686,6 +678,15 @@ namespace cryptonote
     // now that we have a valid m_blockchain_storage, we can clean out any
     // transactions in the pool that do not conform to the current fork
     m_mempool.validate(m_blockchain_storage.get_current_hard_fork_version());
+
+    if (m_service_node)
+    {
+      r = init_service_node_key();
+      CHECK_AND_ASSERT_MES(r, false, "Failed to create or load service node key");
+	    m_service_node_list.set_my_service_node_keys(&m_service_node_pubkey);
+
+    }
+    
 
     bool show_time_stats = command_line::get_arg(vm, arg_show_time_stats) != 0;
     m_blockchain_storage.set_show_time_stats(show_time_stats);
@@ -1545,7 +1546,7 @@ namespace cryptonote
     crypto::hash top_block_hash = m_blockchain_storage.get_block_id_by_height(top_block_height);
     cryptonote::block top_blk;
     m_blockchain_storage.get_block_by_hash(top_block_hash, top_blk);
-    return {top_blk.ribbon_red, top_blk.ribbon_blue, top_blk.ribbon_volume};
+    return {top_blk.ribbon_red, top_blk.ribbon_blue, top_blk.spot};
   }
   //-----------------------------------------------------------------------------------------------
   bool core::store_trade_history_at_height(std::vector<service_nodes::exchange_trade>& trades, uint64_t height)
@@ -1994,7 +1995,7 @@ namespace cryptonote
 
 	if (m_service_node && lifetime > target) // Give us some time to connect to peers before sending uptimes
 	{
-		do_uptime_proof_call();
+		//do_uptime_proof_call();
 	}
 
 	m_uptime_proof_pruner.do_call(boost::bind(&service_nodes::quorum_cop::prune_uptime_proof, &m_quorum_cop));

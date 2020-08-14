@@ -538,7 +538,7 @@ namespace cryptonote
     crypto::hash  prev_id;
     uint32_t nonce;
 
-    //Ribbon Prices
+    //XEQ Ribbon Prices
     uint64_t spot;
     uint64_t ribbon_blue;
     uint64_t ribbon_red;

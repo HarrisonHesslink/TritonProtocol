@@ -267,7 +267,7 @@ namespace tools
       template<typename Ts, typename Tu>
       bool fill_response(std::vector<tools::wallet2::pending_tx> &ptx_vector,
           bool get_tx_key, Ts& tx_key, Tu &amount, Tu &amount_usd, Tu &fee, Tu &weight, std::string &multisig_txset, std::string &unsigned_txset, bool do_not_relay,
-			 Ts &tx_hash, bool get_tx_hex, Ts &tx_blob, bool get_tx_metadata, Ts &tx_metadata, epee::json_rpc::error &er, bool use_offshore_amounts = false);
+          Ts &tx_hash, bool get_tx_hex, Ts &tx_blob, bool get_tx_metadata, Ts &tx_metadata, epee::json_rpc::error &er, bool use_offshore_amounts = false);
 
       void check_background_mining();
 

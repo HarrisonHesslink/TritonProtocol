@@ -1170,9 +1170,9 @@ namespace rct {
 
 	// HERE BE DRAGONS!!!
 	// NEAC: convert incoming amount vector/pairs into discrete vectors
-	std::vector<xmr_amount> amounts_xhv, amounts_usd;
+	std::vector<xmr_amount> amounts_xeq, amounts_usd;
         for (size_t i = 0 ; i < amounts.size() - 1; i++) {
-	  amounts_xhv.push_back(amounts[i].first);
+	  amounts_xeq.push_back(amounts[i].first);
 	  amounts_usd.push_back(amounts[i].second);
 	}
 	ctkeyV inSk_xhv, inSk_usd;
@@ -1261,16 +1261,16 @@ namespace rct {
 	// HERE BE DRAGONS!!!
 	// NEAC: convert incoming amount vector/pairs into discrete vectors
 	bool xhv_sent = false, usd_sent = false; 
-	std::vector<xmr_amount> inamounts_xhv, inamounts_usd, outamounts_xhv, outamounts_usd, outamounts_nonzero;
+	std::vector<xmr_amount> inamounts_xeq, inamounts_usd, outamounts_xeq, outamounts_usd, outamounts_nonzero;
         for (size_t i = 0 ; i < inamounts.size(); i++) {
-	  inamounts_xhv.push_back(inamounts[i].first);
+	  inamounts_xeq.push_back(inamounts[i].first);
 	  inamounts_usd.push_back(inamounts[i].second);
 	  if (inamounts[i].first != 0) xhv_sent = true;
 	  if (inamounts[i].second != 0) usd_sent = true;
 	}
 	bool xhv_received = false, usd_received = false; 
         for (size_t i = 0 ; i < outamounts.size(); i++) {
-	  outamounts_xhv.push_back(outamounts[i].first);
+	  outamounts_xeq.push_back(outamounts[i].first);
 	  outamounts_usd.push_back(outamounts[i].second);
 	  if (outamounts[i].first != 0) xhv_received = true;
 	  if (outamounts[i].second != 0) usd_received = true;
@@ -1332,7 +1332,7 @@ namespace rct {
             if (!bulletproof) {
 	      // HERE BE DRAGONS!!!
 	      // NEAC: need to change the type to accommodate multiple rangeSigs - one for each currency
-              rv.p.rangeSigs[i] = proveRange(rv.outPk[i].mask, outSk[i].mask, outamounts_xhv[i]);
+              rv.p.rangeSigs[i] = proveRange(rv.outPk[i].mask, outSk[i].mask, outamounts_xeq[i]);
 	      // LAND AHOY!!!
 	    }
             #ifdef DBG
@@ -1482,7 +1482,7 @@ namespace rct {
             rv.p.MGs.resize(inamounts.size());
         key sumpouts = zero(); //sum pseudoOut masks
         keyV a(inamounts.size());
-	std::vector<uint64_t> inamounts_nonzero = (inamounts[0].first != 0) ? inamounts_xhv : inamounts_usd;
+	std::vector<uint64_t> inamounts_nonzero = (inamounts[0].first != 0) ? inamounts_xeq : inamounts_usd;
         for (i = 0 ; i < inamounts.size() - 1; i++) {
 	  // Generate a random key
 	  skGen(a[i]);

@@ -1998,6 +1998,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
       get_block_by_hash(block_hash, blk);
       b.btc_a = blk.btc_a;
     }
+    
     MGINFO_GREEN("Ribbon price winner for next block (" << height << "): " << ((float)b.ribbon_blue / 1000) << "! Bitcoin Price winner for next block (" << height << "): " << b.btc_a);
 
     // give ribbon red a buffer after the fork for the required window of ribbon blue data

@@ -297,7 +297,7 @@ namespace
   const char* USAGE_VERSION("version");
   const char* USAGE_HELP("help [<command>]");
   const char* USAGE_OFFSHORE("offshore [index=<N1>[,<N2>,...]] [<priority>] [<ring_size>] (<URI> | <address> <XEQ amount>)");
-  const char* USAGE_OFFSHORE_TRANSFER("offshore_transfer [index=<N1>[,<N2>,...]] [<priority>] [<ring_size>] (<URI> | <address> <xUSD amount>)");
+  const char* USAGE_OFFSHORE_TRANSFER("offshore_transfer [index=<N1>[,<N2>,...]] [<priority>] [<ring_size>] (<URI> | <address> <USDi amount>)");
 
   std::string input_line(const std::string& prompt, bool yesno = false)
   {
@@ -5840,12 +5840,12 @@ bool simple_wallet::show_balance_unlocked(bool detailed)
   std::string unlock_time_message_offshore;
   if (blocks_to_unlock_offshore > 0)
     unlock_time_message_offshore = (boost::format(" (%lu block(s) to unlock)") % blocks_to_unlock_offshore).str();
-  success_msg_writer() << tr("ONSHORE  - balance: ") << print_money(m_wallet->balance(m_current_subaddress_account, false)) << ", "
+  success_msg_writer() << tr("XEQ  - balance: ") << print_money(m_wallet->balance(m_current_subaddress_account, false)) << ", "
     << tr("unlocked balance: ") << print_money(unlocked_balance) << unlock_time_message << ",\n"
-    << tr("OFFSHORE - balance: ") << print_offshore_money(m_wallet->offshore_balance(m_current_subaddress_account)) << " xUSD, "
-    << tr("unlocked balance: ") << print_offshore_money(unlocked_balance_offshore) << " xUSD " << unlock_time_message_offshore << extra;
+    << tr("USDi - balance: ") << print_offshore_money(m_wallet->offshore_balance(m_current_subaddress_account)) << " USDi, "
+    << tr("unlocked balance: ") << print_offshore_money(unlocked_balance_offshore) << " USDi " << unlock_time_message_offshore << extra;
   std::map<uint32_t, uint64_t> balance_per_subaddress = m_wallet->balance_per_subaddress(m_current_subaddress_account, false);
-  std::map<uint32_t, std::pair<uint64_t, uint64_t>> unlocked_balance_per_subaddress = m_wallet->unlocked_balance_per_subaddress(m_current_subaddress_account, true);
+  std::map<uint32_t, std::pair<uint64_t, std::pair<uint64_t, uint64_t>>> unlocked_balance_per_subaddress = m_wallet->unlocked_balance_per_subaddress(m_current_subaddress_account, false);
   if (!detailed || balance_per_subaddress.empty())
     return true;
   success_msg_writer() << tr("Balance per address:");
@@ -6793,11 +6793,11 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
 	if (offshore) {
 	  offshore_fee = m_wallet->get_offshore_fee(dsts, priority);
 	  total_sent = dsts.back().amount;
-	  uint64_t usdi_estimate = m_wallet->get_xusd_amount(total_sent, bc_height-1);
+	  uint64_t usdi_estimate = m_wallet->get_USDi_amount(total_sent, bc_height-1);
 	  prompt << boost::format(tr("Exchanging %s USDi by burning %s XEQ (plus conversion fee %s XEQ).  ")) % print_money(usdi_estimate) % print_money(total_sent) % print_money(offshore_fee);
 	}  else if (offshore_to_offshore) {
 	  total_sent = dsts.back().amount;
-	  prompt << boost::format(tr("Sending %s xUSD.  ")) % print_money(total_sent);
+	  prompt << boost::format(tr("Sending %s USDi.  ")) % print_money(total_sent);
 	} else {
 	  prompt << boost::format(tr("Sending %s.  ")) % print_money(total_sent);
 	}
@@ -7957,24 +7957,24 @@ bool simple_wallet::sweep_unmixable(const std::vector<std::string> &args_)
   return true;
 }
 //----------------------------------------------------------------------------------------------------
-bool simple_wallet::sweep_main(uint64_t below, bool locked, const std::vector<std::string> &args_, bool bOffshoreTx)
+bool simple_wallet::sweep_main(uint32_t account, uint64_t below, bool locked, const std::vector<std::string> &args_, bool bOffshoreTx)
 {
-  auto print_usage = [below, bOffshoreTx]()
+  auto print_usage = [this, account, below, bOffshoreTx]()
   {
     if (below)
     {
       if (bOffshoreTx) {
-	PRINT_USAGE(USAGE_OFFSHORE_SWEEP_BELOW);
+	      PRINT_USAGE(USAGE_OFFSHORE_SWEEP_BELOW);
       } else {
-	PRINT_USAGE(USAGE_SWEEP_BELOW);
+	      PRINT_USAGE(USAGE_SWEEP_BELOW);
       }
     }
     else if (account == m_current_subaddress_account)
     {
       if (bOffshoreTx) {
-	PRINT_USAGE(USAGE_OFFSHORE_SWEEP_ALL);
+      	PRINT_USAGE(USAGE_OFFSHORE_SWEEP_ALL);
       } else {
-	PRINT_USAGE(USAGE_SWEEP_ALL);
+	      PRINT_USAGE(USAGE_SWEEP_ALL);
       }
     }
     else
@@ -7982,6 +7982,7 @@ bool simple_wallet::sweep_main(uint64_t below, bool locked, const std::vector<st
       PRINT_USAGE(USAGE_SWEEP_ACCOUNT);
     }
   };
+  
   if (args_.size() == 0)
   {
     fail_msg_writer() << tr("No address given");

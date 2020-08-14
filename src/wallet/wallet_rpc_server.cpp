@@ -331,7 +331,7 @@ namespace tools
     entry.locked = !m_wallet->is_transfer_unlocked(pd.m_unlock_time, pd.m_block_height);
     entry.fee = pd.m_fee;
     entry.note = m_wallet->get_tx_note(pd.m_tx_hash);
-    entry.type = pd.m_coinbase ? "block" : ( pd.m_offshore || pd.m_offshore_to_offshore) ? "XUSD in" : "in";
+    entry.type = pd.m_coinbase ? "block" : ( pd.m_offshore || pd.m_offshore_to_offshore) ? "USDi in" : "in";
     entry.subaddr_index = pd.m_subaddr_index;
     entry.subaddr_indices.push_back(pd.m_subaddr_index);
     entry.address = m_wallet->get_subaddress_as_str(pd.m_subaddr_index);
@@ -360,7 +360,7 @@ namespace tools
       td.address = d.address(m_wallet->nettype(), pd.m_payment_id);
     }
 
-    entry.type = ((pd.m_offshore_to_offshore || pd.m_onshore) ? "XUSD out" : "out");
+    entry.type = ((pd.m_offshore_to_offshore || pd.m_onshore) ? "USDi out" : "out");
     entry.subaddr_index = { pd.m_subaddr_account, 0 };
     for (uint32_t i: pd.m_subaddr_indices)
       entry.subaddr_indices.push_back({pd.m_subaddr_account, i});
@@ -391,7 +391,7 @@ namespace tools
       td.address = d.address(m_wallet->nettype(), pd.m_payment_id);
     }
 
-    entry.type = is_failed ? "failed" : (pd.m_offshore_to_offshore || pd.m_onshore)? "XUSD pending" : "pending";
+    entry.type = is_failed ? "failed" : (pd.m_offshore_to_offshore || pd.m_onshore)? "USDi pending" : "pending";
     entry.subaddr_index = { pd.m_subaddr_account, 0 };
     for (uint32_t i: pd.m_subaddr_indices)
       entry.subaddr_indices.push_back({pd.m_subaddr_account, i});
@@ -415,7 +415,7 @@ namespace tools
     entry.fee = pd.m_fee;
     entry.note = m_wallet->get_tx_note(pd.m_tx_hash);
     entry.double_spend_seen = ppd.m_double_spend_seen;
-    entry.type = ( pd.m_offshore || pd.m_offshore_to_offshore)? "XUSD pool" : "pool";
+    entry.type = ( pd.m_offshore || pd.m_offshore_to_offshore)? "USDi pool" : "pool";
     entry.subaddr_index = pd.m_subaddr_index;
     entry.subaddr_indices.push_back(pd.m_subaddr_index);
     entry.address = m_wallet->get_subaddress_as_str(pd.m_subaddr_index);
@@ -495,20 +495,20 @@ namespace tools
       res.balance = req.all_accounts ? m_wallet->offshore_balance_all() : m_wallet->offshore_balance(req.account_index);
       res.unlocked_balance = req.all_accounts ? m_wallet->unlocked_offshore_balance_all(&res.blocks_to_unlock) : m_wallet->unlocked_offshore_balance(req.account_index, &res.blocks_to_unlock);
       res.multisig_import_needed = m_wallet->multisig() && m_wallet->has_multisig_partial_key_images();
-      std::map<uint32_t, std::pair<uint64_t, std::pair<uint64_t, uint64_t>>> balance_per_subaddress_per_account;
-      std::map<uint32_t, std::map<uint32_t, std::pair<uint64_t, uint64_t>>> unlocked_balance_per_subaddress_per_account;
+      std::map<uint32_t, std::map<uint32_t, uint64_t>> balance_per_subaddress_per_account;
+      std::map<uint32_t, std::map<uint32_t, std::pair<uint64_t, std::pair<uint64_t, uint64_t>>>> unlocked_balance_per_subaddress_per_account;
       if (req.all_accounts)
       {
         for (uint32_t account_index = 0; account_index < m_wallet->get_num_subaddress_accounts(); ++account_index)
         {
           balance_per_subaddress_per_account[account_index] = m_wallet->offshore_balance_per_subaddress(account_index);
-          unlocked_balance_per_subaddress_per_account[account_index] = m_wallet->unlocked_offshore_balance_per_subaddress(account_index);
+          unlocked_balance_per_subaddress_per_account[account_index] = m_wallet->unlocked_offshore_balance_per_subaddress(account_index, false);
         }
       }
       else
       {
         balance_per_subaddress_per_account[req.account_index] = m_wallet->offshore_balance_per_subaddress(req.account_index);
-        unlocked_balance_per_subaddress_per_account[req.account_index] = m_wallet->unlocked_offshore_balance_per_subaddress(req.account_index);
+        unlocked_balance_per_subaddress_per_account[req.account_index] = m_wallet->unlocked_offshore_balance_per_subaddress(req.account_index, false);
       }
       std::vector<tools::wallet2::transfer_details> transfers;
       m_wallet->get_offshore_transfers(transfers);
@@ -931,7 +931,7 @@ namespace tools
   //------------------------------------------------------------------------------------------------------------------------------
   template<typename Ts, typename Tu>
   bool wallet_rpc_server::fill_response(std::vector<tools::wallet2::pending_tx> &ptx_vector,
-					bool get_tx_key, Ts& tx_key, Tu &amount, Tu &amount_usd, Tu &fee, std::string &multisig_txset, std::string &unsigned_txset,
+					bool get_tx_key, Ts& tx_key, Tu &amount, Tu &amount_usd, Tu &fee, Tu &weight, std::string &multisig_txset, std::string &unsigned_txset,
 					bool do_not_relay, Ts &tx_hash, bool get_tx_hex, Ts &tx_blob, bool get_tx_metadata, Ts &tx_metadata, epee::json_rpc::error &er,
 					bool use_offshore_amounts)
   {
@@ -1039,7 +1039,7 @@ namespace tools
         return false;
       }
 
-      return fill_response(ptx_vector, req.get_tx_keys, res.tx_key_list, res.amount_list, res.amount_usd_list, res.fee_list, res.weight, res.multisig_txset, res.unsigned_txset,
+      return fill_response(ptx_vector, req.get_tx_keys, res.tx_key_list, res.amount_list, res.amount_usd_list, res.fee_list, res.weight_list, res.multisig_txset, res.unsigned_txset,
 			   req.do_not_relay, res.tx_hash_list, req.get_tx_hex, res.tx_blob_list, req.get_tx_metadata, res.tx_metadata_list, er);
     }
     catch (const std::exception& e)
@@ -1096,7 +1096,7 @@ namespace tools
         return false;
       }
 
-      return fill_response(ptx_vector, req.get_tx_keys, res.tx_key_list, res.amount_list, res.amount_usd_list, res.fee_list, res.multisig_txset, res.unsigned_txset,
+      return fill_response(ptx_vector, req.get_tx_keys, res.tx_key_list, res.amount_list, res.amount_usd_list, res.fee_list, res.weight_list, res.multisig_txset, res.unsigned_txset,
 			   req.do_not_relay, res.tx_hash_list, req.get_tx_hex, res.tx_blob_list, req.get_tx_metadata, res.tx_metadata_list, er, true);
     }
     catch (const std::exception& e)
@@ -1154,7 +1154,7 @@ namespace tools
         return false;
       }
 
-      return fill_response(ptx_vector, req.get_tx_keys, res.tx_key_list, res.amount_list, res.amount_usd_list, res.fee_list, res.multisig_txset, res.unsigned_txset,
+      return fill_response(ptx_vector, req.get_tx_keys, res.tx_key_list, res.amount_list, res.amount_usd_list, res.fee_list, res.weight_list, res.multisig_txset, res.unsigned_txset,
 			   req.do_not_relay, res.tx_hash_list, req.get_tx_hex, res.tx_blob_list, req.get_tx_metadata, res.tx_metadata_list, er);
     }
     catch (const std::exception& e)

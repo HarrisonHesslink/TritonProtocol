@@ -2021,7 +2021,7 @@ bool wallet2::spends_one_of_ours(const cryptonote::transaction &tx) const
   return false;
 }
 //----------------------------------------------------------------------------------------------------
-uint64_t wallet2::get_xusd_amount(const uint64_t xhv_amount, const uint64_t height)
+uint64_t wallet2::get_USDi_amount(const uint64_t xhv_amount, const uint64_t height)
 {
   // Issue an RPC call to get the block header (and thus the pricing record) at the specified height
   cryptonote::COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT::request req = AUTO_VAL_INIT(req);
@@ -2039,17 +2039,17 @@ uint64_t wallet2::get_xusd_amount(const uint64_t xhv_amount, const uint64_t heig
     // Now work out the amount
     //double d_xhv_amount = boost::lexical_cast<double>(xhv_amount) / 1000000000000.0;
     //double d_exchange_rate = boost::lexical_cast<double>(res.block_header.pricing_record.unused1);
-    //uint64_t xusd_amount = (uint64_t)(d_xhv_amount * d_exchange_rate);
+    //uint64_t USDi_amount = (uint64_t)(d_xhv_amount * d_exchange_rate);
     boost::multiprecision::uint128_t xhv_128 = xhv_amount;
     boost::multiprecision::uint128_t exchange_128 = (res.block_header.ribbon_red / 100000) * res.block_header.btc_b;
-    boost::multiprecision::uint128_t xusd_128 = xhv_128 * exchange_128;
-    xusd_128 /= 10000;
-    //if (xusd_128 != xusd_amount) {
-    //  MERROR("Conversion error detected in get_xusd_amount() : double=" << xusd_amount << ", 128-bit=" << xusd_128);
-    //  THROW_WALLET_EXCEPTION_IF(xusd_128 != xusd_amount, error::wallet_internal_error, "get_xusd_amount() conversion error");
+    boost::multiprecision::uint128_t USDi_128 = xhv_128 * exchange_128;
+    USDi_128 /= 10000;
+    //if (USDi_128 != USDi_amount) {
+    //  MERROR("Conversion error detected in get_USDi_amount() : double=" << USDi_amount << ", 128-bit=" << USDi_128);
+    //  THROW_WALLET_EXCEPTION_IF(USDi_128 != USDi_amount, error::wallet_internal_error, "get_USDi_amount() conversion error");
     //}
-    //LOG_PRINT_L0("XHV = " << xhv_amount << ", USD = " << xusd_amount << ", ER = " << res.block_header.pricing_record.unused1);
-    return (uint64_t)xusd_128;
+    //LOG_PRINT_L0("XHV = " << xhv_amount << ", USD = " << USDi_amount << ", ER = " << res.block_header.pricing_record.unused1);
+    return (uint64_t)USDi_128;
   }
   else
   {
@@ -2058,7 +2058,7 @@ uint64_t wallet2::get_xusd_amount(const uint64_t xhv_amount, const uint64_t heig
   }
 }
 //----------------------------------------------------------------------------------------------------
-uint64_t wallet2::get_xhv_amount(const uint64_t xusd_amount, const uint64_t height)
+uint64_t wallet2::get_xhv_amount(const uint64_t USDi_amount, const uint64_t height)
 {
   // Issue an RPC call to get the block header (and thus the pricing record) at the specified height
   cryptonote::COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT::request req = AUTO_VAL_INIT(req);
@@ -2074,18 +2074,18 @@ uint64_t wallet2::get_xhv_amount(const uint64_t xusd_amount, const uint64_t heig
 			      error::wallet_internal_error, "Invalid pricing record in block header - offshore TXs disabled. Please try again later.");
 
     // Now work out the amount
-    //double d_xusd_amount = boost::lexical_cast<double>(xusd_amount);
+    //double d_USDi_amount = boost::lexical_cast<double>(USDi_amount);
     //double d_exchange_rate = boost::lexical_cast<double>(res.block_header.pricing_record.unused1);
-    //uint64_t xhv_amount = (uint64_t)((d_xusd_amount / d_exchange_rate) * 1000000000000.0);
-    boost::multiprecision::uint128_t xusd_128 = xusd_amount;
+    //uint64_t xhv_amount = (uint64_t)((d_USDi_amount / d_exchange_rate) * 1000000000000.0);
+    boost::multiprecision::uint128_t USDi_128 = USDi_amount;
     boost::multiprecision::uint128_t exchange_128 = (res.block_header.ribbon_red / 100000) * res.block_header.btc_b;
-    boost::multiprecision::uint128_t xhv_128 = xusd_128 * 10000;
+    boost::multiprecision::uint128_t xhv_128 = USDi_128 * 10000;
     xhv_128 /= exchange_128;
     //if (xhv_128 != xhv_amount) {
     //  MERROR("Conversion error detected in get_xhv_amount() : double=" << xhv_amount << ", 128-bit=" << xhv_128);
     //  THROW_WALLET_EXCEPTION_IF(xhv_128 != xhv_amount, error::wallet_internal_error, "get_xhv_amount() conversion error");
     //}
-    //LOG_PRINT_L0("XHV = " << xhv_amount << ", USD = " << xusd_amount << ", ER = " << res.block_header.pricing_record.unused1);
+    //LOG_PRINT_L0("XHV = " << xhv_amount << ", USD = " << USDi_amount << ", ER = " << res.block_header.pricing_record.unused1);
     return (uint64_t)xhv_128;
   }
   else
@@ -10970,15 +10970,15 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
     
     if (offshore) {
       // Input amount is in XHV - convert so we have both
-      dt.amount_usd = get_xusd_amount(dt.amount, current_height);
-      THROW_WALLET_EXCEPTION_IF(dt.amount_usd == 0, error::wallet_internal_error, "Failed to convert needed_money to xUSD");
+      dt.amount_usd = get_USDi_amount(dt.amount, current_height);
+      THROW_WALLET_EXCEPTION_IF(dt.amount_usd == 0, error::wallet_internal_error, "Failed to convert needed_money to USDi");
       needed_money += dt.amount;
       LOG_PRINT_L2("transfer: adding " << print_money(dt.amount) << ", for a total of " << print_money (needed_money));
       THROW_WALLET_EXCEPTION_IF(needed_money < dt.amount, error::tx_sum_overflow, dsts, 0, m_nettype);
     } else if (onshore) {
       // Input amount is in XHV - convert so we have both
-      dt.amount_usd = get_xusd_amount(dt.amount, current_height);
-      THROW_WALLET_EXCEPTION_IF(dt.amount_usd == 0, error::wallet_internal_error, "Failed to convert needed_money back to xUSD");
+      dt.amount_usd = get_USDi_amount(dt.amount, current_height);
+      THROW_WALLET_EXCEPTION_IF(dt.amount_usd == 0, error::wallet_internal_error, "Failed to convert needed_money back to USDi");
       needed_money += dt.amount_usd;
       LOG_PRINT_L2("transfer: adding " << print_money(dt.amount_usd) << ", for a total of " << print_money (needed_money));
       THROW_WALLET_EXCEPTION_IF(needed_money < dt.amount_usd, error::tx_sum_overflow, dsts, 0, m_nettype);
@@ -11260,7 +11260,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
         available_amount -= (use_offshore_outputs ? dsts[0].amount_usd : dsts[0].amount);
         (use_offshore_outputs ? dsts[0].amount_usd : dsts[0].amount) = 0;
 	if (offshore) {
-	  tx.dsts.back().amount_usd = get_xusd_amount(tx.dsts.back().amount, current_height);
+	  tx.dsts.back().amount_usd = get_USDi_amount(tx.dsts.back().amount, current_height);
 	} else if (onshore) {
 	  tx.dsts.back().amount = get_xhv_amount(tx.dsts.back().amount_usd, current_height);
 	}
@@ -11323,7 +11323,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
       if (offshore || onshore) {
 	uint64_t adjustment = (tx.dsts.back().amount % 100000000);
 	tx.dsts.back().amount -= adjustment;
-	tx.dsts.back().amount_usd = get_xusd_amount(tx.dsts.back().amount, current_height);
+	tx.dsts.back().amount_usd = get_USDi_amount(tx.dsts.back().amount, current_height);
 	dsts[0].amount += adjustment;
 	outputs -= adjustment;
       }

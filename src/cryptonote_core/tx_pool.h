@@ -139,7 +139,7 @@ namespace cryptonote
      * @param fee the transaction fee
      * @param fee_usd return-by-reference the total of offshore TX fees from the included transactions
      * @param offshore_fee return-by-reference the total of XHV offshore conversion fees from the included transactions
-     * @param offshore_fee_usd return-by-reference the total of xUSD offshore conversion fees from the included transactions
+     * @param offshore_fee_usd return-by-reference the total of USDi offshore conversion fees from the included transactions
      * @param relayed return-by-reference was transaction relayed to us by the network?
      * @param do_not_relay return-by-reference is transaction not to be relayed to the network?
      * @param double_spend_seen return-by-reference was a double spend seen for that transaction?
@@ -233,7 +233,7 @@ namespace cryptonote
      * @param fee return-by-reference the total of fees from the included transactions
      * @param fee_usd return-by-reference the total of offshore TX fees from the included transactions
      * @param offshore_fee return-by-reference the total of XHV offshore conversion fees from the included transactions
-     * @param offshore_fee_usd return-by-reference the total of xUSD offshore conversion fees from the included transactions
+     * @param offshore_fee_usd return-by-reference the total of USDi offshore conversion fees from the included transactions
      * @param expected_reward return-by-reference the total reward awarded to the miner finding this block, including transaction fees
      * @param version hard fork version to use for consensus rules
      *

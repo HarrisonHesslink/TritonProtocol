@@ -132,7 +132,7 @@ private:
   public:
     // Full wallet callbacks
     virtual void on_new_block(uint64_t height, const cryptonote::block& block) {}
-    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, uint64_t unlock_time, bool offshore=false) {}
+    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, bool is_change, uint64_t unlock_time, bool offshore=false) {}
     virtual void on_unconfirmed_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index) {}
     virtual void on_money_spent(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& in_tx, uint64_t amount, const cryptonote::transaction& spend_tx, const cryptonote::subaddress_index& subaddr_index, bool offshore=false) {}
     virtual void on_skip_transaction(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx) {}
@@ -898,10 +898,10 @@ private:
     hw::device::device_type get_device_type() const { return m_key_device_type; }
     bool reconnect_device();
 
-    // Get offshore amount in XUSD, not XHV
-    uint64_t get_xusd_amount(const uint64_t xhv_amount, const uint64_t height);
-    // Get onshore amount in XHV, not XUSD
-    uint64_t get_xhv_amount(const uint64_t xusd_amount, const uint64_t height);
+    // Get offshore amount in USDi, not XHV
+    uint64_t get_USDi_amount(const uint64_t xhv_amount, const uint64_t height);
+    // Get onshore amount in XHV, not USDi
+    uint64_t get_xhv_amount(const uint64_t USDi_amount, const uint64_t height);
     
     // locked & unlocked balance of given or current subaddress account
     uint64_t balance(uint32_t subaddr_index_major, bool strict);
