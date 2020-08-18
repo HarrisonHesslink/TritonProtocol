@@ -478,7 +478,8 @@ namespace cryptonote
    *
    */
    bool have_deregister_tx_already(transaction const &tx) const;
-    bool have_tx_keyimg_as_spent(const crypto::key_image& key_im, const crypto::hash& txid) const;
+  bool have_proposer_already(transaction const &tx) const;
+  bool have_tx_keyimg_as_spent(const crypto::key_image& key_im, const crypto::hash& txid) const;
 
     /**
      * @brief check if any spent key image in a transaction is in the pool

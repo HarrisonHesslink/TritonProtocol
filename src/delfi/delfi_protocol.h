@@ -27,8 +27,10 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
-
+#include <queue>
 #include "int-util.h"
+#include "cryptonote_core/cryptonote_core.h"
+#include "cryptonote_protocol/cryptonote_protocol_handler.h"
 #include "rpc/core_rpc_server_commands_defs.h"
 
 namespace delfi_protocol {
@@ -52,11 +54,9 @@ namespace delfi_protocol {
     
     
     */
-
-
     struct task 
     {
-        crypto::hash taskHash;
+        crypto::hash task_hash;
         std::pair<std::string, std::string> pair;
         std::vector<std::string> exchanges;
 
@@ -75,7 +75,7 @@ namespace delfi_protocol {
 
     struct oracle_data 
     {
-        crypto::hash oracleHash;
+        crypto::hash oracle_hash;
 
 
         crypto::hash task_hash;
@@ -83,6 +83,7 @@ namespace delfi_protocol {
 
         crypto::signature sig;
     };
+
     /*
     Struct Task Update contains the full list of tasks a node has completed.
 
@@ -97,6 +98,16 @@ namespace delfi_protocol {
         crypto::public_key pubkey;
     };
 
+    struct ballot 
+    {
+        std::vector<task_update> valid_proposals;
+
+        crypto::signature sig;
+        crypto::public_key pubkey;
+    };
+
+
+
     class Delfi {
 		explicit Delfi(cryptonote::core& core);
 
@@ -106,10 +117,9 @@ namespace delfi_protocol {
             std::vector<delfi_protocol::task_update> get_task_updates(const crypto::public_key &pubkey);
 
         private:
-            void census_tasks(const crypto::public_key &my_pubkey);
-            void process_tasks(const crypto::public_key &my_pubkey, const crypto::secret_key &my_seckey);
-            bool handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &taskUpdate)
-            void generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req);
+            void census_tasks(const crypto::public_key &my_pubkey, oracle_data od);
+            void process_tasks(const crypto::public_key &my_pubkey, const crypto::secret_key &my_seckey, uint64_t height);
+            bool handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &task_update);
 
             bool scanTasks();
             bool startTasks();
@@ -118,6 +128,8 @@ namespace delfi_protocol {
 		    cryptonote::core& m_core;
             std::queue<task> m_tasks;
 		    std::unordered_map<crypto::public_key, std::vector<delfi_protocol::task_update>> m_valid_tasks;
-		    std::unordered_map<crypto::public_key, timestamp> m_task_update_seen;
+		    std::unordered_map<crypto::public_key, uint64_t> m_task_update_seen;
     };
+    void generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req);
+
 }

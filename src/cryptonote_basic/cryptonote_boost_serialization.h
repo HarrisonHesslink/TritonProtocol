@@ -213,12 +213,6 @@ namespace boost
     a & b.timestamp;
     a & b.prev_id;
     a & b.nonce;
-
-    if(major_version > 7)
-    {
-      a & b.tasks;
-    }
-
     //------------------
     a & b.miner_tx;
     a & b.tx_hashes;

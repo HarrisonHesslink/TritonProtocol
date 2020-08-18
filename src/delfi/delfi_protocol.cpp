@@ -44,8 +44,8 @@ namespace delfi_protocol {
 		crypto::hash result;
 		memcpy(buf + 4, reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
 		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
-		memcpy(buf + 4 + sizeof(timestamp), reinterpret_cast<const void *>(&tu.price), sizeof(od.price));
-		memcpy(buf + 4 + sizeof(tu.price), reinterpret_cast<const void *>(&tu.taskHash), sizeof(tu.task_hash));
+		memcpy(buf + 4 + sizeof(timestamp), reinterpret_cast<const void *>(od.price), sizeof(od.price));
+		memcpy(buf + 4 + sizeof(od.price), reinterpret_cast<const void *>(&tu.taskHash), sizeof(tu.task_hash));
 		crypto::cn_fast_hash(buf, sizeof(buf), result);
 
 		return result;
@@ -78,25 +78,25 @@ namespace delfi_protocol {
 
     uint64_t task::completeTask()
     {
-        for (std::string exchange :: exchanges)
+        for (std::string exchange : exchanges)
         {
             if(exchange == "Coinbase")
             {
-                return price_provider::getCoinbasePrice(task.pair);
+                return price_provider::getCoinbasePrice(this->pair);
             }
             else if(exchange == "Kucoin")
             {
-                return price_provider::getKucoinPrice(task.pair);
+                return price_provider::getKucoinPrice(this->pair);
 
             }
             else if(exchange == "TradeOgre")
             {
-                return price_provider::getTradeOgrePrice(task.pair);
+                return price_provider::getTradeOgrePrice(this->pair);
 
             }
             else if(exchange == "Bittrex")
             {
-                return price_provider::getBittrexPrice(task.pair);
+                return price_provider::getBittrexPrice(this->pair);
             }
             else 
             {
@@ -106,8 +106,54 @@ namespace delfi_protocol {
             }
         }
     }
+	
+	//ranked based system 
+	delfi_protocol::ballot Delfi::census(const crypto::public_key &my_pubkey)
+	{
+		delfi_protocol::ballot my_ballot = {};
 
-    std::tuple<uint64_t,uint64_t,uint64_t> Delfi::census_tasks(const crypto::public_key &my_pubkey, oracle_data od)
+		std::vector<task_update> all_valid_proposals;
+		std::vector<delfi_protocol::task_update> my_data = get_task_updates(my_pubkey);
+		all_valid_proposals.reserve(my_data.size());
+		for (auto md : my_data)
+		{
+			for (auto it = m_valid_tasks.begin(); it != m_valid_tasks.end();)
+			{
+				std::vector<delfi_protocol::task_update> this_node_data = it->second;d
+
+				for(auto t : this_node_data.od)
+				{
+					if(md.od.task_hash != this_node_data.od.task_hash)
+						continue;
+
+					std::tuple<uint64_t, uint64_t, uint64_t> stdev_data = m_delfi.census_tasks(my_public, md);
+
+					if (this_node_data.od.price <= (std::get<1>(stdev_data) + (std::get<0>(stdev_data) * 2)) && this_node_data.od.price >= (std::get<1>(stdev_data) - (std::get<0>(stdev_data) * 2)))
+					{
+						all_valid_proposals.push_back(this_node_data);
+					}
+					else 
+						continue;	
+				}	
+			}
+		}
+		
+		//go through valid proposals
+		for(auto vp : all_valid_proposals)
+		{
+
+			
+		}
+
+		//what happens if there are 0 valid proposals?
+
+		
+
+		return my_ballot;
+	}
+
+
+    std::tuple<uint64_t,uint64_t,uint64_t> Delfi::stdev_task(const crypto::public_key &my_pubkey, oracle_data od)
 	{
         double stdev = 0;
         sizet_t N = 0;
@@ -142,8 +188,9 @@ namespace delfi_protocol {
 	}
 
     //Process Tasks for next block
-	void Delfi::process_tasks(const crypto::public_key &my_pubkey, const crypto::secret_key &my_seckey)
+	void Delfi::process_tasks(const crypto::public_key &my_pubkey, const crypto::secret_key &my_seckey, uint64_t height)
 	{
+
 		delfi_protocol::task_update task_update;
 		std::vector<delfi_protocol::task> tasks = m_delfi.getTasks();
 		for (auto task : tasks)
@@ -164,7 +211,7 @@ namespace delfi_protocol {
 			}
 	
 			od.price = task.completeTask();
-			task_update.taskHash = task.taskHash;
+			task_update.task_hash = task.task_hash;
 
             //Generate Oracle Hash
 			crypto::hash hash = make_hash(my_pubkey, time(nullptr), od);
@@ -197,10 +244,6 @@ namespace delfi_protocol {
 		if ((timestamp < now - UPTIME_PROOF_BUFFER_IN_SECONDS) || (timestamp > now + UPTIME_PROOF_BUFFER_IN_SECONDS))
 			return false;
 
-		if (!m_core.is_service_node(pubkey))
-			return false;
-
-		CRITICAL_REGION_LOCAL(m_lock);
 		if (m_task_update_seen[pubkey] >= now - (UPTIME_PROOF_FREQUENCY_IN_SECONDS / 2))
 			return false; // already received one uptime proof for this node recently.
 
@@ -214,10 +257,8 @@ namespace delfi_protocol {
 
     std::vector<delfi_protocol::task_update> quorum_cop::get_task_updates(const crypto::public_key &pubkey)
 	{
-		CRITICAL_REGION_LOCAL(m_lock);
-
-		const auto& it = m_ribbon_data_received.find(pair_hash);
-		if (it != m_ribbon_data_received.end())
+		const auto& it = m_valid_tasks.find(pair_hash);
+		if (it != m_valid_tasks.end())
 		{
 			return m_valid_tasks[pubkey];
 		}
@@ -225,7 +266,7 @@ namespace delfi_protocol {
 		return {};
     }
 
-    void Delfi::generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req)
+    void generate_task_update(const crypto::public_key& pubkey, const crypto::secret_key& seckey, std::vector<delfi_protocol::task_update>& task_updates, cryptonote::NOTIFY_TASK_UPDATE::request& req)
 	{
 		req.task_updates = task_updates;
 		req.timestamp = time(nullptr);

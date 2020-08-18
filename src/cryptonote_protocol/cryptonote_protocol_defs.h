@@ -35,6 +35,7 @@
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/blobdatatype.h"
 #include "oracle_node/service_node_deregister.h"
+#include "delfi/delfi_protocol.h"
 
 namespace cryptonote
 {

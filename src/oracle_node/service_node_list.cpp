@@ -32,7 +32,7 @@
 
 #include "ringct/rctSigs.h"
 #include "wallet/wallet2.h"
-#include "cryptonote_tx_utils.h"
+#include "cryptonote_core/cryptonote_tx_utils.h"
 #include "cryptonote_basic/tx_extra.h"
 #include "int-util.h"
 #include "common/scoped_message_writer.h"

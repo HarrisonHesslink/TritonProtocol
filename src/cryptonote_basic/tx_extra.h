@@ -249,12 +249,10 @@ struct tx_extra_service_node_deregister
 		END_SERIALIZE()
 };
 
-struct tx_extra_service_node_proposer
-{
 	struct vote
 	{
 		crypto::signature signature;
-		uint32_t          voters_quorum_index;
+    uint32_t voters_quorum_index;
 	};
 
   struct oracle_data 
@@ -276,7 +274,8 @@ struct tx_extra_service_node_proposer
       crypto::public_key pubkey;
   };
 
-
+struct tx_extra_oracle_node_proposer
+{
   std::vector<task_update> task_updates;
 
 	uint64_t          block_height;
@@ -288,7 +287,7 @@ struct tx_extra_service_node_proposer
 		FIELD(service_node_index)
 		FIELD(votes)
     FIELD(task_updates)
-		END_SERIALIZE()
+  END_SERIALIZE()
 };
 
 
@@ -320,9 +319,6 @@ struct tx_extra_service_node_proposer
    tx_extra_oracle_node_proposer> tx_extra_field;
   }
   BLOB_SERIALIZER(cryptonote::tx_extra_service_node_deregister::vote);
-  BLOB_SERIALIZER(cryptonote::tx_extra_oracle_node_proposer::vote);
-  BLOB_SERIALIZER(cryptonote::tx_extra_oracle_node_proposer::oracle_data);
-  BLOB_SERIALIZER(cryptonote::tx_extra_oracle_node_proposer::task_update);
 
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_padding, TX_EXTRA_TAG_PADDING);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_pub_key, TX_EXTRA_TAG_PUBKEY);
@@ -336,4 +332,4 @@ struct tx_extra_service_node_proposer
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_winner, TX_EXTRA_TAG_SERVICE_NODE_WINNER);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_service_node_pubkey, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY);
   VARIANT_TAG(binary_archive, cryptonote::tx_extra_tx_secret_key, TX_EXTRA_TAG_TX_SECRET_KEY);
-  VARIANT_TAG(binary_archive, cryptonote::tx_extra_oracle_node_proposer, TX_EXTRA_TRAG_ORACLE_NODE_PROPOSER);
+  VARIANT_TAG(binary_archive, cryptonote::tx_extra_oracle_node_proposer, TX_EXTRA_TAG_ORACLE_NODE_PROPOSER);

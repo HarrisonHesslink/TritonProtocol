@@ -28,10 +28,10 @@
 
 #pragma once
 
-#include "blockchain.h"
+#include "cryptonote_core/blockchain.h"
 #include <boost/variant.hpp>
 #include "serialization/serialization.h"
-#include "cryptonote_core/service_node_rules.h"
+#include "oracle_node/service_node_rules.h"
 
 namespace service_nodes
 {

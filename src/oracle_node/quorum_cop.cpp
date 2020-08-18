@@ -29,7 +29,7 @@
 #include "service_node_deregister.h"
 #include "service_node_list.h"
 #include "cryptonote_config.h"
-#include "cryptonote_core.h"
+#include "cryptonote_core/cryptonote_core.h"
 #include "version.h"
 #include "quorum_cop.h"
 #include "delfi/delfi_protocol.h"
@@ -101,7 +101,7 @@ namespace service_nodes
 			m_delfi.census_tasks(my_public);
 
 			//Process tasks for next block
-			m_delfi.process_tasks(my_public, my_seckey);
+			m_delfi.process_tasks(my_public, my_seckey, latest_height);
 		}
 			
 		for (; m_last_height < (height - REORG_SAFETY_BUFFER_IN_BLOCKS); m_last_height++)
@@ -130,59 +130,62 @@ namespace service_nodes
 				}
 
 				MGINFO_GREEN("You are a voter");
+				bool valid_leader = false;
 				crypto::hash valid_leader_key;
 				std::vector<delfi_protocol::task_update> leader_data, my_data;
 
 				leader_data = m_delfi.get_task_updates(cur_leader_key);
 				my_data = m_delfi.get_task_updates(my_pubkey);
 
-				//stdev,n,m
-				std::tuple<uint64_t, uint64_t, uint64_t> stdev_data = m_delfi.census_tasks(my_public, my_data);
-
-				//assume leader is bad
-				bool valid_leader = false;
-
-				if (leader_data.od.price <= (stdev_data.second + (stdev_data.first * 2)) && leader_data.od.price >= (stdev_data.second - (stdev_data.first * 2)))
+				for(auto ld : leader_data)
 				{
-					valid_leader = true;
-					valid_leader_key = cur_leader_key;
-				}
-				else 
-				{
-					//Pick a new winner based off ++ of cur_leader_key
-					auto it = std::find(state->quorum_nodes.begin(), state->quorum_nodes.end(), cur_leader_key);
-					if (it == state->quorum_nodes.end())
-						continue;
+					for(auto md : my_data)
+					{
+						std::tuple<uint64_t, uint64_t, uint64_t> stdev_data = m_delfi.census_tasks(my_public, md);
 
-					size_t my_index_in_quorum = it - state->quorum_nodes.begin();
-					for (size_t node_index = 0; node_index < state->nodes_to_test.size(); ++node_index)
-					{				
-						const crypto::public_key &node_key = state->nodes_to_test[node_index];
-						CRITICAL_REGION_LOCAL(m_lock);
-
-						leader_data = m_delfi.get_task_updates(node_key);
-						if (leader_data.od.price <= (stdev_data.second + (stdev_data.first * 2)) && leader_data.od.price >= (stdev_data.second - (stdev_data.first * 2)))
+						if (ld.od.price <= (stdev_data.second + (stdev_data.first * 2)) && ld.od.price >= (stdev_data.second - (stdev_data.first * 2)))
 						{
-
 							valid_leader = true;
-							valid_leader_key = node_key;
+							valid_leader_key = cur_leader_key;
+						}
+						else 
+						{
+							//Pick a new winner based off ++ of cur_leader_key
+							auto it = std::find(state->quorum_nodes.begin(), state->quorum_nodes.end(), cur_leader_key);
+							if (it == state->quorum_nodes.end())
+								continue;
+
+							size_t my_index_in_quorum = it - state->quorum_nodes.begin();
+							for (size_t node_index = 0; node_index < state->nodes_to_test.size(); ++node_index)
+							{				
+								const crypto::public_key &node_key = state->nodes_to_test[node_index];
+								CRITICAL_REGION_LOCAL(m_lock);
+
+								leader_data = m_delfi.get_task_updates(node_key);
+								if (ld.od.price <= (stdev_data.second + (stdev_data.first * 2)) && ld.od.price >= (stdev_data.second - (stdev_data.first * 2)))
+								{
+
+									valid_leader = true;
+									valid_leader_key = node_key;
+									leader_index = node_index;
+								}
+							}
+						}
+
+						//Submit vote
+						oracle_node_paxos::oracle_node_vote vote = {};
+						vote.block_height m_last_height;
+						vote.service_node_index = leader_index;
+						vote.voters_quorum_index = my_index_in_quorum;
+						vote.signature = oracle_node_paxos::sign_vote(vote.block_height, vote.service_node_index, my_pubkey, my_seckey);
+
+						cryptonote::vote_verification_context vvc = {};
+						if (!m_core.add_oracle_node_vote(vote, leader_data, vvc))
+						{
+							LOG_ERROR("Failed to add oracle data vote reason: " << print_vote_verification_context(vvc, &vote));
 						}
 					}
 				}
-
-				//Submit vote
-				oracle_node_paxos::oracle_node_vote vote = {};
-				vote.block_height m_last_height;
-				vote.service_node_index = node_index;
-				vote.voters_quorum_index = my_index_in_quorum;
-				vote.signature = triton::service_node_deregister::sign_vote(vote.block_height, vote.service_node_index, my_pubkey, my_seckey);
-
-				cryptonote::vote_verification_context vvc = {};
-				if (!m_core.add_oracle_data_vote(vote, leader_data, vvc))
-				{
-					LOG_ERROR("Failed to add oracle data vote reason: " << print_vote_verification_context(vvc, &vote));
-				}
-
 			}
 
 			auto it = std::find(state->quorum_nodes.begin(), state->quorum_nodes.end(), my_pubkey);

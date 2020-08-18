@@ -33,7 +33,7 @@
 #include "cryptonote_basic/verification_context.h"
 #include "cryptonote_basic/connection_context.h"
 #include "cryptonote_protocol/cryptonote_protocol_defs.h"
-#include "cryptonote_core/service_node_list.h"
+#include "service_node_list.h"
 #include "cryptonote_core/blockchain.h"
 
 #include "misc_log_ex.h"

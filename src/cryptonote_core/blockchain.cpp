@@ -40,7 +40,7 @@
 #include "blockchain.h"
 #include "blockchain_db/blockchain_db.h"
 #include "cryptonote_basic/cryptonote_boost_serialization.h"
-#include "cryptonote_core/service_node_deregister.h"
+#include "oracle_node/service_node_deregister.h"
 #include "cryptonote_config.h"
 #include "cryptonote_basic/miner.h"
 #include "hardforks/hardforks.h"
@@ -60,6 +60,7 @@
 #include "oracle_node/service_node_list.h"
 #include "common/varint.h"
 #include "common/pruning.h"
+#include "oracle_node/oracle_node_paxos.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "blockchain"
@@ -1557,20 +1558,6 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   {
     b.timestamp = median_ts;
   }
-
-
-  if(b.major_version > 7)
-  {
-    std::vector<delfi_protocol::task_update> last_winner_data = m_service_node_list.get_task_updates(m_service_node_list.select_winner(b.prev_id), height - 2);
-
-    if(last_winner_data.size() > 0)
-      b.tasks = last_winner_data;
-    else 
-      b.tasks = {};
-
-  }
-
-
 
   CHECK_AND_ASSERT_MES(diffic, false, "difficulty overhead.");
 
@@ -3673,7 +3660,7 @@ if (tx.version == 1)
 		}
 	}
 
-  if(tx.is_delfi_marker_tx())
+  if(tx.is_delfi_marker())
   {
     if (tx.rct_signatures.txnFee != 0)
 		{

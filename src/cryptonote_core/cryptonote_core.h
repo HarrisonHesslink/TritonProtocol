@@ -37,6 +37,7 @@
 
 #include "cryptonote_core/i_core_events.h"
 #include "cryptonote_protocol/cryptonote_protocol_handler_common.h"
+#include "cryptonote_protocol/cryptonote_protocol_defs.h"
 #include "cryptonote_protocol/enums.h"
 #include "storages/portable_storage_template_helper.h"
 #include "common/download.h"
@@ -119,6 +120,8 @@ namespace cryptonote
      * @return true if we haven't seen it before and thus need to relay.
      */
 	 bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof);
+    bool handle_task_update(const NOTIFY_TASK_UPDATE::request &data);
+
 	 /**
       * @brief handles an incoming transaction
       *

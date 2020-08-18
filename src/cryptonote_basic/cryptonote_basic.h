@@ -500,22 +500,11 @@ namespace cryptonote
     crypto::hash  prev_id;
     uint32_t nonce;
 
-    if(major_version > 7)
-    {
-     std::vector<delfi_protocol::task_for_block> tasks;
-    }
-
     BEGIN_SERIALIZE()
       VARINT_FIELD(major_version)
       VARINT_FIELD(minor_version)
       VARINT_FIELD(timestamp)
       FIELD(prev_id)
-
-    if(major_version > 7)
-    {
-      FIELD(tasks)
-    }
-
     END_SERIALIZE()
   };
 

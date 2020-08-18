@@ -82,7 +82,7 @@ using namespace epee;
 #include "common/perf_timer.h"
 #include "ringct/rctSigs.h"
 #include "ringdb.h"
-#include "cryptonote_core/service_node_rules.h"
+#include "oracle_node/service_node_rules.h"
 #include "device/device_cold.hpp"
 #include "device_trezor/device_trezor.hpp"
 #include "net/socks_connect.h"

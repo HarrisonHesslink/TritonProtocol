@@ -90,7 +90,7 @@ namespace cryptonote
   
   //Delfi - Oracle Nodes
   bool add_oracle_node_proposer_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_service_node_deregister& deregistration);
-  bool get_oracle_node_proposer_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_deregister& deregistration);
+  bool get_oracle_node_proposer_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_oracle_node_proposer& proposer);
 
   bool get_service_node_pubkey_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::public_key& pubkey);
   bool get_service_node_contributor_from_tx_extra(const std::vector<uint8_t>& tx_extra, cryptonote::account_public_address& address);

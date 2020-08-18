@@ -728,20 +728,6 @@ namespace cryptonote
         CHECK_AND_ASSERT_MES(m_blockchain_storage.update_blockchain_pruning(), false, "Failed to update blockchain pruning");
       }
     }
-
-      uint64_t xeq_price = delfi_protocol::getTradeOgrePrice(std::make_pair("BTC", "XEQ"));
-      MGINFO_YELLOW("XEQ TradeOgre Price: " << xeq_price);
-
-      uint64_t xhv_price = delfi_protocol::getBittrexPrice(std::make_pair("BTC", "XHV"));
-      MGINFO_YELLOW("XHV Bittrex Price: " << xhv_price);
-
-      uint64_t loki_price = delfi_protocol::getKucoinPrice(std::make_pair("LOKI", "BTC"));
-      MGINFO_YELLOW("LOKI Kucoin Price: " << loki_price);
-
-      uint64_t doge_price = delfi_protocol::getNancePrice(std::make_pair("BTC", "DOGE"));
-      MGINFO_YELLOW("DOGE Binance Price: " << doge_price);
-
-
     return load_state_data();
   }
   //-----------------------------------------------------------------------------------------------
@@ -2265,7 +2251,7 @@ namespace cryptonote
     if (result && vvc.m_full_tx_deregister_made)
     {
       tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-      blobdata const tx_blob = tx_to_blob(deregister_tx);
+      blobdata const tx_blob = tx_to_blob(delfi_marker);
 
       result = handle_incoming_tx(tx_blob, tvc, relay_method::block, false /*relayed*/);
 	  if (!result || tvc.m_verifivation_failed)
@@ -2273,7 +2259,7 @@ namespace cryptonote
 		  LOG_PRINT_L1("A full deregister tx for height: " << vote.block_height <<
 			  " and service node: " << vote.service_node_index <<
 			  " could not be verified and was not added to the memory pool, reason: " <<
-			  print_tx_verification_context(tvc, &deregister_tx));
+			  print_tx_verification_context(tvc, &delfi_marker));
 	  }
     }
 
