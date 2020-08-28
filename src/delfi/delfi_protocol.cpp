@@ -35,6 +35,7 @@
 #include "delfi_protocol.h"
 #include "int-util.h"
 #include "price_provider.h"
+#include "cryptonote_protocol/cryptonote_protocol_defs.h"
 
 namespace delfi_protocol {
 

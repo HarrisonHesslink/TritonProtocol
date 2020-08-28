@@ -69,6 +69,10 @@ namespace cryptonote
     {
       return false;
     }
+    virtual bool relay_task_update(NOTIFY_TASK_UPDATE::request& arg, cryptonote_connection_context& exclude_context)
+    {
+      return false;
+    }
     virtual bool relay_ribbon_data(NOTIFY_TASK_UPDATE::request& arg, cryptonote_connection_context& exclude_context)
     {
       return false;

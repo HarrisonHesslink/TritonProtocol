@@ -765,7 +765,7 @@ namespace cryptonote
   //---------------------------------------------------------------
   bool add_oracle_node_proposer_to_tx_extra(std::vector<uint8_t>& tx_extra, const tx_extra_oracle_node_proposer& proposer)
   {
-    tx_extra_field field = tx_extra_oracle_node_proposer{const proposer.block_height, proposer.service_node_index, proposer.votes, proposer.task_updates};
+    tx_extra_field field = tx_extra_oracle_node_proposer{proposer.block_height, proposer.service_node_index, proposer.votes, proposer.task_updates};
 
     std::ostringstream oss;
     binary_archive<true> ar(oss);
