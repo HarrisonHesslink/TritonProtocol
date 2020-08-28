@@ -119,9 +119,9 @@ namespace cryptonote
      *
      * @return true if we haven't seen it before and thus need to relay.
      */
-	 bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof);
     bool handle_task_update(const NOTIFY_TASK_UPDATE::request &data);
 
+	 bool handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation);
 	 /**
       * @brief handles an incoming transaction
       *

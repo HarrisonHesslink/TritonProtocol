@@ -33,6 +33,11 @@
  *
  * \brief Source file that defines simple_wallet class.
  */
+
+// use boost bind placeholders for now
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS 1
+#include <boost/bind.hpp>
+
 #include <locale.h>
 
 #include <thread>
@@ -3482,7 +3487,7 @@ simple_wallet::simple_wallet()
                               "<subcommand> is one of:\n"
                               "  init, info, signer, list, next, sync, transfer, delete, send, receive, export, note, show, set, help\n"
                               "  send_signer_config, start_auto_config, stop_auto_config, auto_config, config_checksum\n"
-                              "Get help about a subcommand with: help mms <subcommand>, or mms help <subcommand>"));
+                              "Get help about a subcommand with: help_advanced mms <subcommand>"));
   m_cmd_binder.set_handler("mms init",
                            boost::bind(&simple_wallet::on_command, this, &simple_wallet::mms, _1),
                            tr(USAGE_MMS_INIT),
@@ -5169,7 +5174,7 @@ void simple_wallet::start_background_mining()
       return;
     }
   }
-  success_msg_writer() << tr("Background mining enabled. Thank you for supporting the Monero network.");
+  success_msg_writer() << tr("Background mining enabled. Thank you for supporting the Equilibria network.");
 }
 //----------------------------------------------------------------------------------------------------
 void simple_wallet::stop_background_mining()
@@ -5846,7 +5851,7 @@ bool simple_wallet::estimate_sn_rewards(const std::vector<std::string>& args/* =
         success_msg_writer() << tr("\t \t (7 day) ") << print_money(( 3360 / response.service_node_states.size()) * last_block_reward * num_nodes) << tr(" XTRI");
         success_msg_writer() << tr("\t \t (31 day) ") << print_money(( 14880 / response.service_node_states.size()) * last_block_reward * num_nodes) << tr(" XTRI");
     }
-  } 
+  }
   catch (const std::exception &e)
   {
 		fail_msg_writer() << e.what();
@@ -6635,7 +6640,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
         {
           fail_msg_writer() << tr("transaction cancelled.");
 
-          return false; 
+          return false;
         }
       }
     }
@@ -6720,7 +6725,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
           prompt << tr("WARNING: this is a non default ring size, which may harm your privacy. Default is recommended.");
         }
         prompt << ENDL << tr("Is this okay?");
-        
+
         std::string accepted = input_line(prompt.str(), true);
         if (std::cin.eof())
           return false;
@@ -7106,7 +7111,7 @@ static const char ASK_PASSWORD_MUST_BE_OFF_MSG[] = "Cannot autostake with ask-pa
 static bool prompt_autostaking_non_trusted_contributors_warning()
 {
 	success_msg_writer(false/*color*/)
-		<< tr("Auto staking to a reserved service node with non-trusted contributors may lock up your triton for the staking duration "
+		<< tr("Auto staking to a reserved service node with non-trusted contributors may lock up your XEQ for the staking duration "
 			"if they do not restake after service node expiration.")
 		<< tr("\n\nIf this behaviour is not desirable, please reuse the staking command without the auto command");
 	bool result = input_line_and_parse_yes_no_result("Accept auto staking towards a reserved service node");
@@ -7683,15 +7688,15 @@ bool simple_wallet::stake(const std::vector<std::string> &args_)
 
 		if (amount_fraction == 0) // Fixed amount loki warning
 		{
-			success_msg_writer(false/*color*/) << tr("You're autostaking to a service node using a fixed amount of triton: ")
+			success_msg_writer(false/*color*/) << tr("You're autostaking to a service node using a fixed amount of XEQ: ")
 				<< print_money(amount)
 				<< tr(".\nThe staking requirement will be different after the service node expires. Staking a fixed amount "
 					"may change your percentage of stake towards the service node and consequently your block reward allocation.")
 				<< tr("\n\nIf this behaviour is not desirable, please reuse the staking command with a percentage sign.");
 
-			if (!input_line_and_parse_yes_no_result("Accept staking with a fixed amount of triton"))
+			if (!input_line_and_parse_yes_no_result("Accept staking with a fixed amount of XEQ"))
 			{
-				fail_msg_writer() << tr("Staking transaction with fixed triton specified cancelled.");
+				fail_msg_writer() << tr("Staking transaction with fixed XEQ specified cancelled.");
 				return true;
 			}
 
@@ -8714,7 +8719,7 @@ bool simple_wallet::submit_transfer(const std::vector<std::string> &args_)
   try
   {
     std::vector<tools::wallet2::pending_tx> ptx_vector;
-    bool r = m_wallet->load_tx("signed_triton_tx", ptx_vector, [&](const tools::wallet2::signed_tx_set &tx){ return accept_loaded_tx(tx); });
+    bool r = m_wallet->load_tx("signed_equilibria_tx", ptx_vector, [&](const tools::wallet2::signed_tx_set &tx){ return accept_loaded_tx(tx); });
     if (!r)
     {
       fail_msg_writer() << tr("Failed to load transaction from file");
@@ -9333,7 +9338,7 @@ bool simple_wallet::get_transfers(std::vector<std::string>& local_args, std::vec
     m_wallet->get_payments(payments, min_height, max_height, m_current_subaddress_account, subaddr_indices);
     for (std::list<std::pair<crypto::hash, tools::wallet2::payment_details>>::const_iterator i = payments.begin(); i != payments.end(); ++i) {
       const tools::wallet2::payment_details &pd = i->second;
-      if (!pd.m_coinbase && !in)
+      if (!pd.is_coinbase() && !in)
         continue;
       std::string payment_id = string_tools::pod_to_hex(i->first);
       if (payment_id.substr(16).find_first_not_of('0') == std::string::npos)
@@ -11511,7 +11516,7 @@ void simple_wallet::show_message(const mms::message &m)
   case mms::message_type::additional_key_set:
   case mms::message_type::note:
     display_content = true;
-    ms.get_sanitized_text(m.content, 1000, sanitized_text);
+    sanitized_text = mms::message_store::get_sanitized_text(m.content, 1000);
     break;
   default:
     display_content = false;
@@ -12379,4 +12384,3 @@ bool simple_wallet::mms(const std::vector<std::string> &args)
   return true;
 }
 // End MMS ------------------------------------------------------------------------------------------------
-

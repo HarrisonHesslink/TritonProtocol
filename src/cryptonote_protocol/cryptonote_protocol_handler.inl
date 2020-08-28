@@ -363,7 +363,7 @@ namespace cryptonote
     uint64_t last_block_v1 = m_core.get_nettype() == TESTNET ? 624633 : m_core.get_nettype() == MAINNET ? 1009826 : (uint64_t)-1;
     uint64_t diff_v2 = max_block_height > last_block_v1 ? std::min(abs_diff, max_block_height - last_block_v1) : 0;
     MCLOG(is_inital ? el::Level::Info : el::Level::Debug, "global", el::Color::Yellow, context <<  "Sync data returned a new top block candidate: " << m_core.get_current_blockchain_height() << " -> " << hshd.current_height
-      << " [Your node is " << abs_diff << " blocks (" << tools::get_human_readable_timespan((abs_diff - diff_v2) * DIFFICULTY_TARGET_V2 + diff_v2 * DIFFICULTY_TARGET_V3) << ") "
+      << " [Your node is " << abs_diff << " blocks (" << tools::get_human_readable_timespan((abs_diff - diff_v2) * DIFFICULTY_TARGET_V3 + diff_v2 * DIFFICULTY_TARGET_V3) << ") "
       << (0 <= diff ? std::string("behind") : std::string("ahead"))
       << "] " << ENDL << "SYNCHRONIZATION started");
       if (hshd.current_height >= m_core.get_current_blockchain_height() + 5) // don't switch to unsafe mode just for a few blocks
@@ -792,12 +792,33 @@ namespace cryptonote
   template<class t_core>
   int t_cryptonote_protocol_handler<t_core>::handle_uptime_proof(int command, NOTIFY_UPTIME_PROOF::request& arg, cryptonote_connection_context& context)
  {
-   MLOG_P2P_MESSAGE("Received NOTIFY_UPTIME_PROOF");
-   if(context.m_state != cryptonote_connection_context::state_normal)
-     return 1;
-   if (m_core.handle_uptime_proof(arg))
-     relay_uptime_proof(arg, context);
-   return 1;
+    MLOG_P2P_MESSAGE("Received NOTIFY_UPTIME_PROOF");
+    // NOTE: Don't relay your own uptime proof, otherwise we have the following situation
+
+    // Node1 sends uptime ->
+    // Node2 receives uptime and relays it back to Node1 for acknowledgement ->
+    // Node1 receives it, handle_uptime_proof returns true to acknowledge, Node1 tries to resend to the same peers again
+
+    // Instead, if we receive our own uptime proof, then acknowledge but don't
+    // send on. If the we are missing an uptime proof it will have been
+    // submitted automatically by the daemon itself instead of
+    // using my own proof relayed by other nodes.
+
+    (void)context;
+    bool my_uptime_proof_confirmation = false;
+    if (m_core.handle_uptime_proof(arg, my_uptime_proof_confirmation))
+    {
+      if (!my_uptime_proof_confirmation)
+      {
+        // NOTE: The default exclude context contains the peer who sent us this
+        // uptime proof, we want to ensure we relay it back so they know that the
+        // peer they relayed to received their uptime and confirm it, so send in an
+        // empty context so we don't omit the source peer from the relay back.
+        cryptonote_connection_context empty_context = {};
+        relay_uptime_proof(arg, empty_context);
+      }
+    }
+    return 1;
  }
    //------------------------------------------------------------------------------------------------------------------------
  template<class t_core>
@@ -2598,7 +2619,7 @@ skip:
   template<class t_core>
   bool t_cryptonote_protocol_handler<t_core>::relay_deregister_votes(NOTIFY_NEW_DEREGISTER_VOTE::request& arg, cryptonote_connection_context& exclude_context)
  {
-   bool result = relay_post_notify<NOTIFY_NEW_DEREGISTER_VOTE>(arg, exclude_context);
+   bool result = relay_to_synchronized_peers<NOTIFY_NEW_DEREGISTER_VOTE>(arg, exclude_context);
    m_core.set_deregister_votes_relayed(arg.votes);
    return result;
  }
@@ -2606,8 +2627,10 @@ skip:
  template<class t_core>
  bool t_cryptonote_protocol_handler<t_core>::relay_uptime_proof(NOTIFY_UPTIME_PROOF::request& arg, cryptonote_connection_context& exclude_context)
  {
-   return relay_post_notify<NOTIFY_UPTIME_PROOF>(arg, exclude_context);
- }
+    bool result = relay_to_synchronized_peers<NOTIFY_UPTIME_PROOF>(arg, exclude_context);
+    return result;
+  }
+
  //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
  bool t_cryptonote_protocol_handler<t_core>::relay_task_update(NOTIFY_TASK_UPDATE::request& arg, cryptonote_connection_context& exclude_context)

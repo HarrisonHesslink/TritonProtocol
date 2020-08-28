@@ -674,6 +674,7 @@ namespace cryptonote
     r = m_blockchain_storage.init(initialized_db, m_nettype, m_offline, regtest ? &regtest_test_options : test_options, fixed_difficulty, get_checkpoints);
     CHECK_AND_ASSERT_MES(r, false, "Failed to initialize blockchain storage");
 
+    r = m_mempool.init(max_txpool_weight, m_nettype == FAKECHAIN);
     CHECK_AND_ASSERT_MES(r, false, "Failed to initialize memory pool");
 
     // now that we have a valid m_blockchain_storage, we can clean out any
@@ -739,8 +740,10 @@ namespace cryptonote
       std::string keystr;
       bool r = epee::file_io_utils::load_file_to_string(keypath, keystr);
       memcpy(&unwrap(unwrap(m_service_node_key)), keystr.data(), sizeof(m_service_node_key));
-      wipeable_string wipe(keystr);
-      CHECK_AND_ASSERT_MES(r, false, "failed to load service node key from file");
+      memwipe(&keystr[0], keystr.size());
+      CHECK_AND_ASSERT_MES(r, false, "failed to load service node key from " + keypath);
+      CHECK_AND_ASSERT_MES(keystr.size() == sizeof(m_service_node_key), false,
+          "service node key file " + keypath + " has an invalid size");
 
       r = crypto::secret_key_to_public_key(m_service_node_key, m_service_node_pubkey);
       CHECK_AND_ASSERT_MES(r, false, "failed to generate pubkey from secret key");
@@ -753,8 +756,8 @@ namespace cryptonote
 
       std::string keystr(reinterpret_cast<const char *>(&m_service_node_key), sizeof(m_service_node_key));
       bool r = epee::file_io_utils::save_string_to_file(keypath, keystr);
-      wipeable_string wipe(keystr);
-      CHECK_AND_ASSERT_MES(r, false, "failed to save service node key to file");
+      memwipe(&keystr[0], keystr.size());
+      CHECK_AND_ASSERT_MES(r, false, "failed to save service node key to " + keypath);
 
       using namespace boost::filesystem;
       permissions(keypath, owner_read);
@@ -1372,8 +1375,8 @@ namespace cryptonote
   {
     if (m_service_node)
     {
-      cryptonote_connection_context fake_context = AUTO_VAL_INIT(fake_context);
-      NOTIFY_UPTIME_PROOF::request r;
+    cryptonote_connection_context fake_context = AUTO_VAL_INIT(fake_context);
+    NOTIFY_UPTIME_PROOF::request r;
 	  service_nodes::generate_uptime_proof_request(m_service_node_pubkey, m_service_node_key, r);
 	  bool relayed = get_protocol()->relay_uptime_proof(r, fake_context);
 
@@ -1389,9 +1392,9 @@ namespace cryptonote
 	  return result;
   }
   //-----------------------------------------------------------------------------------------------
-  bool core::handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof)
+  bool core::handle_uptime_proof(const NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation)
   {
-	  return m_quorum_cop.handle_uptime_proof(proof);
+	  return m_quorum_cop.handle_uptime_proof(proof, my_uptime_proof_confirmation);
   }
    //-----------------------------------------------------------------------------------------------
   bool core::submit_task_update(cryptonote::NOTIFY_TASK_UPDATE::request& req)
@@ -2074,7 +2077,7 @@ namespace cryptonote
       MDEBUG("blocks in the last " << seconds[n] / 60 << " minutes: " << b << " (probability " << p << ")");
       if (p < threshold)
       {
-        MWARNING("There were " << b << (b == max_blocks_checked ? " or more" : "") << " blocks in the last " << seconds[n] / 60 << " minutes, there might be large hash rate changes, or we might be partitioned, cut off from the Monero network or under attack, or your computer's time is off. Or it could be just sheer bad luck.");
+        MWARNING("There were " << b << (b == max_blocks_checked ? " or more" : "") << " blocks in the last " << seconds[n] / 60 << " minutes, there might be large hash rate changes, or we might be partitioned, cut off from the Equilibria network or under attack, or your computer's time is off. Or it could be just sheer bad luck.");
 
         std::shared_ptr<tools::Notify> block_rate_notify = m_block_rate_notify;
         if (block_rate_notify)

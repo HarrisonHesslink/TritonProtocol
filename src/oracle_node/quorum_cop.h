@@ -55,9 +55,8 @@ namespace service_nodes
 		void init() override;
 		void block_added(const cryptonote::block& block, const std::vector<std::pair<cryptonote::transaction, cryptonote::blobdata>>& txs) override;
 		void blockchain_detached(uint64_t height) override;
-		bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof);
 		bool handle_task_update(const cryptonote::NOTIFY_TASK_UPDATE::request &task);
-
+		bool handle_uptime_proof(const cryptonote::NOTIFY_UPTIME_PROOF::request &proof, bool &my_uptime_proof_confirmation);
 		static const uint64_t REORG_SAFETY_BUFFER_IN_BLOCKS = 20;
 		static_assert(REORG_SAFETY_BUFFER_IN_BLOCKS < triton::service_node_deregister::VOTE_LIFETIME_BY_HEIGHT,
 			"Safety buffer should always be less than the vote lifetime");

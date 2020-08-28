@@ -119,7 +119,7 @@ namespace cryptonote
   }
   //---------------------------------------------------------------------------------
   //---------------------------------------------------------------------------------
-  tx_memory_pool::tx_memory_pool(Blockchain& bchs): m_blockchain(bchs), m_txpool_max_weight(DEFAULT_TXPOOL_MAX_WEIGHT), m_txpool_weight(0), m_cookie(0)
+  tx_memory_pool::tx_memory_pool(Blockchain& bchs): m_blockchain(bchs), m_cookie(0), m_txpool_max_weight(DEFAULT_TXPOOL_MAX_WEIGHT), m_txpool_weight(0), m_mine_stem_txes(false)
   {
 
   }
@@ -480,6 +480,13 @@ namespace cryptonote
     auto it = --m_txs_by_fee_and_receive_time.end();
     while (it != m_txs_by_fee_and_receive_time.begin())
     {
+
+      const bool is_deregister  = std::get<0>(it->first);
+      const time_t receive_time = std::get<2>(it->first);
+
+      if (!is_deregister || receive_time >= time(nullptr) - MEMPOOL_PRUNE_DEREGISTER_LIFETIME)
+        break;
+
       if (m_txpool_weight <= bytes)
         break;
 
@@ -759,7 +766,7 @@ namespace cryptonote
       uint64_t tx_age = time(nullptr) - meta.receive_time;
 
       if((tx_age > CRYPTONOTE_MEMPOOL_TX_LIVETIME && !meta.kept_by_block) ||
-         (tx_age > CRYPTONOTE_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME && meta.kept_by_block) )
+         (tx_age > CRYPTONOTE_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME && meta.kept_by_block) || (meta.is_deregister && tx_age > MEMPOOL_PRUNE_DEREGISTER_LIFETIME))
       {
         LOG_PRINT_L1("Tx " << txid << " removed from tx pool due to outdated, age: " << tx_age );
         auto sorted_it = find_tx_in_sorted_container(txid);
@@ -1312,6 +1319,34 @@ namespace cryptonote
       return false;
     }
 	
+     // Check that the deregister hasn't become too old to be included in the block, if so reject.
+    if (tx.is_deregister_tx())
+    {
+      uint64_t curr_height    = m_blockchain.get_current_blockchain_height();
+      bool failed_ready_check = true;
+
+      tx_extra_service_node_deregister deregister;
+      if (get_service_node_deregister_from_tx_extra(tx.extra, deregister))
+      {
+        uint64_t delta_height = curr_height - deregister.block_height;
+        if (delta_height <= triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT)
+        {
+          failed_ready_check = false;
+        }
+      }
+
+      if (failed_ready_check)
+      {
+        // NOTE: This deregistration is too old to be considered, but we can't delete it incase we
+        // pop blocks and they suddenly become valid again. Let them fail to get included in blocks
+        // until they expire.
+        txd.last_failed_height    = curr_height - 1;
+        txd.last_failed_id        = m_blockchain.get_block_id_by_height(txd.last_failed_height);
+        txd.max_used_block_height = txd.last_failed_height;
+        txd.max_used_block_id     = txd.last_failed_id;
+        return false;
+      }
+    }
 
     //transaction is ok.
     return true;
@@ -1450,13 +1485,18 @@ namespace cryptonote
     for (; sorted_it != m_txs_by_fee_and_receive_time.end(); ++sorted_it)
     {
       txpool_tx_meta_t meta;
-      if (!m_blockchain.get_txpool_tx_meta(sorted_it->second, meta) && !meta.matches(relay_category::legacy))
+      if (!m_blockchain.get_txpool_tx_meta(sorted_it->second, meta))
       {
         MERROR("  failed to find tx meta");
         continue;
       }
-      LOG_PRINT_L2("Considering " << sorted_it->second << ", weight " << meta.weight << ", current block weight " << total_weight << "/" << max_total_weight << ", current coinbase " << print_money(best_coinbase));
+      LOG_PRINT_L2("Considering " << sorted_it->second << ", weight " << meta.weight << ", current block weight " << total_weight << "/" << max_total_weight << ", current coinbase " << print_money(best_coinbase) << ", relay method " << (unsigned)meta.get_relay_method());
 
+      if (!meta.matches(relay_category::legacy) && !(m_mine_stem_txes && meta.get_relay_method() == relay_method::stem))
+      {
+        LOG_PRINT_L2("  tx relay method is " << (unsigned)meta.get_relay_method());
+        continue;
+      }
       if (meta.pruned)
       {
         LOG_PRINT_L2("  tx is pruned");
@@ -1621,7 +1661,7 @@ namespace cryptonote
     return n_removed;
   }
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::init(size_t max_txpool_weight)
+  bool tx_memory_pool::init(size_t max_txpool_weight, bool mine_stem_txes)
   {
     CRITICAL_REGION_LOCAL(m_transactions_lock);
     CRITICAL_REGION_LOCAL1(m_blockchain);
@@ -1678,6 +1718,7 @@ namespace cryptonote
       lock.commit();
     }
 
+    m_mine_stem_txes = mine_stem_txes;
     m_cookie = 0;
 
     // Ignore deserialization error

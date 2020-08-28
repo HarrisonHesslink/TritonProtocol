@@ -112,7 +112,7 @@ private:
     uint64_t num_rct_outputs;
     double average_output_time;
   };
-
+  
   class wallet_keys_unlocker
   {
   public:
