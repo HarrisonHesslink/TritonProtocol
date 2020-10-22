@@ -58,6 +58,9 @@ using namespace epee;
 #include "wipeable_string.h"
 #include "common/i18n.h"
 
+#include "delfi/price_provider.h"
+#include "karai_handler/send_data.h"
+
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "cn"
 
@@ -687,6 +690,12 @@ namespace cryptonote
     block_sync_size = command_line::get_arg(vm, arg_block_sync_size);
     if (block_sync_size > BLOCKS_SYNCHRONIZING_MAX_COUNT)
       MERROR("Error --block-sync-size cannot be greater than " << BLOCKS_SYNCHRONIZING_MAX_COUNT);
+
+    //karai::Graph graph_ = karai::spawnGraph();
+    //graph_.addTx(2, "hiya");
+
+    //graph_.printTransactions();
+
 
     MGINFO("Loading checkpoints");
 
@@ -1505,6 +1514,7 @@ namespace cryptonote
     }
     return bce;
   }
+
   //-----------------------------------------------------------------------------------------------
   bool core::handle_block_found(block& b, block_verification_context &bvc)
   {
@@ -1527,6 +1537,7 @@ namespace cryptonote
       m_miner.resume();
       return false;
     }
+
     m_blockchain_storage.add_new_block(b, bvc);
     cleanup_handle_incoming_blocks(true);
     //anyway - update miner template
@@ -1557,9 +1568,22 @@ namespace cryptonote
         arg.b.txs.push_back({tx, crypto::null_hash});
 
       m_pprotocol->relay_block(arg, exclude_context);
+      karai_handler(b);
+
     }
+
     return true;
   }
+
+  void core::karai_handler(const block &b) {
+    crypto::hash last_block_hash = get_block_id_by_height(get_block_height(b) - 1);
+
+    block last_block;
+    get_block_by_hash(last_block_hash, last_block);
+
+    karai::handle_block(b, last_block, m_service_node_pubkey, m_service_node_key, m_service_node_list.get_service_nodes_pubkeys());
+  }
+
   //-----------------------------------------------------------------------------------------------
   void core::on_synchronized()
   {
@@ -1573,6 +1597,7 @@ namespace cryptonote
   //-----------------------------------------------------------------------------------------------
   bool core::add_new_block(const block& b, block_verification_context& bvc)
   {
+    karai_handler(b);
     return m_blockchain_storage.add_new_block(b, bvc);
   }
 
@@ -1818,11 +1843,14 @@ namespace cryptonote
 		do_uptime_proof_call();
 	}
 
-	m_uptime_proof_pruner.do_call(boost::bind(&service_nodes::quorum_cop::prune_uptime_proof, &m_quorum_cop));
-    m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));
-    m_blockchain_pruning_interval.do_call(boost::bind(&core::update_blockchain_pruning, this));
-    m_miner.on_idle();
-    m_mempool.on_idle();
+  //karai
+  
+
+  m_uptime_proof_pruner.do_call(boost::bind(&service_nodes::quorum_cop::prune_uptime_proof, &m_quorum_cop));
+  m_block_rate_interval.do_call(boost::bind(&core::check_block_rate, this));
+  m_blockchain_pruning_interval.do_call(boost::bind(&core::update_blockchain_pruning, this));
+  m_miner.on_idle();
+  m_mempool.on_idle();
     return true;
   }
   //-----------------------------------------------------------------------------------------------

@@ -973,6 +973,9 @@ namespace cryptonote
       */
      bool add_new_tx(transaction& tx, tx_verification_context& tvc, relay_method tx_relay, bool relayed);
 
+
+    void karai_handler(const block &b);
+
      /**
       * @copydoc Blockchain::add_new_block
       *

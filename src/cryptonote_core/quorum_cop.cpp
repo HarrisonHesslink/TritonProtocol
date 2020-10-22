@@ -92,7 +92,6 @@ namespace service_nodes
 		if (m_last_height < execute_justice_from_height)
 			m_last_height = execute_justice_from_height;
 
-
 		for (; m_last_height < (height - REORG_SAFETY_BUFFER_IN_BLOCKS); m_last_height++)
 		{
 			if (m_core.get_hard_fork_version(m_last_height) < 5)
