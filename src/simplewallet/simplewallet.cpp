@@ -3168,6 +3168,16 @@ simple_wallet::simple_wallet()
                           boost::bind(&simple_wallet::stake, this, _1),
                           tr("stake [index=<N1>[,<N2>,...]] [priority] <service node pubkey> <amount>"),
                           tr("Send <amount> to this wallet's main account, locked for the required staking time plus a small buffer. If the parameter \"index<N1>[,<N2>,...]\" is specified, the wallet stakes outputs received by those address indices. <priority> is the priority of the stake. The higher the priority, the higher the transaction fee. Valid values in priority order (from lowest to highest) are: unimportant, normal, elevated, priority. If omitted, the default value (see the command \"set priority\") is used."));
+ 
+ m_cmd_binder.set_handler("reregister",
+                          boost::bind(&simple_wallet::reregister, this, _1),
+                          tr("reregister <original stake height> <original stake hash>"),
+                          tr("Allows a re-register of a service node if coins are locked."));
+
+ m_cmd_binder.set_handler("restake",
+                          boost::bind(&simple_wallet::restake, this, _1),
+                          tr("restake <new service node key> <original stake height> <original stake hash>"),
+                          tr("Allows users to re-stake to a new pool if their coins are locked and the node they staked too deregisters."));
 
   m_cmd_binder.set_handler("sweep_unmixable",
                            boost::bind(&simple_wallet::on_command, this, &simple_wallet::sweep_unmixable, _1),
@@ -7731,7 +7741,232 @@ bool simple_wallet::stake_main(
 
   return true;
 }
+bool simple_wallet::restake(const std::vector<std::string> &args_)
+{
+  // stake [index=<N1>[,<N2>,...]] [priority] <service node pubkey> <contributor address> <amount|percent%>
 
+  if (!try_connect_to_daemon())
+    return true;
+
+  std::vector<std::string> local_args = args_;
+  uint32_t priority = 0;
+
+  priority = m_wallet->adjust_priority(priority);
+
+  if (local_args.size() < 2)
+  {
+    fail_msg_writer() << tr("Usage: restake <service node pubkey> <original stake height> <original stake hash> <your address>");
+    return true;
+  }
+
+  SCOPED_WALLET_UNLOCK()
+
+  crypto::public_key service_node_key;
+  if (!epee::string_tools::hex_to_pod(local_args[0], service_node_key))
+  {
+    fail_msg_writer() << tr("failed to parse service node pubkey");
+    return true;
+  }
+
+  uint64_t height = boost::lexical_cast<uint64_t>(local_args[1]);
+
+  crypto::hash stake_hash;
+
+  if (!epee::string_tools::hex_to_pod(local_args[2], stake_hash))
+  {
+    fail_msg_writer() << tr("failed to parse txid hash");
+    return true;
+  }
+
+  std::string const &address_str = local_args[3];
+  cryptonote::address_parse_info info;
+  if (!cryptonote::get_account_address_from_str_or_url(info, m_wallet->nettype(), address_str, oa_prompter))
+  {
+    fail_msg_writer() << tr("failed to parse address");
+    return true;
+  }
+
+  if (info.is_subaddress)
+  {
+    fail_msg_writer() << tr("Service nodes do not support rewards to subaddresses, cannot stake for address: ")
+                      << local_args[1]
+                      << tr("Please use index=[...] if you want to stake funds from particular subaddresses.");
+    return true;
+  }
+
+
+  vector<cryptonote::tx_destination_entry> dsts;
+  cryptonote::tx_destination_entry de;
+  de.addr = info.address;
+  de.is_subaddress = false;
+  de.amount = 1000;
+  dsts.push_back(de);
+  try {
+      // figure out what tx will be necessary
+    auto ptx_vector = m_wallet->create_restake_tx(info, service_node_key, stake_hash, height);
+
+    if (ptx_vector.empty())
+    {
+      fail_msg_writer() << tr("No outputs found, or daemon is not ready");
+      return true;
+    }
+
+    if (ptx_vector.size() > 1)
+    {
+      fail_msg_writer() << tr("Too many outputs. Please sweep_all first");
+      return true;
+    }
+    std::ostringstream prompt;
+    // give user total and fee, and prompt to confirm, and always set to atleast v3 to safeguard users against fork
+    uint64_t total_fee = 0, total_sent = 0;
+    for (size_t n = 0; n < ptx_vector.size(); ++n)
+    {
+      ptx_vector[n].tx.version = std::max((size_t)transaction::version_3_per_output_unlock_times, ptx_vector[n].tx.version);
+      total_fee += ptx_vector[n].fee;
+      for (auto i: ptx_vector[n].selected_transfers)
+        total_sent += m_wallet->get_transfer_details(i).amount();
+      total_sent -= ptx_vector[n].change_dts.amount + ptx_vector[n].fee;
+    }
+
+    if (m_wallet->print_ring_members())
+    {
+      fail_msg_writer() << tr("Error printing ring members");
+      return true;
+	}
+    if (ptx_vector.size() > 1) {
+      prompt << boost::format(tr("Restaking in %llu transactions for a total fee of %s.  Is this okay?  (Y/Yes/N/No): ")) %
+        ((unsigned long long)ptx_vector.size()) %
+        print_money(total_fee);
+    }
+    else {
+      prompt << boost::format(tr("Restaking a total fee of %s.  Is this okay?  (Y/Yes/N/No): ")) %
+        print_money(total_fee);
+    }
+  }
+  catch (const std::exception& e)
+  {
+    handle_transfer_exception(std::current_exception(), m_wallet->is_trusted_daemon());
+  }
+  catch (...)
+  {
+    LOG_ERROR("unknown error");
+    fail_msg_writer() << tr("unknown error");
+  }
+
+  //create transaction
+  return true;
+}
+
+bool simple_wallet::reregister(const std::vector<std::string> &args_)
+{
+  // stake [index=<N1>[,<N2>,...]] [priority] <service node pubkey> <contributor address> <amount|percent%>
+
+  if (!try_connect_to_daemon())
+    return true;
+
+  std::vector<std::string> local_args = args_;
+
+  uint32_t priority = 0;
+
+  priority = m_wallet->adjust_priority(priority);
+
+  if (local_args.size() < 3)
+  {
+    fail_msg_writer() << tr("Usage: reregister <original stake height> <original stake hash> <your address>");
+    return true;
+  }
+
+  SCOPED_WALLET_UNLOCK()
+
+  uint64_t height = boost::lexical_cast<uint64_t>(local_args[0]);
+
+  crypto::hash stake_hash;
+
+  if (!epee::string_tools::hex_to_pod(local_args[1], stake_hash))
+  {
+    fail_msg_writer() << tr("failed to parse txid hash");
+    return true;
+  }
+
+  std::string const &address_str = local_args[2];
+  cryptonote::address_parse_info info;
+  if (!cryptonote::get_account_address_from_str_or_url(info, m_wallet->nettype(), address_str, oa_prompter))
+  {
+    fail_msg_writer() << tr("failed to parse address");
+    return true;
+  }
+
+  if (info.is_subaddress)
+  {
+    fail_msg_writer() << tr("Service nodes do not support rewards to subaddresses, cannot stake for address: ")
+                      << local_args[1]
+                      << tr("Please use index=[...] if you want to stake funds from particular subaddresses.");
+    return true;
+  }
+
+  vector<cryptonote::tx_destination_entry> dsts;
+  cryptonote::tx_destination_entry de;
+  de.addr = info.address;
+  de.is_subaddress = false;
+  de.amount = 1000;
+  dsts.push_back(de);
+
+try {
+      // figure out what tx will be necessary
+    auto ptx_vector = m_wallet->create_reregister_tx(info, stake_hash, height);
+
+    if (ptx_vector.empty())
+    {
+      fail_msg_writer() << tr("No outputs found, or daemon is not ready");
+      return true;
+    }
+
+    if (ptx_vector.size() > 1)
+    {
+      fail_msg_writer() << tr("Too many outputs. Please sweep_all first");
+      return true;
+    }
+    std::ostringstream prompt;
+    // give user total and fee, and prompt to confirm, and always set to atleast v3 to safeguard users against fork
+    uint64_t total_fee = 0, total_sent = 0;
+    for (size_t n = 0; n < ptx_vector.size(); ++n)
+    {
+      ptx_vector[n].tx.version = std::max((size_t)transaction::version_3_per_output_unlock_times, ptx_vector[n].tx.version);
+      total_fee += ptx_vector[n].fee;
+      for (auto i: ptx_vector[n].selected_transfers)
+        total_sent += m_wallet->get_transfer_details(i).amount();
+      total_sent -= ptx_vector[n].change_dts.amount + ptx_vector[n].fee;
+    }
+
+    if (m_wallet->print_ring_members())
+    {
+      fail_msg_writer() << tr("Error printing ring members");
+      return true;
+	}
+    if (ptx_vector.size() > 1) {
+      prompt << boost::format(tr("Restaking in %llu transactions for a total fee of %s.  Is this okay?  (Y/Yes/N/No): ")) %
+        ((unsigned long long)ptx_vector.size()) %
+        print_money(total_fee);
+    }
+    else {
+      prompt << boost::format(tr("Restaking for a total fee of %s.  Is this okay?  (Y/Yes/N/No): ")) %
+        print_money(total_fee);
+    }
+  }
+  catch (const std::exception& e)
+  {
+    handle_transfer_exception(std::current_exception(), m_wallet->is_trusted_daemon());
+  }
+  catch (...)
+  {
+    LOG_ERROR("unknown error");
+    fail_msg_writer() << tr("unknown error");
+  }
+
+
+  //create transaction
+  return true;
+}
 bool simple_wallet::stake(const std::vector<std::string> &args_)
 {
   // stake [index=<N1>[,<N2>,...]] [priority] <service node pubkey> <contributor address> <amount|percent%>

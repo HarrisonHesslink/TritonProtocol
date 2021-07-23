@@ -123,8 +123,8 @@ namespace cryptonote
   bool get_service_node_recontribution_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::hash& txid, uint64_t &stake_height, crypto::public_key &new_pubkey);
   bool get_service_node_reregister_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::hash& txid, uint64_t &stake_height);
 
-  void add_service_node_recontribution_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& service_node_recontribution);
-  void add_service_node_reregister_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& service_node_registration);
+  bool add_service_node_recontribution_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash txid, uint64_t height, crypto::public_key node_key);
+  bool add_service_node_reregister_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& txid, const uint64_t stake_height);
 
 
   bool is_out_to_acc(const account_keys& acc, const txout_to_key& out_key, const crypto::public_key& tx_pub_key, const std::vector<crypto::public_key>& additional_tx_public_keys, size_t output_index);

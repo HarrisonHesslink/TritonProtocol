@@ -203,21 +203,21 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 
 #define THREAD_STACK_SIZE                       5 * 1024 * 1024
 
-#define HF_VERSION_DYNAMIC_FEE                  11
+#define HF_VERSION_DYNAMIC_FEE                  100
 #define HF_VERSION_MIN_MIXIN_4                  4
-#define HF_VERSION_MIN_MIXIN_6                  11
-#define HF_VERSION_MIN_MIXIN_10                 11
+#define HF_VERSION_MIN_MIXIN_6                  100
+#define HF_VERSION_MIN_MIXIN_10                 100
 #define HF_VERSION_MIN_MIXIN_15                 6
 #define HF_VERSION_ENFORCE_RCT                  4
 #define HF_VERSION_PER_BYTE_FEE                 11
 #define HF_VERSION_SMALLER_BP                   6
 
 #define HF_VERSION_LONG_TERM_BLOCK_WEIGHT       11
-#define HF_VERSION_MIN_2_OUTPUTS                12
+#define HF_VERSION_MIN_2_OUTPUTS                11
 #define HF_VERSION_MIN_V2_COINBASE_TX           12
-#define HF_VERSION_SAME_MIXIN                   12
+#define HF_VERSION_SAME_MIXIN                   11
 #define HF_VERSION_REJECT_SIGS_IN_COINBASE      12
-#define HF_VERSION_ENFORCE_MIN_AGE              12
+#define HF_VERSION_ENFORCE_MIN_AGE              11
 #define HF_VERSION_EFFECTIVE_SHORT_TERM_MEDIAN_IN_PENALTY 12
 
 

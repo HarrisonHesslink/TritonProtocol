@@ -7773,7 +7773,7 @@ bool wallet2::is_output_blackballed(const std::pair<uint64_t, uint64_t> &output)
   try { return m_ringdb->blackballed(output); }
   catch (const std::exception &e) { return false; }
 }
-bool wallet2::check_stake_allowed(const crypto::public_key& sn_key, const cryptonote::address_parse_info& addr_info, uint64_t& amount, uint64_t& reg_height) {
+bool wallet2::check_stake_allowed(const crypto::public_key& sn_key, const cryptonote::address_parse_info& addr_info, uint64_t& amount, uint64_t& reg_height, bool is_redo) {
 
   if (addr_info.has_payment_id) {
     LOG_ERROR("Do not use payment ids for staking.");
@@ -7833,13 +7833,13 @@ bool wallet2::check_stake_allowed(const crypto::public_key& sn_key, const crypto
   }
 
   /// b. Check if the amount is too small
-  if (amount < min_contrib_total) {
+  if ((amount < min_contrib_total) & !is_redo) {
       LOG_ERROR("You must contribute at least " << print_money(min_contrib_total) << " triton to become a contributor for this service node.");
       return false;
   }
 
   /// c. Check if the amount is too big
- if (amount > max_contrib_total)
+ if ((amount > max_contrib_total) && !is_redo)
   {
     LOG_ERROR("You may only contribute up to " << print_money(max_contrib_total) << tr(" more triton to this service node"));
     LOG_ERROR("Reducing your stake from " << print_money(amount) << tr(" to ") << print_money(max_contrib_total));
@@ -7907,6 +7907,105 @@ std::vector<wallet2::pending_tx> wallet2::create_stake_tx(const crypto::public_k
 
   try {
     auto ptx_vector = create_transactions_2(dsts, 15, unlock_at_block, priority, extra, m_current_subaddress_account, subaddr_indices, true);
+    if (ptx_vector.size() == 1) { return ptx_vector; }
+  } catch (const std::exception& e) {
+    LOG_ERROR("Exception raised on creating tx: " << e.what());
+  }
+
+  return {};
+}
+
+std::vector<wallet2::pending_tx> wallet2::create_restake_tx(const cryptonote::address_parse_info& addr_info, const crypto::public_key& service_node_key, const crypto::hash txid, const uint64_t height)
+{
+
+  const auto v11 = use_fork_rules(11, 10) ? true : false;
+
+  if(!v11)
+    return {};
+
+  uint64_t reg_height = 0; 
+  /// check stake parameters (this might adjust the amount)
+  // if (!check_stake_allowed(service_node_key, addr_info, 0, reg_height, true)) {
+  //   LOG_ERROR("Invalid stake parameters");
+  //   return {};
+  // }
+
+  if(reg_height == 0)
+    return {};
+
+  const cryptonote::account_public_address& address = addr_info.address;
+
+  std::vector<uint8_t> extra;
+  if(!add_service_node_recontribution_to_tx_extra(extra, txid, height, service_node_key))
+  {
+    LOG_ERROR("Invalid parameters");
+    return {};
+  }
+  vector<cryptonote::tx_destination_entry> dsts;
+  cryptonote::tx_destination_entry de;
+  de.addr = address;
+  de.is_subaddress = false;
+  de.amount = 1000;
+  dsts.push_back(de);
+
+  uint64_t unlock_at_block = 0;
+
+  const uint32_t priority = adjust_priority(0);
+
+  /// Default values
+  const uint32_t m_current_subaddress_account = 0;
+  std::set<uint32_t> subaddr_indices;
+
+  try {
+    auto ptx_vector = create_transactions_2(dsts, 15, unlock_at_block, priority, extra, m_current_subaddress_account, subaddr_indices, false);
+    if (ptx_vector.size() == 1) { return ptx_vector; }
+  } catch (const std::exception& e) {
+    LOG_ERROR("Exception raised on creating tx: " << e.what());
+  }
+
+  return {};
+}
+std::vector<wallet2::pending_tx> wallet2::create_reregister_tx(const cryptonote::address_parse_info& addr_info, const crypto::hash txid, const uint64_t height)
+{
+  const auto v11 = use_fork_rules(11, 10) ? true : false;
+
+  if(!v11)
+    return {};
+
+  uint64_t reg_height = 0; 
+  /// check stake parameters (this might adjust the amount)
+  // if (!check_stake_allowed(service_node_key, addr_info, 0, reg_height, true)) {
+  //   LOG_ERROR("Invalid stake parameters");
+  //   return {};
+  // }
+
+  if(reg_height == 0)
+    return {};
+
+  const cryptonote::account_public_address& address = addr_info.address;
+
+  std::vector<uint8_t> extra;
+  if(!add_service_node_reregister_to_tx_extra(extra, txid, height))
+  {
+    LOG_ERROR("Invalid parameters");
+    return {};
+  }
+
+  vector<cryptonote::tx_destination_entry> dsts;
+  cryptonote::tx_destination_entry de;
+  de.addr = address;
+  de.is_subaddress = false;
+  de.amount = 1000;
+  dsts.push_back(de);
+
+  const uint32_t priority = adjust_priority(0);
+
+  /// Default values
+  const uint32_t m_current_subaddress_account = 0;
+  std::set<uint32_t> subaddr_indices;
+
+  try {
+    auto ptx_vector = create_transactions_2(dsts, 15, 0, priority, extra, m_current_subaddress_account, subaddr_indices, false);
     if (ptx_vector.size() == 1) { return ptx_vector; }
   } catch (const std::exception& e) {
     LOG_ERROR("Exception raised on creating tx: " << e.what());

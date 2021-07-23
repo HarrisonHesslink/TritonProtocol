@@ -1420,9 +1420,12 @@ private:
 
 
     /// Note that the amount will be modified to maximum possible if too large
-    bool check_stake_allowed(const crypto::public_key& sn_key, const cryptonote::address_parse_info& addr_info, uint64_t& amount, uint64_t& reg_height);
+    bool check_stake_allowed(const crypto::public_key& sn_key, const cryptonote::address_parse_info& addr_info, uint64_t& amount, uint64_t& reg_height, bool is_redo = false);
 
     std::vector<wallet2::pending_tx> create_stake_tx(const crypto::public_key& service_node_key, const cryptonote::address_parse_info& addr_info, uint64_t amount);
+    std::vector<wallet2::pending_tx> create_restake_tx(const cryptonote::address_parse_info& addr_info, const crypto::public_key& service_node_key, const crypto::hash txid, const uint64_t height);
+    std::vector<wallet2::pending_tx> create_reregister_tx(const cryptonote::address_parse_info& addr_info, const crypto::hash txid, const uint64_t height);
+
     void freeze(size_t idx);
     void thaw(size_t idx);
     bool frozen(size_t idx) const;

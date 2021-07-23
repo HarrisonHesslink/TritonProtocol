@@ -777,7 +777,7 @@ namespace cryptonote
    size_t pos = tx_extra.size();
    tx_extra.resize(tx_extra.size() + tx_extra_str.size());
    memcpy(&tx_extra[pos], tx_extra_str.data(), tx_extra_str.size());
-    return true;
+   return true;
   }
   void add_service_node_pubkey_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::public_key& pubkey)
  {
@@ -845,12 +845,23 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
    return true;
  }
   //---------------------------------------------------------------
-  void add_service_node_recontribution_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& service_node_recontribution)
+  bool add_service_node_recontribution_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash txid, const uint64_t height, const crypto::public_key node_key)
  {
-   add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&service_node_recontribution), sizeof(service_node_recontribution), TX_EXTRA_TAG_SERVICE_NODE_RECONTRIBUTION);
- }
+   tx_extra_field field = tx_extra_service_node_recontribution{txid, height, node_key};
+
+   std::ostringstream oss;
+   binary_archive<true> ar(oss);
+   bool r = ::do_serialize(ar, field);
+   CHECK_AND_ASSERT_MES(r, false, "failed to serialize tx extra service node deregister");
+
+   std::string tx_extra_str = oss.str();
+   size_t pos = tx_extra.size();
+   tx_extra.resize(tx_extra.size() + tx_extra_str.size());
+   memcpy(&tx_extra[pos], tx_extra_str.data(), tx_extra_str.size());
+   return true; 
+  }
   //---------------------------------------------------------------
- bool get_service_node_reregister_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::hash& txid, uint64_t &stake_height)
+ bool get_service_node_reregister_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::hash& txid, uint64_t& stake_height)
  {
    std::vector<tx_extra_field> tx_extra_fields;
    parse_tx_extra(tx_extra, tx_extra_fields);
@@ -863,10 +874,21 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
    return true;
  }
   //---------------------------------------------------------------
-  void add_service_node_reregister_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& service_node_registration)
+  bool add_service_node_reregister_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& txid, const uint64_t height)
  {
-   add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&service_node_registration), sizeof(service_node_registration), TX_EXTRA_TAG_SERVICE_NODE_REREGISTER);
- }
+   tx_extra_field field = tx_extra_service_node_reregister{txid, height};
+
+   std::ostringstream oss;
+   binary_archive<true> ar(oss);
+   bool r = ::do_serialize(ar, field);
+   CHECK_AND_ASSERT_MES(r, false, "failed to serialize tx extra service node deregister");
+
+   std::string tx_extra_str = oss.str();
+   size_t pos = tx_extra.size();
+   tx_extra.resize(tx_extra.size() + tx_extra_str.size());
+   memcpy(&tx_extra[pos], tx_extra_str.data(), tx_extra_str.size());
+   return true; 
+  }
  //---------------------------------------------------------------
   bool get_service_node_register_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_register &registration)
   {
