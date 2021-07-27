@@ -7518,11 +7518,10 @@ bool simple_wallet::stake_main(
 
     const auto& snode_info = response.service_node_states.front();
     const uint64_t DUST = m_wallet->use_fork_rules(10, 0) ? MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
-
+    unlock_block = snode_info.registration_height + locked_blocks;
+    
     if (amount == 0)
       amount = snode_info.staking_requirement * amount_fraction;
-
-
 
     const bool full = m_wallet->use_fork_rules(10, 0) ? snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS_V2 : snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS;
     uint64_t can_contrib_total = 0;
