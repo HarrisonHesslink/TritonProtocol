@@ -5,7 +5,7 @@ namespace service_nodes {
 inline uint64_t get_staking_requirement_lock_blocks(cryptonote::network_type nettype)
 {
 switch(nettype) {
-    case cryptonote::TESTNET: return 1440;
+    case cryptonote::TESTNET: return 10080;
     case cryptonote::FAKECHAIN: return 30;
     default: return 20160;
 }
