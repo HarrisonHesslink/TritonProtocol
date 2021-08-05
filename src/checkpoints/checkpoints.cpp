@@ -161,6 +161,12 @@ namespace cryptonote
   {
     if (nettype == TESTNET)
     {
+      add_checkpoint(1, "e568213a422a2a6f5ed0a0c5a80647593e5ea42ade7cdd03c1ee81bb94bdd317");
+      add_checkpoint(10, "2e86f860959d49eed9dddfceb97bd7bec2e9859fbbf252cab5c9f6f297f7db2f");
+      add_checkpoint(15, "8d7eaf867bacc0ddc4e3dda99cd13675d64c31008e2e44ebc4c2e6a04da90b03");
+      add_checkpoint(100, "573e90775093fa113f1056434244acce5eee44bba86157a7df86a9058f89db3d");
+      add_checkpoint(200, "adb752435196f0d95d38e4ad01e09f2d9e87ee3de4550116a0e0f4285bafe136");
+      add_checkpoint(308, "dfc25c2c38864cc9d0dcb7c01bb2973f26ab4e86862729eb429b83add8708577");
       return true;
     }
     if (nettype == STAGENET)
