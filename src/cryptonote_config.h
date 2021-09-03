@@ -81,7 +81,8 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 #define MONEY_SUPPLY                                    ((uint64_t)840000000000)
 #define TRITON_SWAP                                     ((uint64_t)107695988100)
 
-#define BURN_1                                    ((uint64_t)48500000000)
+#define BURN_1                                          ((uint64_t)70000000000)
+#define MINT_BRIDGE                                     ((uint64_t)167195840000)
 
 
 
