@@ -204,22 +204,22 @@ static_assert(STAKING_PORTIONS % 3 == 0, "Use a multiple of three, so that it di
 
 #define THREAD_STACK_SIZE                       5 * 1024 * 1024
 
-#define HF_VERSION_DYNAMIC_FEE                  11
+#define HF_VERSION_DYNAMIC_FEE                  100
 #define HF_VERSION_MIN_MIXIN_4                  4
-#define HF_VERSION_MIN_MIXIN_6                  11
-#define HF_VERSION_MIN_MIXIN_10                 11
+#define HF_VERSION_MIN_MIXIN_6                  100
+#define HF_VERSION_MIN_MIXIN_10                 100
 #define HF_VERSION_MIN_MIXIN_15                 6
 #define HF_VERSION_ENFORCE_RCT                  4
-#define HF_VERSION_PER_BYTE_FEE                 11
+#define HF_VERSION_PER_BYTE_FEE                 100
 #define HF_VERSION_SMALLER_BP                   6
 
-#define HF_VERSION_LONG_TERM_BLOCK_WEIGHT       11
-#define HF_VERSION_MIN_2_OUTPUTS                12
-#define HF_VERSION_MIN_V2_COINBASE_TX           12
-#define HF_VERSION_SAME_MIXIN                   12
-#define HF_VERSION_REJECT_SIGS_IN_COINBASE      12
-#define HF_VERSION_ENFORCE_MIN_AGE              12
-#define HF_VERSION_EFFECTIVE_SHORT_TERM_MEDIAN_IN_PENALTY 12
+#define HF_VERSION_LONG_TERM_BLOCK_WEIGHT       100
+#define HF_VERSION_MIN_2_OUTPUTS                100
+#define HF_VERSION_MIN_V2_COINBASE_TX           100
+#define HF_VERSION_SAME_MIXIN                   100
+#define HF_VERSION_REJECT_SIGS_IN_COINBASE      100
+#define HF_VERSION_ENFORCE_MIN_AGE              100
+#define HF_VERSION_EFFECTIVE_SHORT_TERM_MEDIAN_IN_PENALTY 100
 
 
 #define HF_VERSION_FEE_BURNING                  9
@@ -275,7 +275,7 @@ namespace config
   uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 5;
 
   std::string const GOVERNANCE_WALLET_ADDRESS = "TvziQSEi93chTMViBzw8Y4eerEjmGq2Q6ajekvgyTyqkGcsj97YJDzF8TMnTWdv7NXQ2ZXfeWJPwRAbVHUjbgFcN2AvU35KfX";
-  std::string const BRIDGE_COLD_WALLET_ADDRESS = "";
+  std::string const BRIDGE_WALLET_ADDRESS = "";
 
   namespace testnet
   {
@@ -294,7 +294,7 @@ namespace config
    uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 5;
 
   std::string const GOVERNANCE_WALLET_ADDRESS = "XT1mQ4qNhqARHKawpsC4DkCmJxGSiW6EfGej4jssjY7QEzKZgSHmkeuQYHsY3gRhDv4KMt8QQX8TEPBmJQe1SEea38fHATH5C";
-  std::string const BRIDGE_COLD_WALLET_ADDRESS = "";
+  std::string const BRIDGE_WALLET_ADDRESS = "";
 
 }
 
@@ -315,7 +315,7 @@ namespace config
    uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 5;
 
   std::string const GOVERNANCE_WALLET_ADDRESS = "";
-  std::string const BRIDGE_COLD_WALLET_ADDRESS = "";
+  std::string const BRIDGE_WALLET_ADDRESS = "";
 
   }
 }
@@ -372,7 +372,7 @@ namespace cryptonote
       ::config::testnet::NETWORK_ID,
       ::config::testnet::GENESIS_TX,
       ::config::testnet::GENESIS_NONCE,
-      &::config::testnet::GOVERNANCE_WALLET_ADDRESS
+      &::config::testnet::GOVERNANCE_WALLET_ADDRESS,
       &::config::testnet::BRIDGE_WALLET_ADDRESS,
 
     };
@@ -386,7 +386,7 @@ namespace cryptonote
       ::config::stagenet::NETWORK_ID,
       ::config::stagenet::GENESIS_TX,
       ::config::stagenet::GENESIS_NONCE,
-      &::config::stagenet::GOVERNANCE_WALLET_ADDRESS
+      &::config::stagenet::GOVERNANCE_WALLET_ADDRESS,
       &::config::stagenet::BRIDGE_WALLET_ADDRESS,
     };
     switch (nettype)
