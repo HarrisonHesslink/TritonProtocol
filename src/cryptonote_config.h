@@ -275,6 +275,7 @@ namespace config
   uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 5;
 
   std::string const GOVERNANCE_WALLET_ADDRESS = "TvziQSEi93chTMViBzw8Y4eerEjmGq2Q6ajekvgyTyqkGcsj97YJDzF8TMnTWdv7NXQ2ZXfeWJPwRAbVHUjbgFcN2AvU35KfX";
+  std::string const BRIDGE_COLD_WALLET_ADDRESS = "";
 
   namespace testnet
   {
@@ -292,8 +293,10 @@ namespace config
 
    uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 5;
 
-    std::string const GOVERNANCE_WALLET_ADDRESS = "XT1mQ4qNhqARHKawpsC4DkCmJxGSiW6EfGej4jssjY7QEzKZgSHmkeuQYHsY3gRhDv4KMt8QQX8TEPBmJQe1SEea38fHATH5C";
-  }
+  std::string const GOVERNANCE_WALLET_ADDRESS = "XT1mQ4qNhqARHKawpsC4DkCmJxGSiW6EfGej4jssjY7QEzKZgSHmkeuQYHsY3gRhDv4KMt8QQX8TEPBmJQe1SEea38fHATH5C";
+  std::string const BRIDGE_COLD_WALLET_ADDRESS = "";
+
+}
 
   namespace stagenet
   {
@@ -312,6 +315,7 @@ namespace config
    uint64_t const GOVERNANCE_REWARD_INTERVAL_IN_BLOCKS = 5;
 
   std::string const GOVERNANCE_WALLET_ADDRESS = "";
+  std::string const BRIDGE_COLD_WALLET_ADDRESS = "";
 
   }
 }
@@ -338,6 +342,8 @@ namespace cryptonote
     std::string const GENESIS_TX;
     uint32_t const GENESIS_NONCE;
     std::string const *GOVERNANCE_WALLET_ADDRESS;
+    std::string const *BRIDGE_WALLET_ADDRESS;
+
   };
   inline const config_t& get_config(network_type nettype)
   {
@@ -351,7 +357,9 @@ namespace cryptonote
       ::config::NETWORK_ID,
       ::config::GENESIS_TX,
       ::config::GENESIS_NONCE,
-      &::config::GOVERNANCE_WALLET_ADDRESS
+      &::config::GOVERNANCE_WALLET_ADDRESS,
+      &::config::BRIDGE_WALLET_ADDRESS,
+
 
     };
     static config_t testnet = {
@@ -365,6 +373,8 @@ namespace cryptonote
       ::config::testnet::GENESIS_TX,
       ::config::testnet::GENESIS_NONCE,
       &::config::testnet::GOVERNANCE_WALLET_ADDRESS
+      &::config::testnet::BRIDGE_WALLET_ADDRESS,
+
     };
     static config_t stagenet = {
       ::config::stagenet::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
@@ -377,7 +387,7 @@ namespace cryptonote
       ::config::stagenet::GENESIS_TX,
       ::config::stagenet::GENESIS_NONCE,
       &::config::stagenet::GOVERNANCE_WALLET_ADDRESS
-
+      &::config::stagenet::BRIDGE_WALLET_ADDRESS,
     };
     switch (nettype)
     {
