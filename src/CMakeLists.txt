@@ -32,8 +32,6 @@ if (WIN32 OR STATIC)
   add_definitions(-DSTATICLIB)
   # miniupnp changed their static define
   add_definitions(-DMINIUPNP_STATICLIB)
-  add_definitions(-DCURL_STATICLIB)
-  add_definitions(-DNGHTTP2_STATIC)
 
 endif ()
 
@@ -116,7 +114,6 @@ add_subdirectory(ringct)
 add_subdirectory(checkpoints)
 add_subdirectory(cryptonote_basic)
 add_subdirectory(cryptonote_core)
-add_subdirectory(pythia_adapter)
 add_subdirectory(lmdb)
 add_subdirectory(multisig)
 add_subdirectory(net)

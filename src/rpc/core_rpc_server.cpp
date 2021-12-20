@@ -57,7 +57,6 @@ using namespace epee;
 #include "core_rpc_server_error_codes.h"
 #include "p2p/net_node.h"
 #include "version.h"
-#include "pythia_adapter/send_data.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "daemon.rpc"
@@ -993,7 +992,6 @@ namespace cryptonote
     {
       res.txs.push_back(COMMAND_RPC_GET_TRANSACTIONS::entry());
       COMMAND_RPC_GET_TRANSACTIONS::entry &e = res.txs.back();
-
       crypto::hash tx_hash = *vhi++;
       e.tx_hash = *txhi++;
       e.prunable_hash = epee::string_tools::pod_to_hex(std::get<2>(tx));
@@ -3467,6 +3465,8 @@ namespace cryptonote
 		  entry.last_reward_block_height = pubkey_info.info.last_reward_block_height;
 		  entry.last_reward_transaction_index = pubkey_info.info.last_reward_transaction_index;
 		  entry.last_uptime_proof = m_core.get_uptime_proof(pubkey_info.pubkey);
+      entry.is_pool = entry.contributors.size() > 0;
+      
 
 		  entry.contributors.reserve(pubkey_info.info.contributors.size());
 		  for (service_nodes::service_node_info::contribution const &contributor : pubkey_info.info.contributors)
@@ -3486,6 +3486,11 @@ namespace cryptonote
 
 		  res.service_node_states.push_back(entry);
 	  }
+
+    std::sort(res.service_node_states.begin(), res.service_node_states.end(), [](COMMAND_RPC_GET_SERVICE_NODES::response::entry a, COMMAND_RPC_GET_SERVICE_NODES::response::entry b) {
+        return a.total_contributed < b.total_contributed;
+    });
+
 
 	  return true;
   }
@@ -3686,21 +3691,21 @@ namespace cryptonote
     //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_get_signature(const COMMAND_RPC_GET_SIGNATURE::request& req, COMMAND_RPC_GET_SIGNATURE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
-		crypto::public_key my_pubkey;
-		crypto::secret_key my_seckey;
-		if (!m_core.get_service_node_keys(my_pubkey, my_seckey))
-			return false;    
+		// crypto::public_key my_pubkey;
+		// crypto::secret_key my_seckey;
+		// if (!m_core.get_service_node_keys(my_pubkey, my_seckey))
+		// 	return false;    
       
-    crypto::hash data_hash = karai::make_data_hash(my_pubkey, req.message);
+    // // crypto::hash data_hash = karai::make_data_hash(my_pubkey, req.message);
 
-    crypto::signature signature;
-    crypto::generate_signature(data_hash, my_pubkey, my_seckey, signature);
+    // crypto::signature signature;
+    // crypto::generate_signature(data_hash, my_pubkey, my_seckey, signature);
 
-    res.signature = epee::string_tools::pod_to_hex(signature);
-    res.hash = epee::string_tools::pod_to_hex(data_hash);
+    // res.signature = epee::string_tools::pod_to_hex(signature);
+    // res.hash = epee::string_tools::pod_to_hex(data_hash);
 
-    res.status = CORE_RPC_STATUS_OK;
-    return true;
+    // res.status = CORE_RPC_STATUS_OK;
+    // return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_verify_signature(const COMMAND_RPC_VERIFY_SIGNATURE::request& req, COMMAND_RPC_VERIFY_SIGNATURE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)

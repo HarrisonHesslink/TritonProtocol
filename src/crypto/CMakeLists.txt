@@ -35,6 +35,12 @@ set(crypto_sources
   hmac-keccak.c
   keccak.c
   tree-hash.c
+  groestl.c
+  hash-extra-blake.c
+  hash-extra-groestl.c
+  hash-extra-jh.c
+  hash-extra-skein.c
+  oaes_lib.c
   pow_hash/aux_hash.c
   pow_hash/cn_slow_hash_soft.cpp
   pow_hash/cn_slow_hash_hard_intel.cpp
@@ -49,18 +55,35 @@ if(ARCH_ID STREQUAL "i386" OR ARCH_ID STREQUAL "x86_64" OR ARCH_ID STREQUAL "x86
 list(APPEND crypto_sources CryptonightR_template.S)
 endif()
 
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+	if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+		set_source_files_properties(pow_hash/cn_slow_hash_intel_avx2.cpp PROPERTIES COMPILE_FLAGS "-mavx2")
+		set_source_files_properties(pow_hash/cn_slow_hard_intel.cpp PROPERTIES COMPILE_FLAGS "-msse2 -maes")
+	elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+		set_source_files_properties(pow_hash/cn_slow_hash_hard_arm.cpp PROPERTIES COMPILE_FLAGS "-march=armv8-a+crypto")
+	endif()
+endif()
+
+
 set(crypto_headers)
 
 set(crypto_private_headers
+  blake256.h
   chacha.h
   crypto-ops.h
   crypto.h
   generic-ops.h
+    groestl.h
+  groestl_tables.h
   hash-ops.h
   hash.h
+    jh.h
   hmac-keccak.h
   initializer.h
   keccak.h
+  skein_port.h
+  oaes_config.h
+  oaes_lib.h
   pow_hash/cn_slow_hash.hpp
   random.h
   sha512.h)
@@ -78,16 +101,6 @@ target_link_libraries(cncrypto
     ${SODIUM_LIBRARY}
   PRIVATE
     ${EXTRA_LIBRARIES})
-
-if (ARM)
-  option(NO_OPTIMIZED_MULTIPLY_ON_ARM
-	   "Compute multiply using generic C implementation instead of ARM ASM" OFF)
-  if(NO_OPTIMIZED_MULTIPLY_ON_ARM)
-    message(STATUS "Using generic C implementation for multiply")
-    set_property(SOURCE slow-hash.c
-      PROPERTY COMPILE_DEFINITIONS "NO_OPTIMIZED_MULTIPLY_ON_ARM")
-  endif()
-endif()
 
 # Because of the way Qt works on android with JNI, the code does not live in the main android thread
 # So this code runs with a 1 MB default stack size. 

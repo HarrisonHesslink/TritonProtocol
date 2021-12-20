@@ -172,6 +172,9 @@ namespace cryptonote
       {
         //wXEQ pre-sale, will be burnt on height 500100
         return 11000000 * COIN;
+      } else if(height == 663269)
+      {
+        return MINT_BRIDGE;
       }
 
     }
@@ -236,10 +239,10 @@ namespace cryptonote
 
   static uint64_t calculate_sum_of_portions(const std::vector<std::pair<cryptonote::account_public_address, uint64_t>>& portions, uint64_t total_service_node_reward)
   {
-	uint64_t reward = 0;
-	for (size_t i = 0; i < portions.size(); i++)
-		reward += get_portion_of_reward(portions[i].second, total_service_node_reward);
-	return reward;
+    uint64_t reward = 0;
+    for (size_t i = 0; i < portions.size(); i++)
+      reward += get_portion_of_reward(portions[i].second, total_service_node_reward);
+	  return reward;
   }
 
 
@@ -364,7 +367,11 @@ namespace cryptonote
   {
       std::string governance_wallet_address_str;
 			cryptonote::address_parse_info governance_wallet_address;
-      cryptonote::get_account_address_from_str(governance_wallet_address, nettype, *cryptonote::get_config(nettype).GOVERNANCE_WALLET_ADDRESS);
+      if(hard_fork_version < 11) {
+        cryptonote::get_account_address_from_str(governance_wallet_address, nettype, *cryptonote::get_config(nettype).GOVERNANCE_WALLET_ADDRESS);
+      } else {
+        cryptonote::get_account_address_from_str(governance_wallet_address, nettype, *cryptonote::get_config(nettype).BRIDGE_WALLET_ADDRESS);
+      }
       crypto::public_key out_eph_public_key = AUTO_VAL_INIT(out_eph_public_key);
 
 			if(!get_deterministic_output_key(governance_wallet_address.address, sn_key, tx.vout.size(), out_eph_public_key))
@@ -434,7 +441,7 @@ namespace cryptonote
 	  else                                        result.service_node_paid = calculate_sum_of_portions(miner_context.snode_winner_info, result.service_node_total);
 
 
-	  result.base_miner = result.adjusted_base_reward - result.service_node_paid;
+	  result.base_miner = result.adjusted_base_reward - result.service_node_total;
 	  result.base_miner_fee = miner_context.fee;
 	  return true;
   }

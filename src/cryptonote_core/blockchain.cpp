@@ -1287,10 +1287,19 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
       return false;
     }
 
-    if (!validate_governance_reward_key(m_db->height(), *cryptonote::get_config(m_nettype).GOVERNANCE_WALLET_ADDRESS, b.miner_tx.vout.size() - 1, boost::get<txout_to_key>(b.miner_tx.vout.back().target).key, m_nettype))
+    if(version < 11)
     {
-      MERROR("Governance reward public key incorrect");
-      return false;
+      if (!validate_governance_reward_key(m_db->height(), *cryptonote::get_config(m_nettype).GOVERNANCE_WALLET_ADDRESS, b.miner_tx.vout.size() - 1, boost::get<txout_to_key>(b.miner_tx.vout.back().target).key, m_nettype))
+      {
+        MERROR("Governance reward public key incorrect");
+        return false;
+      }
+    } else {
+        if (!validate_governance_reward_key(m_db->height(), *cryptonote::get_config(m_nettype).BRIDGE_WALLET_ADDRESS, b.miner_tx.vout.size() - 1, boost::get<txout_to_key>(b.miner_tx.vout.back().target).key, m_nettype))
+      {
+        MERROR("Governance reward public key incorrect");
+        return false;
+      }
     }
   }
 
@@ -1355,6 +1364,10 @@ bool Blockchain::allow_governance(uint64_t height)
       return true;
     }
     else if(height == fork_height + (6 * 21600))
+    {
+      return true;
+    }
+    else if(height == 663269)
     {
       return true;
     }
@@ -3656,6 +3669,7 @@ if (tx.version == 1)
 			MERROR_VER("tx " << get_transaction_hash(tx) << ": version 3 deregister_tx could not be completely verified reason: " << print_vote_verification_context(tvc.m_vote_ctx));
 			return false;
 		}
+    const auto deregister_lifetime = hf_version >= 8 ? triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT_V2 : triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT;
 
 		// Check if deregister is too old or too new to hold onto
 		{
@@ -3673,11 +3687,11 @@ if (tx.version == 1)
 		}
 
 		uint64_t delta_height = curr_height - deregister.block_height;
-		if (delta_height >= triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT)
+		if (delta_height >= deregister_lifetime)
 		{
 			LOG_PRINT_L1("Received deregister tx for height: " << deregister.block_height
 				<< " and service node: " << deregister.service_node_index
-				<< ", is older than: " << triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT
+				<< ", is older than: " << deregister_lifetime
 				<< " blocks and has been rejected. The current height is: " << curr_height);
 			tvc.m_vote_ctx.m_invalid_block_height = true;
 			tvc.m_verifivation_failed = true;
@@ -3686,7 +3700,7 @@ if (tx.version == 1)
 	}
 
 	const uint64_t height = deregister.block_height;
-	const size_t num_blocks_to_check = triton::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT;
+	const size_t num_blocks_to_check = deregister_lifetime;
 
 	std::vector<std::pair<cryptonote::blobdata, block>> blocks;
 	std::vector<cryptonote::blobdata> txs;
