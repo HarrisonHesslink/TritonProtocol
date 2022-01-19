@@ -112,7 +112,6 @@ namespace cryptonote {
         target = DIFFICULTY_TARGET_V3;
       }
       
-	   const int target_minutes = target / 60;
 	   const int emission_speed_factor = get_emission_speed_factor(version);
 
 
