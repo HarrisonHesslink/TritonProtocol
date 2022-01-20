@@ -6782,7 +6782,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
           prompt << tr("WARNING: this is a non default ring size, which may harm your privacy. Default is recommended.");
         }
 
-        if (is_swap) 
+        if (transferType == txType::Swap) 
         {
 
           std::string eth_address = input_line(tr("Please enter the ETH address you want to swap to: "));
