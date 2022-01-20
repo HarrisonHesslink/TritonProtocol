@@ -6511,7 +6511,10 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
     // remove the "memo=" tag from front
     strMemo = strMemo.substr(5);
     // add to tx extra
-    if (!cryptonote::add_memo_to_tx_extra(extra, strMemo)) {
+
+      cryptonote::tx_extra_memo memo;
+      memo.data = strMemo;
+    if (!cryptonote::add_memo_to_tx_extra(extra, memo)) {
       fail_msg_writer() << tr("Failed to serialise transaction memo");
       return false;
     }
