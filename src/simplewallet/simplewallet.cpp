@@ -6426,17 +6426,6 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
 
   priority = m_wallet->adjust_priority(priority);
 
-  bool is_burn = false;
-  bool is_swap = false;
-  bool is_create_contract = false;
-  if (transferType == txType::Burn) {
-    is_burn = true;
-  } else if (transferType == txType::Swap) {
-    is_swap = true;
-  } else if (transferType == txType::Create_Contract) {
-    is_create_contract = true;
-  }
-
   size_t fake_outs_count = DEFAULT_MIX;
   if(local_args.size() > 0) {
     size_t ring_size;
@@ -6503,23 +6492,6 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
 
   uint64_t burn_amount = 0;
 
-    // add the memo data to tx extra if it exist
-  if (boost::algorithm::starts_with(local_args.back(), "memo=")) {
-    // get memo
-    std::string strMemo = local_args.back();
-    local_args.pop_back();
-    // remove the "memo=" tag from front
-    strMemo = strMemo.substr(5);
-    // add to tx extra
-
-      cryptonote::tx_extra_memo memo;
-      memo.data = strMemo;
-    if (!cryptonote::add_memo_to_tx_extra(extra, memo)) {
-      fail_msg_writer() << tr("Failed to serialise transaction memo");
-      return false;
-    }
-  }
-
   vector<cryptonote::address_parse_info> dsts_info;
   vector<cryptonote::tx_destination_entry> dsts;
   size_t num_subaddresses = 0;
@@ -6584,6 +6556,23 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
       burn_amount += de.amount;
       de.amount = 10;
     }
+
+  // add the memo data to tx extra if it exist
+  if (boost::algorithm::starts_with(local_args.back(), "memo=")) {
+    // get memo
+    std::string strMemo = local_args.back();
+    local_args.pop_back();
+    // remove the "memo=" tag from front
+    strMemo = strMemo.substr(5);
+    // add to tx extra
+
+      cryptonote::tx_extra_memo memo;
+      memo.data = strMemo;
+    if (!cryptonote::add_memo_to_tx_extra(extra, memo)) {
+      fail_msg_writer() << tr("Failed to serialise transaction memo");
+      return false;
+    }
+  }
 
     de.addr = info.address;
     de.is_subaddress = info.is_subaddress;
@@ -6796,6 +6785,17 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
         if (is_swap) 
         {
 
+          std::string address = input_line(tr("Please enter the ETH address you want to swap to: "));
+          std::string amount = input_line(tr("Please enter the amount you want to swap to: "));
+
+          std::string bridge_address = input_line(tr("Please enter the bridge address (Found on tutorial: wiki.equilibria.network): "));
+
+          cryptonote::tx_extra_memo memo;
+          memo.data = '{"address": "' + address + '", "amount": "' + amount + '"}';
+          if (!cryptonote::add_memo_to_tx_extra(extra, memo)) {
+            fail_msg_writer() << tr("Failed to serialise transaction memo");
+            return false;
+          }
         }
 
         prompt << ENDL << tr("Is this okay?");
