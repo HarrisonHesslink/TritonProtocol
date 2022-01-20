@@ -6551,7 +6551,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
       return false;
     }
 
-    if (is_burn) {
+    if (transferType == txType::Burn) {
       add_burned_amount_to_tx_extra(extra, de.amount);
       burn_amount += de.amount;
       de.amount = 10;
@@ -6731,12 +6731,12 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
           for (uint32_t i : ptx_vector[n].construction_data.subaddr_indices)
             subaddr_indices.insert(i);
           for (uint32_t i : subaddr_indices)
-            if(!is_swap || !is_burn)
+            if(!transferType == txType::Swap || !transferType == txType::Burn)
               prompt << boost::format(tr("Spending from address index %d\n")) % i;
           if (subaddr_indices.size() > 1)
             prompt << tr("WARNING: Outputs of multiple addresses are being used together, which might potentially compromise your privacy.\n");
         }
-        if(!is_swap || !is_burn)
+        if(!transferType == txType::Swap || !transferType == txType::Burn)
           prompt << boost::format(tr("Sending %s.  ")) % print_money(total_sent);
         if (ptx_vector.size() > 1)
         {
@@ -6747,7 +6747,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
         else
         {
 
-          if(is_burn) {
+          if(transferType == txType::Burn) {
             prompt << boost::format(tr("Burning %s XEQ: ")) %
             print_money(burn_amount);
           }
