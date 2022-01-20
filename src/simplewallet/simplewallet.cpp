@@ -6791,7 +6791,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
           std::string bridge_address = input_line(tr("Please enter the bridge address (Found on tutorial: wiki.equilibria.network): "));
 
           cryptonote::tx_extra_memo memo;
-          memo.data = '{"address": "' + eth_address + '", "amount": "' + amount + '"}';
+          memo.data = "{'address': '" + eth_address + "', 'amount': '" + amount + "'}";
           if (!cryptonote::add_memo_to_tx_extra(extra, memo)) {
             fail_msg_writer() << tr("Failed to serialise transaction memo");
             return false;
