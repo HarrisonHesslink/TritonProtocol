@@ -909,10 +909,8 @@ namespace cryptonote
     }
 
     try {
-    if (is_staking_tx)
+    if (is_staking_tx || is_swap_tx)
       add_tx_secret_key_to_tx_extra(extra, tx_key);
-    if (is_swap_tx)
-      add_tx_secret_key_to_tx_extra(extra, tx_key)
 
       bool r = construct_tx_with_tx_key(sender_account_keys, subaddresses, sources, destinations, change_addr, extra, tx, unlock_time, tx_key, additional_tx_keys, rct, rct_config, msout, true, per_output_unlock, is_swap_tx);
       hwdev.close_tx();

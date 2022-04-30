@@ -1624,7 +1624,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
 
   miner_tx_context miner_context(m_nettype,
   m_service_node_list.select_winner(b.prev_id),
-  m_service_node_list.get_winner_addresses_and_portions(b.prev_id));
+  m_service_node_list.get_winner_addresses_and_portions(b.prev_id, height));
 
   bool r = construct_miner_tx(height, median_weight, already_generated_coins, txs_weight, fee, miner_address, b.miner_tx, ex_nonce, hf_version, miner_context);
 

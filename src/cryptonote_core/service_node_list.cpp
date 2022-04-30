@@ -755,7 +755,7 @@ namespace service_nodes
 		
 	    rapidjson::Document d;
 
-		d.Parse(memo.data);
+		d.Parse(memo.data.c_str());
 
 		if(!d.IsObject())
 			return false;
@@ -1040,10 +1040,11 @@ namespace service_nodes
 		return expired_nodes;
 	}
 
-	std::vector<std::pair<cryptonote::account_public_address, uint64_t>> service_node_list::get_winner_addresses_and_portions(const crypto::hash& prev_id) const
+	std::vector<std::pair<cryptonote::account_public_address, uint64_t>> service_node_list::get_winner_addresses_and_portions(const crypto::hash& prev_id, const uint64_t height) const
 	{
 		std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
 		crypto::public_key key = select_winner(prev_id);
+
 		if (key == crypto::null_pkey)
 			return { std::make_pair(null_address, STAKING_PORTIONS) };
 
@@ -1051,8 +1052,7 @@ namespace service_nodes
 
 		const service_node_info& info = m_service_nodes_infos.at(key);
 
-		int hard_fork_version = m_blockchain.get_hard_fork_version(block_height);
-
+		int hard_fork_version = m_blockchain.get_hard_fork_version(height);
 
 		uint64_t operator_portions = info.portions_for_operator_no_fee;
 		if (info.total_contributed >= info.staking_requirement - (info.staking_requirement / 4))
@@ -1127,7 +1127,7 @@ namespace service_nodes
 			return false;
 		}
 
-		const std::vector<std::pair<cryptonote::account_public_address, uint64_t>> addresses_and_portions = get_winner_addresses_and_portions(prev_id);
+		const std::vector<std::pair<cryptonote::account_public_address, uint64_t>> addresses_and_portions = get_winner_addresses_and_portions(prev_id, height);
 
 		if (miner_tx.vout.size() - 1 < addresses_and_portions.size())\
 		{
