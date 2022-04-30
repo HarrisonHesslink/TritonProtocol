@@ -6491,6 +6491,7 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
   }
 
   uint64_t burn_amount = 0;
+  bool is_swap_tx = false;
 
   vector<cryptonote::address_parse_info> dsts_info;
   vector<cryptonote::tx_destination_entry> dsts;
@@ -6560,8 +6561,6 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
     
     if (transferType == txType::Swap) 
     {
-
-
       std::string chain = input_line(tr("Please enter the chain you want to swap to (ETH or AVAX). MUST BE EXACT!: "));
       std::string eth_address = input_line(tr("Please enter the address you want to swap to: "));
       std::string amount = input_line(tr("Please enter the amount you want to swap to: "));
@@ -6574,6 +6573,8 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
         fail_msg_writer() << tr("Failed to serialise transaction memo");
         return false;
       }
+
+      is_swap_tx = true;
     }
 
     de.addr = info.address;
@@ -6634,13 +6635,13 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
           return false;
         }
         unlock_block = bc_height + locked_blocks;
-        ptx_vector = m_wallet->create_transactions_2(dsts, fake_outs_count, unlock_block /* unlock_time */, priority, extra, m_current_subaddress_account, subaddr_indices);
+        ptx_vector = m_wallet->create_transactions_2(dsts, fake_outs_count, unlock_block /* unlock_time */, priority, extra, m_current_subaddress_account, subaddr_indices, false, is_swap_tx);
       break;
       default:
         LOG_ERROR("Unknown transfer method, using default");
         /* FALLTHRU */
       case Transfer:
-        ptx_vector = m_wallet->create_transactions_2(dsts, fake_outs_count, 0 /* unlock_time */, priority, extra, m_current_subaddress_account, subaddr_indices, false);
+        ptx_vector = m_wallet->create_transactions_2(dsts, fake_outs_count, 0 /* unlock_time */, priority, extra, m_current_subaddress_account, subaddr_indices, false, is_swap_tx);
       break;
     }
 
