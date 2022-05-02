@@ -1512,7 +1512,7 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
     return true;
   }
   //---------------------------------------------------------------
-  bool get_registration_hash(const std::vector<cryptonote::account_public_address>& addresses, uint64_t  operator_portions, uint64_t  operator_portions_no_fee, const std::vector<uint64_t >& portions, uint64_t expiration_timestamp, crypto::hash& hash)
+  bool get_registration_hash(const std::vector<cryptonote::account_public_address>& addresses, uint64_t  operator_portions, const std::vector<uint64_t >& portions, uint64_t expiration_timestamp, crypto::hash& hash)
 {
   if (addresses.size() != portions.size())
   {
