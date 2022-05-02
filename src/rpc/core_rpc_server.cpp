@@ -355,7 +355,6 @@ namespace cryptonote
       message = "Client signature does not verify for " + rpc;
       return false;
     }
-    crypto::public_key local_client;
     if (!m_rpc_payment->pay(client, ts, payment, rpc, same_ts, credits))
     {
       message = CORE_RPC_STATUS_PAYMENT_REQUIRED;
@@ -3368,7 +3367,6 @@ namespace cryptonote
       args.push_back("auto");
     }
     uint64_t staking_requirement = 0;
-    uint64_t hf_version = m_core.get_ideal_hard_fork_version();
     staking_requirement = service_nodes::get_staking_requirement(m_core.get_nettype(), m_core.get_current_blockchain_height());
 
     {
@@ -3498,7 +3496,6 @@ namespace cryptonote
   {
 	  PERF_TIMER(on_get_staking_requirement);
 
-    uint64_t hf_version = m_core.get_ideal_hard_fork_version();
     res.staking_requirement = service_nodes::get_staking_requirement(m_core.get_nettype(), m_core.get_current_blockchain_height());
  
 	  res.status = CORE_RPC_STATUS_OK;
