@@ -7239,10 +7239,9 @@ bool simple_wallet::register_service_node(const std::vector<std::string> &args_)
 	std::vector<cryptonote::account_public_address> addresses;
 	std::vector<uint64_t> portions;
 	uint64_t portions_for_operator;
-  uint64_t portions_for_operator_no_fee;
 	bool autostake;
   std::string err_msg;
-  if (!service_nodes::convert_registration_args(m_wallet->nettype(), address_portions_args, addresses, portions, portions_for_operator, portions_for_operator_no_fee, autostake, err_msg))
+  if (!service_nodes::convert_registration_args(m_wallet->nettype(), address_portions_args, addresses, portions, portions_for_operator, autostake, err_msg))
 	{
 		fail_msg_writer() << tr("Could not convert registration args");
     if (err_msg != "") fail_msg_writer() << err_msg;
@@ -7293,7 +7292,7 @@ bool simple_wallet::register_service_node(const std::vector<std::string> &args_)
 
 	add_service_node_pubkey_to_tx_extra(extra, service_node_key);
 
-	if (!add_service_node_register_to_tx_extra(extra, addresses, portions_for_operator, portions_for_operator_no_fee, portions, expiration_timestamp, signature))
+	if (!add_service_node_register_to_tx_extra(extra, addresses, portions_for_operator, portions, expiration_timestamp, signature))
 	{
 		fail_msg_writer() << tr("failed to serialize service node registration tx extra");
 		return true;
