@@ -1370,6 +1370,10 @@ bool Blockchain::allow_governance(uint64_t height)
     else if(height == 663269)
     {
       return true;
+      
+    } else if(height == 800000)
+    {
+      return true;
     }
   }
   else if(m_nettype == TESTNET)
