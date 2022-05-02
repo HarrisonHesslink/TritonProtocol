@@ -7240,7 +7240,7 @@ bool simple_wallet::register_service_node(const std::vector<std::string> &args_)
   uint64_t portions_for_operator_no_fee;
 	bool autostake;
   std::string err_msg;
-  if (!service_nodes::convert_registration_args(m_wallet->nettype(), address_portions_args, addresses, portions, portions_for_operator, portions_for_operator_no_fee, autostake, err_msg))
+  if (!service_nodes::convert_registration_args(m_wallet->nettype(), address_portions_args, addresses, portions, portions_for_operator, autostake, err_msg))
 	{
 		fail_msg_writer() << tr("Could not convert registration args");
     if (err_msg != "") fail_msg_writer() << err_msg;
