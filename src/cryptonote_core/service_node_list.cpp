@@ -1582,7 +1582,7 @@ namespace service_nodes
 		uint64_t exp_timestamp = time(nullptr) + (autostake ? STAKING_AUTHORIZATION_EXPIRATION_AUTOSTAKE : STAKING_AUTHORIZATION_EXPIRATION_WINDOW);
 
 		crypto::hash hash;
-		bool hashed = cryptonote::get_registration_hash(addresses, operator_portions, operator_portions_no_fee, portions, exp_timestamp, hash);
+		bool hashed = cryptonote::get_registration_hash(addresses, operator_portions, portions, exp_timestamp, hash);
 		if (!hashed)
 		{
 			MERROR(tr("Could not make registration hash from addresses and portions"));
