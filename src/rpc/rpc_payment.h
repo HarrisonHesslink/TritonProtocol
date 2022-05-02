@@ -48,7 +48,6 @@ namespace cryptonote
       cryptonote::blobdata hashing_blob;
       cryptonote::blobdata previous_hashing_blob;
       uint64_t previous_seed_height;
-      uint64_t seed_height;
       crypto::hash previous_seed_hash;
       crypto::hash seed_hash;
       uint32_t cookie;
@@ -76,7 +75,6 @@ namespace cryptonote
         a & previous_block;
         a & hashing_blob;
         a & previous_hashing_blob;
-        a & seed_height;
         a & previous_seed_height;
         a & seed_hash;
         a & previous_seed_hash;
