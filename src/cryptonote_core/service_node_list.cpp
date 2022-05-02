@@ -1573,7 +1573,7 @@ namespace service_nodes
 		uint64_t operator_portions;
 		uint64_t operator_portions_no_fee;
 		bool autostake;
-    	if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, operator_portions_no_fee, autostake, err_msg))
+    	if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, autostake, err_msg))
 		{
 			MERROR(tr("Could not convert registration args"));
 			return false;
