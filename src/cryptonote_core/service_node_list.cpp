@@ -1478,9 +1478,9 @@ namespace service_nodes
 			args.erase(args.begin());
 		}
 
-		if (args.size() % 2 == 0 || args.size() < 4)
+		if (args.size() % 2 == 0 || args.size() < 3)
 		{
-			MERROR(tr("Usage: [auto] <operator fee> <operator no fee> <address> <fraction> [<address> <fraction> [...]]]"));
+			MERROR(tr("Usage: [auto] <operator fee> <address> <fraction> [<address> <fraction> [...]]]"));
 			return false;
 		}
 		if ((args.size()-1)/ 2 > MAX_NUMBER_OF_CONTRIBUTORS_V2)
@@ -1497,7 +1497,7 @@ namespace service_nodes
 		try
 		{
 			portions_for_operator = boost::lexical_cast<uint64_t>(args[0]);
-			if (portions_for_operator > STAKING_PORTIONS > STAKING_PORTIONS)
+			if (portions_for_operator > STAKING_PORTIONS)
 			{
 				MERROR(tr("Invalid portion amount: ") << args[0] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
 				return false;
