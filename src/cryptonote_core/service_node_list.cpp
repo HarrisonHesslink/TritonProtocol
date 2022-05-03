@@ -256,6 +256,7 @@ namespace service_nodes
 		for (size_t i = 0; i < registration.m_public_spend_keys.size(); i++)
 			addresses.push_back(cryptonote::account_public_address{ registration.m_public_spend_keys[i], registration.m_public_view_keys[i] });
 
+		portions_for_operator = registration.m_portions_for_operator;
 		portions = registration.m_portions;
 		expiration_timestamp = registration.m_expiration_timestamp;
 		signature = registration.m_service_node_signature;
@@ -732,7 +733,6 @@ namespace service_nodes
 
 	bool service_node_list::process_swap_tx(const cryptonote::transaction& tx, uint64_t block_height, uint32_t index)
 	{
-		crypto::public_key pubkey;
 		cryptonote::account_public_address address;
 		uint64_t transferred;
 		std::string swap_amount;
@@ -920,13 +920,10 @@ namespace service_nodes
 
 		size_t registrations = 0;
 		size_t deregistrations = 0;
-		size_t contracts = 0;
 		uint32_t index = 0;
 		for (const auto& tx_pair : txs)
 		{
-			crypto::public_key key;
 			service_node_info info;
-			cryptonote::account_public_address address;
 			if (process_registration_tx(tx_pair.first, block.timestamp, block_height, index)) {
 				registrations++;
 			}
@@ -1471,8 +1468,6 @@ namespace service_nodes
                                  bool& autostake,
                                  boost::optional<std::string&> err_msg)	{
 		autostake = false;
-
-		size_t max_num_stakers = 0;
 
 		if (!args.empty() && args[0] == "auto")
 		{
