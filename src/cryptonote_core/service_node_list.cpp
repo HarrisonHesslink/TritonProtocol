@@ -736,6 +736,10 @@ namespace service_nodes
 		cryptonote::account_public_address address;
 		uint64_t transferred;
 		std::string swap_amount;
+		cryptonote::tx_extra_memo memo;
+
+		if(!get_memo_from_tx_extra(tx.extra, memo))
+			return false;
 
 		crypto::secret_key tx_key;
 
@@ -754,11 +758,6 @@ namespace service_nodes
 			if (contribution_tx_output_has_correct_unlock_time(tx, i, block_height))
 				transferred += get_reg_tx_staking_output_contribution(tx, i, derivation, hwdev);
 		}
-
-		cryptonote::tx_extra_memo memo;
-
-		if(!get_memo_from_tx_extra(tx.extra, memo))
-			return false;
 		
 	    rapidjson::Document d;
 
@@ -1099,7 +1098,7 @@ namespace service_nodes
 		crypto::public_key key = crypto::null_pkey;
 		for (const auto& info : m_service_nodes_infos)
 		{
-			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() > 1) || hard_fork_version < 12 || info.second.is_fully_funded()))
+			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() > 1) || hard_fork_version < 12 ))
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)
