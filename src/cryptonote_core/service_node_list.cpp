@@ -243,7 +243,7 @@ namespace service_nodes
 		return unlock_time < CRYPTONOTE_MAX_BLOCK_NUMBER && unlock_time >= block_height + get_staking_requirement_lock_blocks(m_blockchain.nettype());
 	}
 
-	bool reg_tx_extract_fields(const cryptonote::transaction& tx, std::vector<cryptonote::account_public_address>& addresses, uint64_t& portions_for_operator, uint64_t& portions_for_operator_no_fee, std::vector<uint64_t>& portions, uint64_t& expiration_timestamp, crypto::public_key& service_node_key, crypto::signature& signature, crypto::public_key& tx_pub_key)
+	bool reg_tx_extract_fields(const cryptonote::transaction& tx, std::vector<cryptonote::account_public_address>& addresses, uint64_t& portions_for_operator, std::vector<uint64_t>& portions, uint64_t& expiration_timestamp, crypto::public_key& service_node_key, crypto::signature& signature, crypto::public_key& tx_pub_key)
 	{
 		cryptonote::tx_extra_service_node_register registration;
 		if (!get_service_node_register_from_tx_extra(tx.extra, registration))
@@ -257,7 +257,6 @@ namespace service_nodes
 			addresses.push_back(cryptonote::account_public_address{ registration.m_public_spend_keys[i], registration.m_public_view_keys[i] });
 
 		portions_for_operator = registration.m_portions_for_operator;
-		portions_for_operator_no_fee = registration.m_portions_for_operator_no_fee;
 		portions = registration.m_portions;
 		expiration_timestamp = registration.m_expiration_timestamp;
 		signature = registration.m_service_node_signature;
