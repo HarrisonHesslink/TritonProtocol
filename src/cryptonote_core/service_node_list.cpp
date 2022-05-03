@@ -1060,9 +1060,11 @@ namespace service_nodes
 
 		uint64_t operator_portions = info.portions_for_operator;
 
+		bool threshold_met = info.total_contributed >= info.staking_requirement - (info.staking_requirement / 10) && info.contributors.size() > 1;
+
 		if(hard_fork_version >= 12)
 		{
-			if (info.total_contributed >= info.staking_requirement - (info.staking_requirement / 10) && info.contributors.size() > 1)
+			if (threshold_met)
 			{
 				operator_portions = info.portions_for_operator;
 			} else {
@@ -1096,9 +1098,12 @@ namespace service_nodes
 		std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
 		auto oldest_waiting = std::pair<uint64_t, uint32_t>(std::numeric_limits<uint64_t>::max(), std::numeric_limits<uint32_t>::max());
 		crypto::public_key key = crypto::null_pkey;
+
+		bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12);
+
 		for (const auto& info : m_service_nodes_infos)
 		{
-			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() > 1) || hard_fork_version < 12 ))
+			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && threshold_met)
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)
