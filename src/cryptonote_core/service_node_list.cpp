@@ -1059,15 +1059,18 @@ namespace service_nodes
 		int hard_fork_version = m_blockchain.get_hard_fork_version(height);
 
 		uint64_t operator_portions = info.portions_for_operator_no_fee;
+		bool threshold_met = false;
+
 		if (info.total_contributed >= info.staking_requirement - (info.staking_requirement / 10))
 		{
-
+			threshold = true;
 			operator_portions = info.portions_for_operator;
 
 		} else {
 			if (hard_fork_version < 12)
 			{
 				operator_portions = info.portions_for_operator;
+				threshold = true;
 			}
 		}
 
@@ -1080,8 +1083,12 @@ namespace service_nodes
 			lo = mul128(contributor.amount, remaining_portions, &hi);
 			div128_64(hi, lo, info.staking_requirement, &resulthi, &resultlo);
 
-			if (contributor.address == info.operator_address)
+			if (contributor.address == info.operator_address && threshold_met)
+			{
 				resultlo += operator_portions;
+			} else {
+				resultlo = 0;
+			}
 
 			winners.push_back(std::make_pair(contributor.address, resultlo));
 		}
