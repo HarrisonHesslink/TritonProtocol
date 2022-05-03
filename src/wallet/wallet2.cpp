@@ -10156,7 +10156,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
         tx.selected_transfers.size() << " inputs");
       if (use_rct)
         transfer_selected_rct(tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra,
-          test_tx, test_ptx, rct_config, is_staking_tx, is_swap_tx);
+          test_tx, test_ptx, rct_config, is_staking_tx);
       else
         transfer_selected(tx.dsts, tx.selected_transfers, fake_outs_count, outs, unlock_time, needed_fee, extra,
           detail::digit_split_strategy, tx_dust_policy(::config::DEFAULT_DUST_THRESHOLD), test_tx, test_ptx);
