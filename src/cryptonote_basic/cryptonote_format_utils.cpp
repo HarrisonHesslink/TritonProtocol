@@ -839,7 +839,6 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
     std::vector<uint8_t>& tx_extra,
     const std::vector<cryptonote::account_public_address>& addresses,
     uint64_t portions_for_operator,
-    uint64_t portions_for_operator_no_fee,
     const std::vector<uint64_t>& portions,
     uint64_t expiration_timestamp,
     const crypto::signature& service_node_signature)
@@ -864,7 +863,6 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
         public_spend_keys,
         public_view_keys,
 		    portions_for_operator,
-        portions_for_operator_no_fee,
         portions,
         expiration_timestamp,
         service_node_signature
