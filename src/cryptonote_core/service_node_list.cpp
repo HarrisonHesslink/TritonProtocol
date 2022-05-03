@@ -1059,18 +1059,14 @@ namespace service_nodes
 		int hard_fork_version = m_blockchain.get_hard_fork_version(height);
 
 		uint64_t operator_portions = info.portions_for_operator_no_fee;
-		bool threshold_met = false;
 
 		if (info.total_contributed >= info.staking_requirement - (info.staking_requirement / 10))
 		{
-			threshold = true;
 			operator_portions = info.portions_for_operator;
-
 		} else {
 			if (hard_fork_version < 12)
 			{
 				operator_portions = info.portions_for_operator;
-				threshold = true;
 			}
 		}
 
@@ -1083,12 +1079,10 @@ namespace service_nodes
 			lo = mul128(contributor.amount, remaining_portions, &hi);
 			div128_64(hi, lo, info.staking_requirement, &resulthi, &resultlo);
 
-			if (contributor.address == info.operator_address && threshold_met)
+			if (contributor.address == info.operator_address)
 			{
 				resultlo += operator_portions;
-			} else {
-				resultlo = 0;
-			}
+			} 
 
 			winners.push_back(std::make_pair(contributor.address, resultlo));
 		}
@@ -1103,7 +1097,7 @@ namespace service_nodes
 		crypto::public_key key = crypto::null_pkey;
 		for (const auto& info : m_service_nodes_infos)
 		{
-			if ((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded())
+			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && ((info.second.operator_portions != STAKING_PORTIONS && info.second.contributors.length() > 1) || hard_fork_version < 12))
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)
