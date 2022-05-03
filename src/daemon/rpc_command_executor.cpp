@@ -2366,7 +2366,7 @@ static void print_service_node_list_state(cryptonote::network_type nettype, int 
     bool is_rewardable = ((entry.portions_for_operator != STAKING_PORTIONS && entry.contributors.size() > 1) || hard_fork_version < 12);
 
 
-		epee::console_colors color = is_registered || is_rewardable ? console_color_green : epee::console_color_yellow;
+		epee::console_colors color = is_registered && is_rewardable ? console_color_green : epee::console_color_yellow;
     
 		// Print Funding Status
 		{
