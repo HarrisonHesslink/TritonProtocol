@@ -1058,15 +1058,17 @@ namespace service_nodes
 
 		int hard_fork_version = m_blockchain.get_hard_fork_version(height);
 
-		uint64_t operator_portions = info.portions_for_operator_no_fee;
 
-		if (info.total_contributed >= info.staking_requirement - (info.staking_requirement / 10))
+		uint64_t operator_portions = info.portions_for_operator;
+
+		if(hard_fork_version >= 12)
 		{
-			operator_portions = info.portions_for_operator;
-		} else {
-			if (hard_fork_version < 12)
+			if (info.total_contributed >= info.staking_requirement - (info.staking_requirement / 10) && info.contributors.length() > 1)
 			{
 				operator_portions = info.portions_for_operator;
+			} else {
+		
+				operator_portions = info.portions_for_operator_no_fee;
 			}
 		}
 
