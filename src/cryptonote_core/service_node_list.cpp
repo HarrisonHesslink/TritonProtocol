@@ -577,6 +577,8 @@ namespace service_nodes
 			std::cout << "portions_for_operator" << std::endl;
 			return false;
 
+		
+
 		// check the signature is all good
 
 		crypto::hash hash;
@@ -649,6 +651,8 @@ namespace service_nodes
 		service_node_info info = {};
 		if (!is_registration_tx(tx, block_timestamp, block_height, index, key, info))
 			return false;
+
+		std::cout << "Is Reg" << std::endl;
 
 		// NOTE: A node doesn't expire until registration_height + lock blocks excess now which acts as the grace period
 		// So it is possible to find the node still in our list.
