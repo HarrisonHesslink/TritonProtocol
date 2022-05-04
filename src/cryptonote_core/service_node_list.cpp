@@ -557,7 +557,6 @@ namespace service_nodes
 		std::vector<cryptonote::account_public_address> service_node_addresses;
 		std::vector<uint64_t> service_node_portions;
 		uint64_t portions_for_operator;
-		uint64_t portions_for_operator_no_fee = 0;
 		uint64_t expiration_timestamp;
 		crypto::signature signature;
 
@@ -571,15 +570,6 @@ namespace service_nodes
 		if (!check_service_node_portions(service_node_portions)) return false;
 
 		if (portions_for_operator > STAKING_PORTIONS)
-			return false;
-
-		if (!service_nodes::get_portions_from_percent_str("0", portions_for_operator_no_fee))
-		{
-			MERROR("Invalid value: " << "0" << ". Should be between [0-100]");
-			return false;
-		}
-
-		if(portions_for_operator_no_fee != 0)
 			return false;
 
 		// check the signature is all good
@@ -1066,7 +1056,7 @@ namespace service_nodes
 				operator_portions = info.portions_for_operator;
 			} else {
 		
-				operator_portions = info.portions_for_operator_no_fee;
+				operator_portions = 0;
 			}
 		}
 
