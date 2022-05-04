@@ -577,16 +577,17 @@ namespace service_nodes
 			std::cout << "portions_for_operator" << std::endl;
 			return false;
 
-		
-
 		// check the signature is all good
 
 		crypto::hash hash;
 		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash))
+			std::cout << "get_registration_hash" << std::endl;
 			return false;
 		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature))
+			std::cout << "check_key" << std::endl;
 			return false;
 		if (expiration_timestamp < block_timestamp)
+			std::cout << "expiration_timestamp" << std::endl;
 			return false;
 
 		// check the initial contribution exists
