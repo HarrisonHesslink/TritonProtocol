@@ -650,7 +650,10 @@ namespace service_nodes
 		crypto::public_key key;
 		service_node_info info = {};
 		if (!is_registration_tx(tx, block_timestamp, block_height, index, key, info))
+		{
+			std::cout << "Is Reg" << std::endl;
 			return false;
+		}
 
 		std::cout << "Is Reg" << std::endl;
 
