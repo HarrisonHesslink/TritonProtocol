@@ -802,7 +802,7 @@ namespace service_nodes
 		service_node_info& info = iter->second;
 		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
 
-		uint64_t block_for_unlock = hf_version >= 12 ? info.registration_height : block_height;
+		const uint64_t block_for_unlock = hf_version >= 12 ? info.registration_height : block_height;
 
 		if (!get_contribution(tx, block_for_unlock, address, transferred))
 			return;
@@ -1107,7 +1107,7 @@ namespace service_nodes
 
 		for (const auto& info : m_service_nodes_infos)
 		{
-			bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12);
+			bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12 || (info.second.portions_for_operator == STAKING_PORTIONS && info.second.contributors.size() == 1 && info.second.is_fully_funded()));
 
 			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && threshold_met)
 			{
