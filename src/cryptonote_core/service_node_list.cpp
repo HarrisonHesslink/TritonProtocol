@@ -573,9 +573,6 @@ namespace service_nodes
 		if (portions_for_operator > STAKING_PORTIONS)
 			return false;
 
-		if (portions_for_operator_no_fee > STAKING_PORTIONS)
-			return false;
-
 		if (!service_nodes::get_portions_from_percent_str("0", portions_for_operator_no_fee))
 		{
 			MERROR("Invalid value: " << "0" << ". Should be between [0-100]");
@@ -1102,7 +1099,7 @@ namespace service_nodes
 		for (const auto& info : m_service_nodes_infos)
 		{
 			bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12);
-			
+
 			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && threshold_met)
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
