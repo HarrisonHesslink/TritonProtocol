@@ -580,6 +580,15 @@ namespace service_nodes
 			return false;
 		}
 
+		if (!service_nodes::get_portions_from_percent_str("0", portions_for_operator_no_fee))
+		{
+			MERROR("Invalid value: " << "0" << ". Should be between [0-100]");
+			return false;
+		}
+
+		if(portions_for_operator_no_fee != 0)
+			return false;
+
 		// check the signature is all good
 
 		crypto::hash hash;
