@@ -7566,14 +7566,14 @@ bool simple_wallet::stake_main(
     if (ptx_vector.size() > 1) {
       prompt << boost::format(tr("Staking %s for %u blocks in %llu transactions for a total fee of %s.  Is this okay?  (Y/Yes/N/No): ")) %
         print_money(total_sent) %
-        locked_blocks %
+        (unlock_block - bc_height) %
         ((unsigned long long)ptx_vector.size()) %
         print_money(total_fee);
     }
     else {
       prompt << boost::format(tr("Staking %s for %u blocks a total fee of %s.  Is this okay?  (Y/Yes/N/No): ")) %
         print_money(total_sent) %
-        locked_blocks %
+        (unlock_block - bc_height) %
         print_money(total_fee);
     }
     if (autostake)
