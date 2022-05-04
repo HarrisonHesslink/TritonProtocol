@@ -561,15 +561,20 @@ namespace service_nodes
 		crypto::signature signature;
 
 		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key))
+			std::cout << "Reg TX False" << std::endl;
 			return false;
 
 		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty())
+			std::cout << "sizing" << std::endl;
 			return false;
 
 		// check the portions
-		if (!check_service_node_portions(service_node_portions)) return false;
+		if (!check_service_node_portions(service_node_portions))
+			std::cout << "check_service_node_portions" << std::endl;
+			return false;
 
 		if (portions_for_operator > STAKING_PORTIONS)
+			std::cout << "portions_for_operator" << std::endl;
 			return false;
 
 		// check the signature is all good
