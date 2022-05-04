@@ -557,7 +557,7 @@ namespace service_nodes
 		std::vector<cryptonote::account_public_address> service_node_addresses;
 		std::vector<uint64_t> service_node_portions;
 		uint64_t portions_for_operator;
-		uint64_t portions_for_operator_no_fee;
+		uint64_t portions_for_operator_no_fee = 0;
 		uint64_t expiration_timestamp;
 		crypto::signature signature;
 
