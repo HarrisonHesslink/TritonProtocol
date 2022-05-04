@@ -652,7 +652,7 @@ namespace service_nodes
 		std::cout << "Hello" << std::endl;
 		if (!is_registration_tx(tx, block_timestamp, block_height, index, key, info))
 		{
-			std::cout << "Is Reg" << std::endl;
+			std::cout << "Is Not Reg" << std::endl;
 			return false;
 		}
 
