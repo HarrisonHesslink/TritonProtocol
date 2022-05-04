@@ -605,10 +605,9 @@ namespace service_nodes
 
 		key = service_node_key;
 
-
 		info.operator_address = service_node_addresses[0];
 		info.portions_for_operator = portions_for_operator;
-		info.portions_for_operator_no_fee = portions_for_operator_no_fee;
+		info.portions_for_operator_no_fee = 0;
 		info.registration_height = block_height;
 		info.last_reward_block_height = block_height;
 		info.last_reward_transaction_index = index;
