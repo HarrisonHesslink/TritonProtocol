@@ -7408,7 +7408,7 @@ bool simple_wallet::stake_main(
     }
   }
 
-  uint64_t unlock_block = bc_height + locked_blocks;
+  uint64_t unlock_block = 0;
 
   // Check if client can stake into this service node, if so, how much.
   try
@@ -7434,6 +7434,8 @@ bool simple_wallet::stake_main(
       can_contrib_total = snode_info.staking_requirement - snode_info.total_reserved;
       must_contrib_total = m_wallet->use_fork_rules(10, 0) ? std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS_V2) : std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS);
     }
+
+    unlock_block = m_wallet->use_fork_rules(12, 0) ? snode_info.registration_height + locked_blocks : bc_height + locked_blocks;
 
     bool is_preexisting_contributor = false;
     for (const auto& contributor : snode_info.contributors)
