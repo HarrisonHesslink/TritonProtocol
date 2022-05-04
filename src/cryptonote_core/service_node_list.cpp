@@ -560,35 +560,41 @@ namespace service_nodes
 		uint64_t expiration_timestamp;
 		crypto::signature signature;
 
-		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key))
+		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key)) {
 			std::cout << "Reg TX False" << std::endl;
 			return false;
+		}
 
-		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty())
+		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty()) {
 			std::cout << "sizing" << std::endl;
 			return false;
-
+		}
 		// check the portions
-		if (!check_service_node_portions(service_node_portions))
+		if (!check_service_node_portions(service_node_portions)) {
 			std::cout << "check_service_node_portions" << std::endl;
 			return false;
+		}
 
-		if (portions_for_operator > STAKING_PORTIONS)
+		if (portions_for_operator > STAKING_PORTIONS){
 			std::cout << "portions_for_operator" << std::endl;
 			return false;
+		}
 
 		// check the signature is all good
 
 		crypto::hash hash;
-		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash))
+		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash)) {
 			std::cout << "get_registration_hash" << std::endl;
 			return false;
-		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature))
+		}
+		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature)) {
 			std::cout << "check_key" << std::endl;
 			return false;
-		if (expiration_timestamp < block_timestamp)
+		}
+		if (expiration_timestamp < block_timestamp) {
 			std::cout << "expiration_timestamp" << std::endl;
 			return false;
+		}
 
 		// check the initial contribution exists
 		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
