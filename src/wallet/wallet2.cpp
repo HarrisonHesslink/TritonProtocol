@@ -1169,6 +1169,7 @@ wallet_keys_unlocker::wallet_keys_unlocker(wallet2 &w, const boost::optional<too
     m_persistent_rpc_client_id(false),
     m_auto_mine_for_rpc_payment_threshold(-1.0f),
     m_is_initialized(false),
+    m_fork_on_autostake(true),
     m_kdf_rounds(kdf_rounds),
     is_old_file_format(false),
     m_watch_only(false),
@@ -7867,7 +7868,7 @@ std::vector<wallet2::pending_tx> wallet2::create_stake_tx(const crypto::public_k
   std::vector<uint8_t> extra;
   add_service_node_pubkey_to_tx_extra(extra, service_node_key);
   add_service_node_contributor_to_tx_extra(extra, address);
-  add_burned_amount_to_tx_extra(extra, amount / 1000);
+
   vector<cryptonote::tx_destination_entry> dsts;
   cryptonote::tx_destination_entry de;
   de.addr = address;
@@ -7889,7 +7890,7 @@ std::vector<wallet2::pending_tx> wallet2::create_stake_tx(const crypto::public_k
     return {};
   }
 
-  uint64_t unlock_at_block = use_fork_rules(12, 0) ? reg_height + locked_blocks : bc_height + locked_blocks;
+  uint64_t unlock_at_block = use_fork_rules(12, 0) reg_height + locked_blocks : bc_height + locked_blocks;
 
   const uint32_t priority = adjust_priority(0);
 
@@ -9861,11 +9862,11 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
     for (const auto& i : balance_per_subaddr)
       subaddr_indices.insert(i.first);
   }
-  uint64_t burning_amount = get_burned_amount_from_tx_extra(extra);
+
   // early out if we know we can't make it anyway
   // we could also check for being within FEE_PER_KB, but if the fee calculation
   // ever changes, this might be missed, so let this go through
-  const uint64_t min_fee = (fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof)) + burning_amount;
+  const uint64_t min_fee = (fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof));
   uint64_t balance_subtotal = 0;
   uint64_t unlocked_balance_subtotal = 0;
   for (uint32_t index_minor : subaddr_indices)
@@ -9965,8 +9966,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
   accumulated_outputs = 0;
   accumulated_change = 0;
   adding_fee = false;
-
-  needed_fee = 0 + burning_amount;
+  needed_fee = 0;
   std::vector<std::vector<tools::wallet2::get_outs_entry>> outs;
 
   // for rct, since we don't see the amounts, we will try to make all transactions
@@ -10141,6 +10141,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
       pending_tx test_ptx;
 
       needed_fee += estimate_fee(use_per_byte_fee, use_rct ,tx.selected_transfers.size(), fake_outs_count, tx.dsts.size()+1, extra.size(), bulletproof, base_fee, fee_multiplier, fee_quantization_mask);
+
       uint64_t inputs = 0, outputs = needed_fee;
       for (size_t idx: tx.selected_transfers) inputs += m_transfers[idx].amount();
       for (const auto &o: tx.dsts) outputs += o.amount;
@@ -10569,7 +10570,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_from(const crypton
       cryptonote::transaction test_tx;
       pending_tx test_ptx;
 
-      needed_fee += estimate_fee(use_per_byte_fee, use_rct, tx.selected_transfers.size(), fake_outs_count, tx.dsts.size()+1, extra.size(), bulletproof, base_fee, fee_multiplier, fee_quantization_mask);
+      needed_fee = estimate_fee(use_per_byte_fee, use_rct, tx.selected_transfers.size(), fake_outs_count, tx.dsts.size()+1, extra.size(), bulletproof, base_fee, fee_multiplier, fee_quantization_mask);
 
       // add N - 1 outputs for correct initial fee estimation
       for (size_t i = 0; i < ((outputs > 1) ? outputs - 1 : outputs); ++i)
@@ -13459,7 +13460,7 @@ std::string wallet2::make_uri(const std::string &address, const std::string &pay
 //----------------------------------------------------------------------------------------------------
 bool wallet2::parse_uri(const std::string &uri, std::string &address, std::string &payment_id, uint64_t &amount, std::string &tx_description, std::string &recipient_name, std::vector<std::string> &unknown_parameters, std::string &error)
 {
-  if (uri.substr(0, 11) != "equilibria:")
+  if (uri.substr(0, 7) != "equilibria:")
   {
     error = std::string("URI has wrong scheme (expected \"equilibria:\"): ") + uri;
     return false;
