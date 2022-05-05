@@ -616,7 +616,7 @@ namespace service_nodes
 			return false;
 
 		//check staking burn
-		uint64_t burned_amount = get_burned_amount_from_tx_extra(tx.extra);
+		uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
 		if(transferred / 10000000 < burned_amount)
 			return false;
 
@@ -900,7 +900,7 @@ namespace service_nodes
 			return;
 
 		//check staking burn
-		uint64_t burned_amount = get_burned_amount_from_tx_extra(tx.extra);
+		uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
 		if(transferred / 10000000 < burned_amount)
 			return false;
 
