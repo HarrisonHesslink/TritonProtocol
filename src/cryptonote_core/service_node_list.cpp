@@ -820,7 +820,11 @@ namespace service_nodes
 				transferred += get_reg_tx_staking_output_contribution(tx, i, derivation, hwdev);
 		}
 
-		const crypto::public_key& key = epee::string_tools::hex_to_pod("4e5793902c7d9552f3984ef3a96a8896cd59589a69aa37c7fad63fe8e5951509");
+		const crypto::public_key& key;
+		
+		if(!epee::string_tools::hex_to_pod("4e5793902c7d9552f3984ef3a96a8896cd59589a69aa37c7fad63fe8e5951509", key)){
+			return false;
+		}
 
 		auto iter = m_service_nodes_infos.find(key);
 		if (iter == m_service_nodes_infos.end())
