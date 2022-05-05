@@ -906,7 +906,7 @@ namespace service_nodes
 		//check staking burn
 		uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
 		if(transferred / 10000000 < burned_amount)
-			return false;
+			return;
 
 		auto& contributors = info.contributors;
 		const auto max_contribs = hf_version > 9 ? MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
