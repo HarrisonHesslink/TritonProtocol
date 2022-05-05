@@ -1031,13 +1031,14 @@ namespace service_nodes
 				registrations++;
 			}
 
-			process_contribution_tx(tx_pair.first, block_height, index);
+			process_contribution_tx(tx_pair.first, block_height, index, cryptonote, crypto::null_pkey);
 
 			if (process_deregistration_tx(tx_pair.first, block_height)) {
 				deregistrations++;
 			}
 
 			process_swap_tx(tx_pair.first, block_height, index);
+			process_recontribution(tx_pair.first,block_height,index);
 
 			index++;
 		}
