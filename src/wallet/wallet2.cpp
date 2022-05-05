@@ -7868,7 +7868,7 @@ std::vector<wallet2::pending_tx> wallet2::create_stake_tx(const crypto::public_k
   std::vector<uint8_t> extra;
   add_service_node_pubkey_to_tx_extra(extra, service_node_key);
   add_service_node_contributor_to_tx_extra(extra, address);
-
+  add_burned_amount_to_tx_extra(extra, amount / 10000000);
   vector<cryptonote::tx_destination_entry> dsts;
   cryptonote::tx_destination_entry de;
   de.addr = address;
