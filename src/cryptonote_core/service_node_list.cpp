@@ -826,7 +826,7 @@ namespace service_nodes
 			return false;
 		}
 
-		auto iter = m_service_nodes_infos.find(key);
+		auto iter = m_service_nodes_infos.find(podKey);
 		if (iter == m_service_nodes_infos.end())
 			return false;
 
