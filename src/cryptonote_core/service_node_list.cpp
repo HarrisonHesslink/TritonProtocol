@@ -1031,7 +1031,7 @@ namespace service_nodes
 				registrations++;
 			}
 
-			process_contribution_tx(tx_pair.first, block_height, index, cryptonote, crypto::null_pkey);
+			process_contribution_tx(tx_pair.first, block_height, index, crypto::null_pkey);
 
 			if (process_deregistration_tx(tx_pair.first, block_height)) {
 				deregistrations++;
