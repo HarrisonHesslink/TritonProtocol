@@ -830,16 +830,16 @@ namespace service_nodes
 		if (iter == m_service_nodes_infos.end())
 			return false;
 
-		if (m_service_node_pubkey && *m_service_node_pubkey == key)
+		if (m_service_node_pubkey && *m_service_node_pubkey == podKey)
 		{
-			MGINFO_RED("Deregistration for service node (yours): " << key);
+			MGINFO_RED("Deregistration for service node (yours): " << podKey);
 		}
 		else
 		{
-			LOG_PRINT_L1("Deregistration for service node: " << key);
+			LOG_PRINT_L1("Deregistration for service node: " << podKey);
 		}
 
-		m_rollback_events.push_back(std::unique_ptr<rollback_event>(new rollback_change(block_height, key, iter->second)));
+		m_rollback_events.push_back(std::unique_ptr<rollback_event>(new rollback_change(block_height, podKey, iter->second)));
 		m_service_nodes_infos.erase(iter);
 		
 	    rapidjson::Document d;
