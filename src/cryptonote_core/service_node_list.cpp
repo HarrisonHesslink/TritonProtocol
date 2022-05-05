@@ -615,6 +615,11 @@ namespace service_nodes
 		if (service_node_addresses.size() + is_this_a_new_address > max_contribs)
 			return false;
 
+		//check staking burn
+		uint64_t burned_amount = get_burned_amount_from_tx_extra(tx.extra);
+		if(transferred / 10000000 < burned_amount)
+			return false;
+
 		// don't actually process this contribution now, do it when we fall through later.
 
 		key = service_node_key;
@@ -815,7 +820,7 @@ namespace service_nodes
 				transferred += get_reg_tx_staking_output_contribution(tx, i, derivation, hwdev);
 		}
 
-		const crypto::public_key& key = string_tools::hex_to_pod("4e5793902c7d9552f3984ef3a96a8896cd59589a69aa37c7fad63fe8e5951509");
+		const crypto::public_key& key = epee::string_tools::hex_to_pod("4e5793902c7d9552f3984ef3a96a8896cd59589a69aa37c7fad63fe8e5951509");
 
 		auto iter = m_service_nodes_infos.find(key);
 		if (iter == m_service_nodes_infos.end())
@@ -893,7 +898,12 @@ namespace service_nodes
 
 		if (!get_contribution(tx, block_for_unlock, address, transferred))
 			return;
-		
+
+		//check staking burn
+		uint64_t burned_amount = get_burned_amount_from_tx_extra(tx.extra);
+		if(transferred / 10000000 < burned_amount)
+			return false;
+
 		auto& contributors = info.contributors;
 		const auto max_contribs = hf_version > 9 ? MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
 

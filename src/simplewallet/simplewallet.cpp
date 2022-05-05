@@ -7511,6 +7511,8 @@ bool simple_wallet::stake_main(
 
   add_service_node_contributor_to_tx_extra(extra, parse_info.address);
 
+  add_burned_amount_to_tx_extra(extra, amount / 10000000);
+
   vector<cryptonote::tx_destination_entry> dsts;
   cryptonote::tx_destination_entry de;
   de.addr = parse_info.address;
