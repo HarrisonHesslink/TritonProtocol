@@ -1210,7 +1210,7 @@ namespace service_nodes
 					div128_64(hi, lo, MAX_OPERATOR_V12 * COIN, &resulthi, &resultlo);
 				} else {
 					lo = mul128(contributor.amount, usable_portions, &hi);
-					div128_64(hi, lo, MAX_POOL_STAKERS * COIN, &resulthi, &resultlo);
+					div128_64(hi, lo, MAX_POOL_STAKERS_V12 * COIN, &resulthi, &resultlo);
 				}
 			}
 
