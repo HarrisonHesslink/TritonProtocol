@@ -16,8 +16,9 @@ namespace service_nodes {
 
 		uint64_t height_adjusted = height - hardfork_height;
 		uint64_t base = 0, variable = 0;
+		
 
-		if(height >= 800000)
+		if(true)
 		{
 			return 100000 * COIN;
 		}
