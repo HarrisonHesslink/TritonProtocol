@@ -2868,6 +2868,22 @@ bool t_rpc_command_executor::prepare_sn()
     addresses.push_back(address_string);
   }
 
+  for (size_t contributor_index = 0; contributor_index < number_participants; ++contributor_index)
+  {
+    const bool is_operator = (contributor_index == 0);
+    const std::string contributor_name = is_operator ? "the operator" : "contributor " + std::to_string(contributor_index);
+
+    std::cout << "Enter the equilibria address for " << contributor_name << ": ";
+    std::string address_string;
+    // the addresses will be validated later down the line
+    if(!(std::cin >> address_string))
+    {
+      std::cout << "Invalid address. Aborted." << std::endl;
+      return true;
+    }
+    addresses.push_back(address_string);
+  }
+
   const uint64_t amount_left = staking_requirement - total_reserved_contributions;
 
   if (!is_solo_stake)
