@@ -2870,8 +2870,8 @@ bool t_rpc_command_executor::prepare_sn()
     }
 
     if(operator_cut > max_contribution) {
+      std::cout << "Max staking amount for Operators is 35,000 XEQ!";
       return true;
-      std::cout << "Max staking amount for Operators is 35,000 XEQ!"
     }
 
     contributions.push_back(portions);
