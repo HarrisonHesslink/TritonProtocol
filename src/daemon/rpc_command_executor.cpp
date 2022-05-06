@@ -2843,8 +2843,10 @@ bool t_rpc_command_executor::prepare_sn()
     const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
 
     const uint64_t min_contribution = MIN_OPERATOR_V12 * COIN;
+    const uint64_t max_contribution = MAX_OPERATOR_V12 * COIN;
 
     std::cout << "Minimum amount that can be reserved: " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
+    std::cout << "Maximum amount that can be reserved: " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
 
     std::cout << "How much XEQ does the operator want to reserve in the pool? ";
     std::string contribution_string;
@@ -2866,6 +2868,12 @@ bool t_rpc_command_executor::prepare_sn()
       std::cout << "The operator contribution is higher than the staking requirement. Any excess contribution will be locked for the staking duration, but won't yield any additional reward." << std::endl;
       portions = portions_remaining;
     }
+
+    if(operator_cut > max_contribution) {
+      return true;
+      std::cout << "Max staking amount for Operators is 35,000 XEQ!"
+    }
+
     contributions.push_back(portions);
     portions_remaining -= portions;
     total_reserved_contributions += get_actual_amount(staking_requirement, portions);
@@ -2916,8 +2924,6 @@ bool t_rpc_command_executor::prepare_sn()
     }
   }
 
-  bool autostaking = false;
-
   std::cout << "Summary:" << std::endl;
   printf("%-16s%-9s%-19s%-s\n", "Contributor", "Address", "Contribution", "Contribution(%)");
   printf("%-16s%-9s%-19s%-s\n", "___________", "_______", "____________", "_______________");
@@ -2965,11 +2971,6 @@ bool t_rpc_command_executor::prepare_sn()
 
   // [auto] <operator without fee> <operator with fee> <address> <fraction> [<address> <fraction> [...]]]
   std::vector<std::string> args;
-
-  if (autostaking)
-    args.push_back("auto");
-
-  args.push_back(std::to_string(operating_cost_portions));
 
   for (size_t i = 0; i < number_participants; ++i)
   {
