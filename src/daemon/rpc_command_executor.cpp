@@ -2842,7 +2842,7 @@ bool t_rpc_command_executor::prepare_sn()
   {
     const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
 
-    const uint64_t min_contribution = get_amount_to_make_portions(staking_requirement, min_contribution_portions);
+    const uint64_t min_contribution = MIN_OPERATOR_V12 * COIN
 
     std::cout << "Minimum amount that can be reserved: " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
 
