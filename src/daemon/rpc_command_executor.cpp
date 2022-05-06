@@ -2846,7 +2846,7 @@ bool t_rpc_command_executor::prepare_sn()
     const uint64_t max_contribution = MAX_OPERATOR_V12 * COIN;
 
     std::cout << "Minimum amount that can be reserved: " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
-    std::cout << "Maximum amount that can be reserved: " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
+    std::cout << "Maximum amount that can be reserved: " << cryptonote::print_money(max_contribution) << " " << cryptonote::get_unit() << std::endl;
 
     std::cout << "How much XEQ does the operator want to reserve in the pool? ";
     std::string contribution_string;

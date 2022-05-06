@@ -1609,9 +1609,9 @@ namespace service_nodes
 			args.erase(args.begin());
 		}
 
-		if (args.size() % 2 == 0 || args.size() < 3)
+		if (args.size() % 2 == 0 || args.size() < 2)
 		{
-			MERROR(tr("Usage: [auto] <operator fee> <address> <fraction> [<address> <fraction> [...]]]"));
+			MERROR(tr("Usage: [auto] <address> <fraction> [<address> <fraction> [...]]]"));
 			return false;
 		}
 		if ((args.size()-1)/ 2 > MAX_NUMBER_OF_CONTRIBUTORS_V2)
