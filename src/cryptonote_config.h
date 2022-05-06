@@ -63,8 +63,16 @@
 #define STAKING_AUTHORIZATION_EXPIRATION_AUTOSTAKE      (60*60*24*365*2) // 2 years
 #define MAX_NUMBER_OF_CONTRIBUTORS                      4
 #define MAX_NUMBER_OF_CONTRIBUTORS_V2                   100
+#define MAX_NUMBER_OF_CONTRIBUTORS_V3                   1000
+
+#define MAX_OPERATOR_V12                                35000
+#define MAX_POOL_STAKERS_V12                            65000
+#define MIN_OPERATOR_V12                                10000
+#define MIN_POOL_STAKERS_V12                            100
+
 #define MIN_PORTIONS                                    (STAKING_PORTIONS / MAX_NUMBER_OF_CONTRIBUTORS)
 #define MIN_PORTIONS_V2                                 (STAKING_PORTIONS / MAX_NUMBER_OF_CONTRIBUTORS_V2)
+#define MIN_PORTIONS_V3                                 (STAKING_PORTIONS / MAX_NUMBER_OF_CONTRIBUTORS_V3)
 #define MEMPOOL_PRUNE_DEREGISTER_LIFETIME               (24 * 60 * 60) // seconds, 2 hours
 
 static_assert(STAKING_PORTIONS % MAX_NUMBER_OF_CONTRIBUTORS == 0, "Use a multiple of four, so that it divides easily by max number of contributors.");

@@ -2795,6 +2795,12 @@ bool t_rpc_command_executor::prepare_sn()
     min_portions = MIN_PORTIONS_V2;
   }
 
+  if(hf_version >= 12)
+  {
+    max_num_stakers = MAX_NUMBER_OF_CONTRIBUTORS_V3;
+    min_portions = MIN_PORTIONS_V3;
+  }
+
   bool is_solo_stake = false;
 
   std::vector<std::string> addresses;
@@ -2834,26 +2840,7 @@ bool t_rpc_command_executor::prepare_sn()
   }
   else
   {
-    std::string operating_cost_string;
-    std::cout << "What percentage of the total reward would the operator like to reserve as an operator fee [0-100]%: ";
-    std::cin >> operating_cost_string;
-
-    bool res = service_nodes::get_portions_from_percent_str(operating_cost_string, operating_cost_portions);
-
-    if (!res) {
-      std::cout << "Invalid value: " << operating_cost_string << ". Should be between [0-100]" << std::endl;
-      return true;
-    }
-
-    
-    bool res2 = service_nodes::get_portions_from_percent_str("0", operating_cost_portions_no_fee);
-    if (!res2) {
-      std::cout << "Invalid value: " << "0" << ". Should be between [0-100]" << std::endl;
-      return true;
-    }
-
-
-    const uint64_t min_contribution_portions = std::min(portions_remaining, MIN_PORTIONS);
+    const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
 
     const uint64_t min_contribution = get_amount_to_make_portions(staking_requirement, min_contribution_portions);
 
@@ -2883,71 +2870,6 @@ bool t_rpc_command_executor::prepare_sn()
     portions_remaining -= portions;
     total_reserved_contributions += get_actual_amount(staking_requirement, portions);
   }
-
-  if (!is_solo_stake)
-  {
-    std::string allow_multiple_contributors;
-    std::cout << "Do you want to reserve portions of the stake for other specific contributors? (Y/Yes/N/No): ";
-    std::cin >> allow_multiple_contributors;
-    if(command_line::is_yes(allow_multiple_contributors))
-    {
-      std::cout << "Number of additional contributors [1-" << (max_num_stakers - 1) << "]: ";
-      int additional_contributors;
-      if(!(std::cin >> additional_contributors) || additional_contributors < 1 || additional_contributors > (max_num_stakers - 1))
-      {
-        std::cout << "Invalid value. Should be between [1-" << (max_num_stakers - 1) << "]" << std::endl;
-        return true;
-      }
-      number_participants += static_cast<size_t>(additional_contributors);
-    }
-  }
-
-  for (size_t contributor_index = 0; contributor_index < number_participants; ++contributor_index)
-  {
-    const bool is_operator = (contributor_index == 0);
-    const std::string contributor_name = is_operator ? "the operator" : "contributor " + std::to_string(contributor_index);
-
-    if (!is_operator)
-    {
-      const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
-      const uint64_t min_contribution = get_amount_to_make_portions(staking_requirement, min_contribution_portions);
-      const uint64_t amount_left = get_amount_to_make_portions(staking_requirement, portions_remaining);
-      std::cout << "The minimum amount possible to contribute is " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
-      std::cout << "There is " << cryptonote::print_money(amount_left) << " " << cryptonote::get_unit() << " left to meet the staking requirement." << std::endl;
-      std::cout << "How much XEQ does " << contributor_name << " want to reserve in the stake? ";
-      uint64_t contribution_amount;
-      std::string contribution_string;
-      std::cin >> contribution_string;
-      if (!cryptonote::parse_amount(contribution_amount, contribution_string))
-      {
-        std::cout << "Invalid amount. Aborted." << std::endl;
-        return true;
-      }
-      uint64_t portions = service_nodes::get_portions_to_make_amount(staking_requirement, contribution_amount);
-      if (portions < min_contribution_portions)
-      {
-        std::cout << "Invalid amount. Aborted." << std::endl;
-        return true;
-      }
-      if (portions > portions_remaining)
-        portions = portions_remaining;
-      contributions.push_back(portions);
-      portions_remaining -= portions;
-      total_reserved_contributions += get_actual_amount(staking_requirement, portions);
-    }
-
-    std::cout << "Enter the equilibria address for " << contributor_name << ": ";
-    std::string address_string;
-    // the addresses will be validated later down the line
-    if(!(std::cin >> address_string))
-    {
-      std::cout << "Invalid address. Aborted." << std::endl;
-      return true;
-    }
-    addresses.push_back(address_string);
-  }
-
-  assert(addresses.size() == contributions.size());
 
   const uint64_t amount_left = staking_requirement - total_reserved_contributions;
 
@@ -2979,25 +2901,8 @@ bool t_rpc_command_executor::prepare_sn()
   }
 
   bool autostaking = false;
-  std::cout << "Do you wish to enable automatic re-staking [Y/N]: ";
-  std::string autostake_str;
-  std::cin >> autostake_str;
-  if (command_line::is_yes(autostake_str))
-  {
-    autostaking = true;
-  }
-  else if (command_line::is_no(autostake_str))
-  {
-    autostaking = false;
-  }
-  else
-  {
-    std::cout << "Invalid answer. Aborted." << std::endl;
-    return true;
-  }
 
   std::cout << "Summary:" << std::endl;
-  std::cout << "Operating costs as % of reward: " << (operating_cost_portions * 100.0 / STAKING_PORTIONS) << "%" << std::endl;
   printf("%-16s%-9s%-19s%-s\n", "Contributor", "Address", "Contribution", "Contribution(%)");
   printf("%-16s%-9s%-19s%-s\n", "___________", "_______", "____________", "_______________");
 

@@ -7426,13 +7426,13 @@ bool simple_wallet::stake_main(
     if (amount == 0)
       amount = snode_info.staking_requirement * amount_fraction;
 
-    const bool full = m_wallet->use_fork_rules(10, 0) ? snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS_V2 : snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS;
+    const bool full = m_wallet->use_fork_rules(10, 0) ? m_wallet->use_fork_rules(12,0) ? snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS_V3:  snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS_V2 : snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS;
     uint64_t can_contrib_total = 0;
     uint64_t must_contrib_total = 0;
     if (!full)
     {
       can_contrib_total = snode_info.staking_requirement - snode_info.total_reserved;
-      must_contrib_total = m_wallet->use_fork_rules(10, 0) ? std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS_V2) : std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS);
+      must_contrib_total = m_wallet->use_fork_rules(10, 0) ? m_wallet->use_fork_rules(12,0) ? MIN_POOL_STAKERS_V12 * COIN : std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS_V2) : std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS);
     }
 
     unlock_block = m_wallet->use_fork_rules(12, 0) ? snode_info.registration_height + locked_blocks : bc_height + locked_blocks;

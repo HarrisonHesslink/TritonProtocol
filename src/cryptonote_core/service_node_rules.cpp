@@ -22,7 +22,7 @@ namespace service_nodes {
 
 		if(height >= 800000)
 		{
-			return 35000;
+			return 100000 * COIN;
 		}
 		else if (height >= 352846 && height < 800000)
 		{

@@ -561,22 +561,20 @@ namespace service_nodes
 		crypto::signature signature;
 
 		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key)) {
-			std::cout << "Reg TX False" << std::endl;
 			return false;
 		}
 
+
+
 		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty()) {
-			std::cout << "sizing" << std::endl;
 			return false;
 		}
 		// check the portions
 		if (!check_service_node_portions(service_node_portions)) {
-			std::cout << "check_service_node_portions" << std::endl;
 			return false;
 		}
 
 		if (portions_for_operator > STAKING_PORTIONS){
-			std::cout << "portions_for_operator" << std::endl;
 			return false;
 		}
 
@@ -584,15 +582,12 @@ namespace service_nodes
 
 		crypto::hash hash;
 		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash)) {
-			std::cout << "get_registration_hash" << std::endl;
 			return false;
 		}
 		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature)) {
-			std::cout << "check_key" << std::endl;
 			return false;
 		}
 		if (expiration_timestamp < block_timestamp) {
-			std::cout << "expiration_timestamp" << std::endl;
 			return false;
 		}
 
@@ -605,9 +600,12 @@ namespace service_nodes
 		cryptonote::account_public_address address;
 		uint64_t transferred = 0;
 
+		if(service_node_addresses.size() > 1 && hf_version >= 12)
+			return false;
+
 		if (!get_contribution(tx, block_height, address, transferred))
 			return false;
-		if (transferred < info.staking_requirement / max_contribs)
+		if ((transferred < info.staking_requirement / max_contribs && hf_version < 12) || (transferred < MIN_OPERATOR_V12 && hf_version >= 12))
 			return false;
 		int is_this_a_new_address = 0;
 		if (std::find(service_node_addresses.begin(), service_node_addresses.end(), address) == service_node_addresses.end())
@@ -647,8 +645,19 @@ namespace service_nodes
 			if (iter != service_node_addresses.begin() + i)
 				return false;
 			uint64_t hi, lo, resulthi, resultlo;
-			lo = mul128(info.staking_requirement, service_node_portions[i], &hi);
-			div128_64(hi, lo, STAKING_PORTIONS, &resulthi, &resultlo);
+			if(hf_version >= 12 && service_node_addresses.size() == 1)
+			{
+				uint64_t fifty_per_cent;
+				if(!get_portions_from_percent_str("50",fifty_per_cent))
+					return false;
+
+				lo = mul128(MAX_OPERATOR_V12 * COIN, service_node_portions[i], &hi);
+				div128_64(hi, lo, STAKING_PORTIONS - fifty_per_cent, &resulthi, &resultlo);
+			} else {
+				lo = mul128(info.staking_requirement, service_node_portions[i], &hi);
+				div128_64(hi, lo, STAKING_PORTIONS, &resulthi, &resultlo);
+			}
+
 			info.contributors.push_back(service_node_info::contribution(resultlo, service_node_addresses[i]));
 			info.total_reserved += resultlo;
 		}
@@ -661,14 +670,11 @@ namespace service_nodes
 	{
 		crypto::public_key key;
 		service_node_info info = {};
-		std::cout << "Hello" << std::endl;
 		if (!is_registration_tx(tx, block_timestamp, block_height, index, key, info))
 		{
 			std::cout << "Is Not Reg" << std::endl;
 			return false;
 		}
-
-		std::cout << "Is Reg" << std::endl;
 
 		// NOTE: A node doesn't expire until registration_height + lock blocks excess now which acts as the grace period
 		// So it is possible to find the node still in our list.
@@ -909,7 +915,7 @@ namespace service_nodes
 			return;
 
 		auto& contributors = info.contributors;
-		const auto max_contribs = hf_version > 9 ? MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
+		const auto max_contribs = hf_version > 9 ? hf_version > 11 ? MAX_NUMBER_OF_CONTRIBUTORS_V3 : MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
 
 		// Only create a new contributor if they stake at least a quarter
 		// and if we don't already have the maximum
@@ -1178,19 +1184,35 @@ namespace service_nodes
 			}
 		}
 
-		const uint64_t remaining_portions = STAKING_PORTIONS - operator_portions;
-
 		// Add contributors and their portions to winners.
 		for (const auto& contributor : info.contributors)
 		{
 			uint64_t hi, lo, resulthi, resultlo;
-			lo = mul128(contributor.amount, remaining_portions, &hi);
-			div128_64(hi, lo, info.staking_requirement, &resulthi, &resultlo);
-
-			if (contributor.address == info.operator_address)
+			if(hard_fork_version < 12)
 			{
-				resultlo += operator_portions;
-			} 
+				const uint64_t remaining_portions = STAKING_PORTIONS - operator_portions;
+				lo = mul128(contributor.amount, remaining_portions, &hi);
+				div128_64(hi, lo, info.staking_requirement, &resulthi, &resultlo);
+
+				if (contributor.address == info.operator_address)
+				{
+						resultlo += operator_portions;
+				} 
+			} else {
+				uint64_t fifty_per_cent;
+				if(!get_portions_from_percent_str("50",fifty_per_cent))
+					return { std::make_pair(null_address, STAKING_PORTIONS) };
+				
+				const uint64_t usable_portions = STAKING_PORTIONS - fifty_per_cent;
+				if (contributor.address == info.operator_address)
+				{
+					lo = mul128(contributor.amount, usable_portions, &hi);
+					div128_64(hi, lo, MAX_OPERATOR_V12 * COIN, &resulthi, &resultlo);
+				} else {
+					lo = mul128(contributor.amount, usable_portions, &hi);
+					div128_64(hi, lo, MAX_POOL_STAKERS * COIN, &resulthi, &resultlo);
+				}
+			}
 
 			winners.push_back(std::make_pair(contributor.address, resultlo));
 		}
@@ -1206,9 +1228,9 @@ namespace service_nodes
 
 		for (const auto& info : m_service_nodes_infos)
 		{
-			bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12 || (info.second.portions_for_operator == STAKING_PORTIONS && info.second.contributors.size() == 1 && info.second.is_fully_funded()));
+			bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12 || (info.second.portions_for_operator == STAKING_PORTIONS && info.second.contributors.size() == 1 && info.second.is_fully_funded(hard_fork_version)));
 
-			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && threshold_met)
+			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded(hard_fork_version)) && threshold_met)
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)

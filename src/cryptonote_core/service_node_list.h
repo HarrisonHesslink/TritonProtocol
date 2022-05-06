@@ -120,7 +120,9 @@ namespace service_nodes
 		cryptonote::account_public_address operator_address;
 
 		bool is_valid() const { return total_contributed >= total_reserved; }
-		bool is_fully_funded() const { return total_contributed >= staking_requirement; }
+		bool is_fully_funded() const { 
+			return total_contributed >= staking_requirement; 
+		}
 
 		// the minimum contribution to start a new contributor
 		uint64_t get_min_contribution(uint64_t hf_version) const;
