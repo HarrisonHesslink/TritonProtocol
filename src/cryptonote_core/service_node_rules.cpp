@@ -11,9 +11,6 @@ namespace service_nodes {
 
 	uint64_t get_staking_requirement(cryptonote::network_type m_nettype, uint64_t height)
 	{
-		if (m_nettype != cryptonote::MAINNET)
-			return COIN * 100;
-
 		uint64_t hardfork_height = m_nettype == cryptonote::MAINNET ? 106950 : 581 /* stagenet */;
 		if (height < hardfork_height) height = hardfork_height;
 
