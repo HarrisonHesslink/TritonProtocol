@@ -1603,22 +1603,9 @@ namespace service_nodes
                                  boost::optional<std::string&> err_msg)	{
 		autostake = false;
 
-		if (!args.empty() && args[0] == "auto")
-		{
-			autostake = true;
-			args.erase(args.begin());
-		}
-
 		if (args.size() % 2 == 0 || args.size() < 2)
 		{
 			MERROR(tr("Usage: [auto] <address> <fraction> [<address> <fraction> [...]]]"));
-			return false;
-		}
-		if ((args.size()-1)/ 2 > MAX_NUMBER_OF_CONTRIBUTORS_V2)
-		{
-			std::string msg = tr("Exceeds the maximum number of contributors, which is ") + std::to_string(MAX_NUMBER_OF_CONTRIBUTORS_V2);
-			if (err_msg) *err_msg = msg;
-			MERROR(tr("Exceeds the maximum number of contributors, which is ") << MAX_NUMBER_OF_CONTRIBUTORS_V2);
 			return false;
 		}
 
