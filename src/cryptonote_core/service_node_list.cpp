@@ -1645,7 +1645,7 @@ namespace service_nodes
 		try
 		{
 			uint64_t num_portions = boost::lexical_cast<uint64_t>(args[1]);
-			uint64_t min_portions = std::min(portions_left, MIN_PORTIONS);
+			uint64_t min_portions = std::min(portions_left, MIN_OPERATOR_V12);
 			if (num_portions < min_portions || num_portions > portions_left)
 			{
 				if (err_msg) *err_msg = "invalid amount for contributor " + args[0];
