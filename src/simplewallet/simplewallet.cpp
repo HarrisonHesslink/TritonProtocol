@@ -7033,7 +7033,7 @@ bool simple_wallet::register_service_node_main(
 		amount_payable_by_operator += amount_left;
 
 	// This branch should never trigger, but leave it in anyway just in case
-	if (amount_payable_by_operator < expected_staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS)
+	if (amount_payable_by_operator < MIN_OPERATOR_V12 * COIN)
 	{
 		fail_msg_writer() << tr("This staking amount is not enough and cannot be used for a registration");
 		fail_msg_writer() << tr("If it looks correct, please send a little bit extra to ensure that it is still correct when it makes it into a block");
