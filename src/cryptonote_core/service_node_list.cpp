@@ -1603,65 +1603,65 @@ namespace service_nodes
                                  boost::optional<std::string&> err_msg)	{
 		autostake = false;
 
-		if (args.size() % 2 == 0 || args.size() < 2)
+		if (args.size() % 2 == 0 || args.size() < 2 ||  args.size() > 2)
 		{
-			MERROR(tr("Usage: [auto] <address> <fraction> [<address> <fraction> [...]]]"));
+			MERROR(tr("Usage: <address> <fraction>"));
 			return false;
 		}
 
 		addresses.clear();
 		portions.clear();
 
-		uint64_t portions_left = STAKING_PORTIONS;
-		for (size_t i = 1; i < args.size(); i += 2)
+		cryptonote::address_parse_info info;
+		if (!cryptonote::get_account_address_from_str(info, nettype, args[0]))
 		{
-			cryptonote::address_parse_info info;
-			if (!cryptonote::get_account_address_from_str(info, nettype, args[i]))
-			{
-				std::string msg = tr("failed to parse address: ") + args[i];
-				if (err_msg) *err_msg = msg;
-				MERROR(msg);
-				return false;
-			}
-
-			if (info.has_payment_id)
-			{
-				std::string msg = tr("can't use a payment id for staking tx");
-				if (err_msg) *err_msg = msg;
-				MERROR(msg);
-				return false;
-			}
-
-			if (info.is_subaddress)
-			{
-				std::string msg = tr("can't use a subaddress for staking tx");
-				if (err_msg) *err_msg = msg;
-				MERROR(msg);
-				return false;
-			}
-
-			addresses.push_back(info.address);
-
-			try
-			{
-				uint64_t num_portions = boost::lexical_cast<uint64_t>(args[i + 1]);
-				uint64_t min_portions = std::min(portions_left, MIN_PORTIONS);
-				if (num_portions < min_portions || num_portions > portions_left)
-				{
-					if (err_msg) *err_msg = "invalid amount for contributor " + args[i];
-					MERROR(tr("Invalid portion amount: ") << args[i + 1] << tr(". ") << tr("The operator must contribute at least 25%, all other contributors can have any amount open."));
-					return false;
-				}
-				portions_left -= num_portions;
-				portions.push_back(num_portions);
-			}
-			catch (const std::exception &e)
-			{
-				if (err_msg) *err_msg = "invalid amount for contributor " + args[i];
-				MERROR(tr("Invalid portion amount: ") << args[i + 1] << tr(". ") << tr("The operator must contribute at least 25%, all other contributors can have any amount open."));
-				return false;
-			}
+			std::string msg = tr("failed to parse address: ") + args[0];
+			if (err_msg) *err_msg = msg;
+			MERROR(msg);
+			return false;
 		}
+
+		if (info.has_payment_id)
+		{
+			std::string msg = tr("can't use a payment id for staking tx");
+			if (err_msg) *err_msg = msg;
+			MERROR(msg);
+			return false;
+		}
+
+		
+		if (info.is_subaddress)
+		{
+			std::string msg = tr("can't use a subaddress for staking tx");
+			if (err_msg) *err_msg = msg;
+			MERROR(msg);
+			return false;
+		}
+
+		addresses.push_back(info.address);
+
+		uint64_t portions_left = STAKING_PORTIONS;
+
+		try
+		{
+			uint64_t num_portions = boost::lexical_cast<uint64_t>(args[1]);
+			uint64_t min_portions = std::min(portions_left, MIN_PORTIONS);
+			if (num_portions < min_portions || num_portions > portions_left)
+			{
+				if (err_msg) *err_msg = "invalid amount for contributor " + args[0];
+				MERROR(tr("Invalid portion amount: ") << args[1] << tr(". ") << tr("The operator must contribute at least 25%, all other contributors can have any amount open."));
+				return false;
+			}
+			portions_left -= num_portions;
+			portions.push_back(num_portions);
+		}
+		catch (const std::exception &e)
+		{
+			if (err_msg) *err_msg = "invalid amount for contributor " + args[0];
+			MERROR(tr("Invalid portion amount: ") << args[1] << tr(". ") << tr("The operator must contribute at least 10,000 XEQ, all other contributors can have any amount open."));
+			return false;
+		}
+
 		return true;
 	}
 
@@ -1677,7 +1677,6 @@ namespace service_nodes
     	if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, autostake, err_msg))
 		{
 			MERROR(tr("Could not convert registration args"));
-			MERROR(err_msg);
 			return false;
 		}
 
