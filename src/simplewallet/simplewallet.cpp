@@ -7223,9 +7223,9 @@ bool simple_wallet::register_service_node(const std::vector<std::string> &args_)
 
 	priority = m_wallet->adjust_priority(priority);
 
-	if (local_args.size() < 6)
+	if (local_args.size() < 4)
 	{
-		fail_msg_writer() << tr("Usage: register_service_node [index=<N1>[,<N2>,...]] [priority] [auto] <operator fee> <operator no fee> <address1> <fraction1> [<address2> <fraction2> [...]] <expiration timestamp> <service node pubkey> <signature>");
+		fail_msg_writer() << tr("Usage: register_service_node [index=<N1>[,<N2>,...]] [priority] [auto] <address1> <fraction1> [<address2> <fraction2> [...]] <expiration timestamp> <service node pubkey> <signature>");
 		fail_msg_writer() << tr("");
 		fail_msg_writer() << tr("Prepare this command in the daemon with the prepare_sn command");
 		fail_msg_writer() << tr("");
