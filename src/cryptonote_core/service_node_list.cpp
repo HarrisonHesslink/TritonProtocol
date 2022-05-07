@@ -1603,7 +1603,7 @@ namespace service_nodes
                                  boost::optional<std::string&> err_msg)	{
 		autostake = false;
 
-		if (args.size() % 2 == 0 || args.size() < 2 ||  args.size() > 2)
+		if (args.size() < 2 ||  args.size() > 2)
 		{
 			MERROR(tr("Usage: <address> <fraction>"));
 			return false;
