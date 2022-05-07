@@ -1642,7 +1642,7 @@ namespace service_nodes
     	if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, err_msg))
 		{
 			MERROR(tr("Could not convert registration args"));
-			MERROR(tr(err_msg));
+			MERROR(err_msg);
 			return false;
 		}
 
