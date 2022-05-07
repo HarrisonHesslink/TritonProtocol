@@ -1625,21 +1625,6 @@ namespace service_nodes
 		addresses.clear();
 		portions.clear();
 
-		try
-		{
-			portions_for_operator = boost::lexical_cast<uint64_t>(args[0]);
-			if (portions_for_operator > STAKING_PORTIONS)
-			{
-				MERROR(tr("Invalid portion amount: ") << args[0] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
-				return false;
-			}
-		}
-		catch (const std::exception &e)
-		{
-			MERROR(tr("Invalid portion amount: ") << args[0] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
-			return false;
-		}
-
 		uint64_t portions_left = STAKING_PORTIONS;
 		for (size_t i = 1; i < args.size(); i += 2)
 		{
