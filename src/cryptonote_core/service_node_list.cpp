@@ -558,7 +558,7 @@ namespace service_nodes
 		std::vector<uint64_t> service_node_portions;
 		uint64_t expiration_timestamp;
 		crypto::signature signature;
-		uint64_t portions_for_operator;
+				uint64_t portions_for_operator;
 
 		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key)) {
 			return false;
@@ -578,6 +578,9 @@ namespace service_nodes
 			return false;
 		}
 
+		std::cout << "2" << std::endl;
+
+
 		// check the signature is all good
 
 		crypto::hash hash;
@@ -590,6 +593,9 @@ namespace service_nodes
 		if (expiration_timestamp < block_timestamp) {
 			return false;
 		}
+
+
+				std::cout << "3" << std::endl;
 
 		// check the initial contribution exists
 		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
@@ -613,6 +619,9 @@ namespace service_nodes
 		if (service_node_addresses.size() + is_this_a_new_address > max_contribs)
 			return false;
 
+			std::cout << "4" << std::endl;
+
+
 		//check staking burn
 		uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
 		if(transferred / 10000000 < burned_amount)
@@ -630,6 +639,8 @@ namespace service_nodes
 		info.last_reward_transaction_index = index;
 		info.total_contributed = 0;
 		info.total_reserved = 0;
+
+		std::cout << "5" << std::endl;
 
 		if (hf_version >= 5) {
 			info.version = service_node_info::version_1_swarms;
@@ -661,6 +672,7 @@ namespace service_nodes
 			info.contributors.push_back(service_node_info::contribution(resultlo, service_node_addresses[i]));
 			info.total_reserved += resultlo;
 		}
+		std::cout << "6" << std::endl;
 
 		return true;
 	}
