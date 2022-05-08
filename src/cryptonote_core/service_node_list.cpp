@@ -563,7 +563,7 @@ namespace service_nodes
 			return false;
 		}
 
-		std::out << "past reg_tx_extra_fields" << std::endl;
+		std::cout << "past reg_tx_extra_fields" << std::endl;
 
 		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty()) {
 			return false;
