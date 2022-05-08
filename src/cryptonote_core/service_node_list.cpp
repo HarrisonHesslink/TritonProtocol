@@ -556,7 +556,6 @@ namespace service_nodes
 		crypto::public_key tx_pub_key, service_node_key;
 		std::vector<cryptonote::account_public_address> service_node_addresses;
 		std::vector<uint64_t> service_node_portions;
-		uint64_t portions_for_operator;
 		uint64_t expiration_timestamp;
 		crypto::signature signature;
 
@@ -564,7 +563,7 @@ namespace service_nodes
 			return false;
 		}
 
-
+		std::out << "past reg_tx_extra_fields" << std::endl;
 
 		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty()) {
 			return false;
