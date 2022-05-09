@@ -599,6 +599,7 @@ namespace service_nodes
 
 		std::cout << "2.3" << std::endl;
 		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature)) {
+			std::cout << "SIG FAIL" << std::endl;
 			return false;
 		}
 		std::cout << "2.6" << std::endl;
