@@ -585,15 +585,18 @@ namespace service_nodes
 
 		std::cout << "2" << std::endl;
 
-		std::cout << epee::string_tools::pod_to_hex(signature) << std::endl;
-		std::cout << epee::string_tools::pod_to_hex(service_node_key) << std::endl;
-		std::cout << epee::string_tools::pod_to_hex(hash) << std::endl;
+
 		// check the signature is all good
 
 		crypto::hash hash;
 		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash)) {
 			return false;
 		}
+
+		std::cout << epee::string_tools::pod_to_hex(signature) << std::endl;
+		std::cout << epee::string_tools::pod_to_hex(service_node_key) << std::endl;
+		std::cout << epee::string_tools::pod_to_hex(hash) << std::endl;
+
 		std::cout << "2.3" << std::endl;
 		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature)) {
 			return false;
