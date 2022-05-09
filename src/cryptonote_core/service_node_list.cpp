@@ -558,7 +558,7 @@ namespace service_nodes
 		std::vector<uint64_t> service_node_portions;
 		uint64_t expiration_timestamp;
 		crypto::signature signature;
-				uint64_t portions_for_operator;
+		uint64_t portions_for_operator;
 
 		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key)) {
 			return false;
@@ -585,7 +585,9 @@ namespace service_nodes
 
 		std::cout << "2" << std::endl;
 
-
+		std::cout << epee::string_tools::pod_to_hex(signature) << std::endl;
+		std::cout << epee::string_tools::pod_to_hex(service_node_key) << std::endl;
+		std::cout << epee::string_tools::pod_to_hex(hash) << std::endl;
 		// check the signature is all good
 
 		crypto::hash hash;
