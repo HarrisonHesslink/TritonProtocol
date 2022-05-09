@@ -569,10 +569,15 @@ namespace service_nodes
 		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty()) {
 			return false;
 		}
+
+		std::cout << "1.3" << std::endl;
+
 		// check the portions
 		if (!check_service_node_portions(service_node_portions)) {
 			return false;
 		}
+
+		std::cout << "1.6" << std::endl;
 
 		if (portions_for_operator > STAKING_PORTIONS){
 			return false;
