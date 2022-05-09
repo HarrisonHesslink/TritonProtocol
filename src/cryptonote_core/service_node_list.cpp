@@ -592,15 +592,18 @@ namespace service_nodes
 		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash)) {
 			return false;
 		}
+		std::cout << "2.3" << std::endl;
 		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature)) {
 			return false;
 		}
+		std::cout << "2.6" << std::endl;
+
 		if (expiration_timestamp < block_timestamp) {
 			return false;
 		}
 
 
-				std::cout << "3" << std::endl;
+		std::cout << "3" << std::endl;
 
 		// check the initial contribution exists
 		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
