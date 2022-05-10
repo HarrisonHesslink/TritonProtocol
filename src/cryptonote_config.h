@@ -60,7 +60,6 @@
 #define STAKING_RELOCK_WINDOW_BLOCKS                    (30*6)
 #define STAKING_PORTIONS                                UINT64_C(0xfffffffffffffffc)
 #define STAKING_AUTHORIZATION_EXPIRATION_WINDOW         (60*60*24*7*2)  // 2 weeks
-#define STAKING_AUTHORIZATION_EXPIRATION_AUTOSTAKE      (60*60*24*365*2) // 2 years
 #define MAX_NUMBER_OF_CONTRIBUTORS                      4
 #define MAX_NUMBER_OF_CONTRIBUTORS_V2                   100
 #define MAX_NUMBER_OF_CONTRIBUTORS_V3                   1000

@@ -1169,7 +1169,6 @@ wallet_keys_unlocker::wallet_keys_unlocker(wallet2 &w, const boost::optional<too
     m_persistent_rpc_client_id(false),
     m_auto_mine_for_rpc_payment_threshold(-1.0f),
     m_is_initialized(false),
-    m_fork_on_autostake(true),
     m_kdf_rounds(kdf_rounds),
     is_old_file_format(false),
     m_watch_only(false),

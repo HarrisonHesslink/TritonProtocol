@@ -585,7 +585,6 @@ namespace service_nodes
 
 		std::cout << "2" << std::endl;
 
-
 		// check the signature is all good
 
 		crypto::hash hash;
@@ -1625,10 +1624,7 @@ namespace service_nodes
                                  std::vector<cryptonote::account_public_address>& addresses,
                                  std::vector<uint64_t>& portions,
                                  uint64_t& portions_for_operator,
-                                 bool& autostake,
                                  boost::optional<std::string&> err_msg)	{
-		autostake = false;
-
 		if (args.size() < 2 ||  args.size() > 2)
 		{
 			MERROR(tr("Usage: <address> <fraction>"));
@@ -1698,15 +1694,13 @@ namespace service_nodes
 		std::vector<cryptonote::account_public_address> addresses;
 		std::vector<uint64_t> portions;
 		uint64_t operator_portions;
-		uint64_t operator_portions_no_fee;
-		bool autostake;
-    	if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, autostake, err_msg))
+    	if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, err_msg))
 		{
 			MERROR(tr("Could not convert registration args"));
 			return false;
 		}
 
-		uint64_t exp_timestamp = time(nullptr) + (autostake ? STAKING_AUTHORIZATION_EXPIRATION_AUTOSTAKE : STAKING_AUTHORIZATION_EXPIRATION_WINDOW);
+		uint64_t exp_timestamp = time(nullptr) + STAKING_AUTHORIZATION_EXPIRATION_WINDOW;
 
 		crypto::hash hash;
 		bool hashed = cryptonote::get_registration_hash(addresses, operator_portions, portions, exp_timestamp, hash);
@@ -1749,7 +1743,7 @@ namespace service_nodes
 			char buffer[128];
 			strftime(buffer, sizeof(buffer), "%Y-%m-%d %I:%M:%S %p", &tm);
 			stream << tr("This registration expires at ") << buffer << tr(".\n");
-			stream << tr("This should be in about 2 weeks, or two years for autostaking.\n");
+			stream << tr("This should be in about 2 weeks.\n");
 			stream << tr("If it isn't, check this computer's clock.\n");
 			stream << tr("Please submit your registration into the blockchain before this time or it will be invalid.");
 		}
