@@ -256,7 +256,7 @@ namespace service_nodes
 		for (size_t i = 0; i < registration.m_public_spend_keys.size(); i++)
 			addresses.push_back(cryptonote::account_public_address{ registration.m_public_spend_keys[i], registration.m_public_view_keys[i] });
 
-		if(operator_portions <= 0)
+		if(registration.m_portions_for_operator <= 0)
 			return false;
 
 		portions_for_operator = registration.m_portions_for_operator;
