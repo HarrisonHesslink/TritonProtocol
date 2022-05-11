@@ -587,6 +587,8 @@ namespace service_nodes
 
 		// check the signature is all good
 
+		std::cout << "Operator Portions: " << portions_for_operator << std::endl;
+
 		crypto::hash hash;
 		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash)) {
 			return false;
