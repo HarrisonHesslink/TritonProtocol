@@ -2795,10 +2795,13 @@ bool t_rpc_command_executor::prepare_sn()
     min_portions = MIN_PORTIONS_V2;
   }
 
+  const uint64_t min_contribution = MIN_OPERATOR_V12 * COIN;
+  const uint64_t max_contribution = MAX_OPERATOR_V12 * COIN;
+
   if(hf_version >= 12)
   {
     max_num_stakers = MAX_NUMBER_OF_CONTRIBUTORS_V3;
-    min_portions = MIN_PORTIONS_V3;
+    min_portions = service_nodes::get_portions_to_make_amount(max_contribution, min_contribution);
   }
 
   bool is_solo_stake = false;
@@ -2813,72 +2816,43 @@ bool t_rpc_command_executor::prepare_sn()
   uint64_t portions_remaining = STAKING_PORTIONS;
   // anything less than DUST will be added to operator stake
 
-  std::cout << "Current staking requirement: " << cryptonote::print_money(staking_requirement) << " " << cryptonote::get_unit() << std::endl;
+  std::cout << "Current operator staking requirement: " << cryptonote::print_money(MIN_OPERATOR_V12 * COIN) << " " << cryptonote::get_unit() << std::endl;
   
-  std::string solo_stake;
-  std::cout << "Will the operator contribute the entire stake? (Y/Yes/N/No): ";
-  std::cin >> solo_stake;
-  if(command_line::is_yes(solo_stake))
+  const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
+
+  std::cout << "Minimum amount that can be reserved: " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
+  std::cout << "Maximum amount that can be reserved: " << cryptonote::print_money(max_contribution) << " " << cryptonote::get_unit() << std::endl;
+
+  std::cout << "How much XEQ does the operator want to reserve in the pool? ";
+  std::string contribution_string;
+  std::cin >> contribution_string;
+  uint64_t operator_cut;
+  if(!cryptonote::parse_amount(operator_cut, contribution_string))
   {
-    is_solo_stake = true;
+    std::cout << "Invalid amount. Aborted." << std::endl;
+    return true;
   }
-  else if(command_line::is_no(solo_stake))
+  uint64_t portions = service_nodes::get_portions_to_make_amount(max_contribution, operator_cut);
+  if(portions < min_contribution_portions)
   {
-    is_solo_stake = false;
+    std::cout << "The operator needs to contribute at least 25% of the stake requirement (" << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << "). Aborted." << std::endl;
+    return true;
   }
-  else
+  else if(portions > portions_remaining)
   {
-    std::cout << "Invalid answer. Aborted." << std::endl;
+    std::cout << "The operator contribution is higher than the staking requirement. Any excess contribution will be locked for the staking duration, but won't yield any additional reward." << std::endl;
+    portions = portions_remaining;
+  }
+
+  if(operator_cut > max_contribution) {
+    std::cout << "Max staking amount for Operators is 35,000 XEQ!";
     return true;
   }
 
-  if(is_solo_stake)
-  {
-    contributions.push_back(STAKING_PORTIONS);
-    portions_remaining = 0;
-    total_reserved_contributions += get_actual_amount(staking_requirement, STAKING_PORTIONS);
-  }
-  else
-  {
-    const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
-
-    const uint64_t min_contribution = MIN_OPERATOR_V12 * COIN;
-    const uint64_t max_contribution = MAX_OPERATOR_V12 * COIN;
-
-    std::cout << "Minimum amount that can be reserved: " << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << std::endl;
-    std::cout << "Maximum amount that can be reserved: " << cryptonote::print_money(max_contribution) << " " << cryptonote::get_unit() << std::endl;
-
-    std::cout << "How much XEQ does the operator want to reserve in the pool? ";
-    std::string contribution_string;
-    std::cin >> contribution_string;
-    uint64_t operator_cut;
-    if(!cryptonote::parse_amount(operator_cut, contribution_string))
-    {
-      std::cout << "Invalid amount. Aborted." << std::endl;
-      return true;
-    }
-    uint64_t portions = service_nodes::get_portions_to_make_amount(staking_requirement, operator_cut);
-    if(portions < min_contribution_portions)
-    {
-      std::cout << "The operator needs to contribute at least 25% of the stake requirement (" << cryptonote::print_money(min_contribution) << " " << cryptonote::get_unit() << "). Aborted." << std::endl;
-      return true;
-    }
-    else if(portions > portions_remaining)
-    {
-      std::cout << "The operator contribution is higher than the staking requirement. Any excess contribution will be locked for the staking duration, but won't yield any additional reward." << std::endl;
-      portions = portions_remaining;
-    }
-
-    if(operator_cut > max_contribution) {
-      std::cout << "Max staking amount for Operators is 35,000 XEQ!";
-      return true;
-    }
-
-    contributions.push_back(portions);
-    portions_remaining -= portions;
-    total_reserved_contributions += get_actual_amount(staking_requirement, portions);
-  }
-
+  contributions.push_back(portions);
+  portions_remaining -= portions;
+  total_reserved_contributions += get_actual_amount(staking_requirement, portions);
+  
   for (size_t contributor_index = 0; contributor_index < number_participants; ++contributor_index)
   {
     const bool is_operator = (contributor_index == 0);
