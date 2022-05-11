@@ -1210,7 +1210,7 @@ namespace service_nodes
 				operator_portions = info.portions_for_operator;
 			} else {
 		
-				operator_portions = 0;
+				operator_portions = info.portions_for_operator;
 			}
 		}
 
