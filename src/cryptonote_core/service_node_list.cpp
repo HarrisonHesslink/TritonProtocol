@@ -1630,7 +1630,7 @@ namespace service_nodes
                                  std::vector<uint64_t>& portions,
                                  uint64_t& portions_for_operator,
                                  boost::optional<std::string&> err_msg)	{
-		if (args.size() < 2 ||  args.size() > 2)
+		if (args.size() < 3 ||  args.size() > 3)
 		{
 			MERROR(tr("Usage: <address> <fraction>"));
 			return false;
