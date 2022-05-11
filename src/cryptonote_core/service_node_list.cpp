@@ -1258,8 +1258,8 @@ namespace service_nodes
 
 		for (const auto& info : m_service_nodes_infos)
 		{
-			bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12 || (info.second.portions_for_operator == STAKING_PORTIONS && info.second.contributors.size() == 1 && info.second.is_fully_funded()));
-
+			// bool threshold_met = ((info.second.portions_for_operator != STAKING_PORTIONS && info.second.contributors.size() >= 1) || hard_fork_version < 12 || (info.second.portions_for_operator == STAKING_PORTIONS && info.second.contributors.size() == 1 && info.second.is_fully_funded()));
+			bool threshold_met = true;
 			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()) && threshold_met)
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
