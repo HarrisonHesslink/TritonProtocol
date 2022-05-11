@@ -1640,9 +1640,9 @@ namespace service_nodes
 		portions.clear();
 
 		cryptonote::address_parse_info info;
-		if (!cryptonote::get_account_address_from_str(info, nettype, args[0]))
+		if (!cryptonote::get_account_address_from_str(info, nettype, args[1]))
 		{
-			std::string msg = tr("failed to parse address: ") + args[0];
+			std::string msg = tr("failed to parse address: ") + args[1];
 			if (err_msg) *err_msg = msg;
 			MERROR(msg);
 			return false;
@@ -1674,23 +1674,23 @@ namespace service_nodes
 			portions_for_operator = boost::lexical_cast<uint64_t>(args[0]);
 			if (portions_for_operator > STAKING_PORTIONS)
 			{
-				MERROR(tr("Invalid portion amount: ") << args[0] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
+				MERROR(tr("Invalid portion amount: ") << args[1] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
 				return false;
 			}
 		}
 		catch (const std::exception &e)
 		{
-			MERROR(tr("Invalid portion amount: ") << args[0] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
+			MERROR(tr("Invalid portion amount: ") << args[1] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
 			return false;
 		}
 
 		try
 		{
-			uint64_t num_portions = boost::lexical_cast<uint64_t>(args[1]);
+			uint64_t num_portions = boost::lexical_cast<uint64_t>(args[2]);
 			uint64_t min_portions = std::min(portions_left, MIN_OPERATOR_V12 * COIN);
 			if (num_portions < min_portions || num_portions > portions_left)
 			{
-				if (err_msg) *err_msg = "invalid amount for contributor " + args[0];
+				if (err_msg) *err_msg = "invalid amount for contributor " + args[1];
 				MERROR(tr("Invalid portion amount: ") << args[1] << tr(". ") << tr("The operator must contribute at least 25%, all other contributors can have any amount open."));
 				return false;
 			}
@@ -1699,7 +1699,7 @@ namespace service_nodes
 		}
 		catch (const std::exception &e)
 		{
-			if (err_msg) *err_msg = "invalid amount for contributor " + args[0];
+			if (err_msg) *err_msg = "invalid amount for contributor " + args[1];
 			MERROR(tr("Invalid portion amount: ") << args[1] << tr(". ") << tr("The operator must contribute at least 10,000 XEQ, all other contributors can have any amount open."));
 			return false;
 		}
