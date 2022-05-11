@@ -2786,7 +2786,6 @@ bool t_rpc_command_executor::prepare_sn()
   uint64_t DUST = MAX_NUMBER_OF_CONTRIBUTORS;
   uint64_t min_portions = MIN_PORTIONS;
   uint64_t operating_cost_portions = STAKING_PORTIONS;
-  uint64_t operating_cost_portions_no_fee = STAKING_PORTIONS;
 
   if(hf_version >= 9)
   {
@@ -2943,8 +2942,10 @@ bool t_rpc_command_executor::prepare_sn()
     return true;
   }
 
-  // [auto] <operator without fee> <operator with fee> <address> <fraction> [<address> <fraction> [...]]]
+  // [auto] <operator with fee> <address> <fraction> [<address> <fraction> [...]]]
   std::vector<std::string> args;
+
+  args.push_back(std::to_string(operating_cost_portions));
 
   for (size_t i = 0; i < number_participants; ++i)
   {
