@@ -6988,10 +6988,7 @@ bool simple_wallet::register_service_node_main(
 	uint64_t unlock_block = bc_height + locked_blocks;
 
  
-  uint64_t expected_staking_requirement = std::max(
-		service_nodes::get_staking_requirement(m_wallet->nettype(), bc_height),
-		service_nodes::get_staking_requirement(m_wallet->nettype(), bc_height + STAKING_REQUIREMENT_LOCK_BLOCKS_EXCESS)
-	);
+  uint64_t expected_staking_requirement = MAX_OPERATOR_V12 * COIN:
   
 
 	const uint64_t DUST = MAX_NUMBER_OF_CONTRIBUTORS;
