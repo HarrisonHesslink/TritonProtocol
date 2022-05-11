@@ -7208,8 +7208,6 @@ bool simple_wallet::register_service_node(const std::vector<std::string> &args_)
 
 	if (m_wallet->ask_password())
 	{
-		fail_msg_writer() << tr(ASK_PASSWORD_MUST_BE_OFF_MSG);
-		return true;
 	}
 
 	SCOPED_WALLET_UNLOCK();
@@ -7589,8 +7587,6 @@ bool simple_wallet::stake(const std::vector<std::string> &args_)
 
   if (m_wallet->ask_password())
   {
-    fail_msg_writer() << tr(ASK_PASSWORD_MUST_BE_OFF_MSG);
-    return true;
   }
 
   SCOPED_WALLET_UNLOCK()
