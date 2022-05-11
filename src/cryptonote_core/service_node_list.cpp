@@ -256,6 +256,9 @@ namespace service_nodes
 		for (size_t i = 0; i < registration.m_public_spend_keys.size(); i++)
 			addresses.push_back(cryptonote::account_public_address{ registration.m_public_spend_keys[i], registration.m_public_view_keys[i] });
 
+		if(operator_portions <= 0)
+			return false;
+
 		portions_for_operator = registration.m_portions_for_operator;
 		portions = registration.m_portions;
 		expiration_timestamp = registration.m_expiration_timestamp;
@@ -1668,6 +1671,21 @@ namespace service_nodes
 
 		try
 		{
+			portions_for_operator = boost::lexical_cast<uint64_t>(args[0]);
+			if (portions_for_operator > STAKING_PORTIONS)
+			{
+				MERROR(tr("Invalid portion amount: ") << args[0] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
+				return false;
+			}
+		}
+		catch (const std::exception &e)
+		{
+			MERROR(tr("Invalid portion amount: ") << args[0] << tr(". ") << tr("Must be between 0 and ") << STAKING_PORTIONS);
+			return false;
+		}
+
+		try
+		{
 			uint64_t num_portions = boost::lexical_cast<uint64_t>(args[1]);
 			uint64_t min_portions = std::min(portions_left, MIN_OPERATOR_V12 * COIN);
 			if (num_portions < min_portions || num_portions > portions_left)
@@ -1703,6 +1721,8 @@ namespace service_nodes
 		}
 
 		uint64_t exp_timestamp = time(nullptr) + STAKING_AUTHORIZATION_EXPIRATION_WINDOW;
+
+		std::cout << "Operator Portions: " << operator_portions << std::endl;
 
 		crypto::hash hash;
 		bool hashed = cryptonote::get_registration_hash(addresses, operator_portions, portions, exp_timestamp, hash);
