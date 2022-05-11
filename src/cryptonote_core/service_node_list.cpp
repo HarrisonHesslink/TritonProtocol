@@ -1069,7 +1069,7 @@ namespace service_nodes
 			}
 
 			process_swap_tx(tx_pair.first, block_height, index);
-			process_recontribution(tx_pair.first,block_height,index);
+			// process_recontribution(tx_pair.first,block_height,index);
 
 			index++;
 		}
