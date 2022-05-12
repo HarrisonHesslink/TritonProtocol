@@ -253,7 +253,7 @@ namespace cryptonote
         {
           reward += get_portion_of_reward(portions[i].second, brr.operator_reward);
         } else {
-          reward += get_portion_of_reward(portions[i].second, brr.service_reward);
+          reward += get_portion_of_reward(portions[i].second, brr.staker_reward);
         }
 
       } else {
