@@ -119,7 +119,7 @@ namespace service_nodes
 		swarm_id_t swarm_id;
 		cryptonote::account_public_address operator_address;
 
-		bool is_valid(size_t hf_version) const { 
+		bool is_valid() const { 
 			return total_contributed >= total_reserved; 
 		}
 		bool is_fully_funded() const { 
