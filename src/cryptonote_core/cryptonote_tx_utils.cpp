@@ -451,8 +451,8 @@ namespace cryptonote
 	  result.original_base_reward = base_reward;
     result.adjusted_base_reward = result.original_base_reward - result.governance;
 	  result.service_node_total = service_node_reward_formula(result.adjusted_base_reward, hard_fork_version);
-    result.operator_reward = service_node_total / 2;
-    result.staker_reward = service_node_total - result.operator_reward;
+    result.operator_reward = result.service_node_total / 2;
+    result.staker_reward = result.service_node_total - result.operator_reward;
 
 	  if (miner_context.snode_winner_info.empty()) result.service_node_paid = calculate_sum_of_portions(service_nodes::null_winner, result.service_node_total);
 	  else                                        result.service_node_paid = calculate_sum_of_portions(miner_context.snode_winner_info, result.service_node_total);
