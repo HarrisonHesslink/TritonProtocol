@@ -363,7 +363,14 @@ namespace cryptonote
 			tk.key = out_eph_public_key;
 			tx_out out;
 
-			summary_amounts += out.amount = get_portion_of_reward(service_node_info[i].second, reward_parts.service_node_total);
+      if(hf_version >= 12)
+      {          
+        uint64_t reward_part = i == 0 ? reward_parts.operator_reward : reward_parts.staker_reward;
+        summary_amounts += out.amount = get_portion_of_reward(service_node_info[i].second, reward_part);
+      } else {
+        summary_amounts += out.amount = get_portion_of_reward(service_node_info[i].second, reward_parts.service_node_total);
+      }
+
 			out.target = tk;
 			tx.vout.push_back(out);
 			tx.output_unlock_times.push_back(height + CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
@@ -444,6 +451,9 @@ namespace cryptonote
 	  result.original_base_reward = base_reward;
     result.adjusted_base_reward = result.original_base_reward - result.governance;
 	  result.service_node_total = service_node_reward_formula(result.adjusted_base_reward, hard_fork_version);
+    result.operator_reward = service_node_total / 2;
+    result.staker_reward = service_node_total - result.operator_reward;
+
 	  if (miner_context.snode_winner_info.empty()) result.service_node_paid = calculate_sum_of_portions(service_nodes::null_winner, result.service_node_total);
 	  else                                        result.service_node_paid = calculate_sum_of_portions(miner_context.snode_winner_info, result.service_node_total);
 

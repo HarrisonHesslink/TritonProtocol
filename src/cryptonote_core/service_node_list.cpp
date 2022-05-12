@@ -676,12 +676,8 @@ namespace service_nodes
 			uint64_t hi, lo, resulthi, resultlo;
 			if(hf_version >= 12 && service_node_addresses.size() == 1)
 			{
-				uint64_t fifty_per_cent;
-				if(!get_portions_from_percent_str("50",fifty_per_cent))
-					return false;
-
 				lo = mul128(MAX_OPERATOR_V12 * COIN, service_node_portions[i], &hi);
-				div128_64(hi, lo, STAKING_PORTIONS - fifty_per_cent, &resulthi, &resultlo);
+				div128_64(hi, lo, STAKING_PORTIONS, &resulthi, &resultlo);
 			} else {
 				lo = mul128(info.staking_requirement, service_node_portions[i], &hi);
 				div128_64(hi, lo, STAKING_PORTIONS, &resulthi, &resultlo);
@@ -1229,11 +1225,7 @@ namespace service_nodes
 						resultlo += operator_portions;
 				} 
 			} else {
-				uint64_t fifty_per_cent;
-				if(!get_portions_from_percent_str("50",fifty_per_cent))
-					return { std::make_pair(null_address, STAKING_PORTIONS) };
-				
-				const uint64_t usable_portions = STAKING_PORTIONS - fifty_per_cent;
+				const uint64_t usable_portions = STAKING_PORTIONS;
 				if (contributor.address == info.operator_address)
 				{
 					lo = mul128(contributor.amount, usable_portions, &hi);
@@ -1307,7 +1299,15 @@ namespace service_nodes
 		for (size_t i = 0; i < addresses_and_portions.size(); i++)
 		{
 			size_t vout_index = i + 1;
-			uint64_t reward = cryptonote::get_portion_of_reward(addresses_and_portions[i].second, total_service_node_reward);
+			uint64_t reward = 0;
+			uint64_t reward_part = i == 0 ? reward_parts.operator_reward : reward_parts.staker_reward;
+			
+			if(hard_fork_version >= 12)
+			{
+				reward = cryptonote::get_portion_of_reward(addresses_and_portions[i].second, reward_part);
+			} else {
+				reward = cryptonote::get_portion_of_reward(addresses_and_portions[i].second, total_service_node_reward);
+			}
 
 			if (miner_tx.vout[vout_index].amount != reward)
 			{
