@@ -251,13 +251,13 @@ namespace cryptonote
       {
         if(i == 0)
         {
-          reward += get_portion_of_reward(portions[i].second, result.operator_reward);
+          reward += get_portion_of_reward(portions[i].second, brr.operator_reward);
         } else {
-          reward += get_portion_of_reward(portions[i].second, result.service_reward);
+          reward += get_portion_of_reward(portions[i].second, brr.service_reward);
         }
 
       } else {
-        reward += get_portion_of_reward(portions[i].second, result.service_node_total);
+        reward += get_portion_of_reward(portions[i].second, brr.service_node_total);
       }
 
     }
