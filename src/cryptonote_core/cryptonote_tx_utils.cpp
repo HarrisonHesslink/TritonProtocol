@@ -363,7 +363,7 @@ namespace cryptonote
 			tk.key = out_eph_public_key;
 			tx_out out;
 
-      if(hf_version >= 12)
+      if(hard_fork_version >= 12)
       {          
         uint64_t reward_part = i == 0 ? reward_parts.operator_reward : reward_parts.staker_reward;
         summary_amounts += out.amount = get_portion_of_reward(service_node_info[i].second, reward_part);
