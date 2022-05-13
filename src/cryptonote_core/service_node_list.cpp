@@ -586,7 +586,6 @@ namespace service_nodes
 		}
 
 		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature)) {
-			std::cout << "SIG FAIL" << std::endl;
 			return false;
 		}
 
