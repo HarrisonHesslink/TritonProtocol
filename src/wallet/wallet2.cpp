@@ -9963,12 +9963,12 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
 
   // start with an empty tx
   txes.push_back(TX());
-  accumulated_fee = burning_amount;
+  accumulated_fee = 0;
   accumulated_outputs = 0;
   accumulated_change = 0;
   adding_fee = false;
 
-  needed_fee = 0;
+  needed_fee = 0 + burning_amount;
   std::vector<std::vector<tools::wallet2::get_outs_entry>> outs;
 
   // for rct, since we don't see the amounts, we will try to make all transactions
@@ -10571,7 +10571,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_from(const crypton
       cryptonote::transaction test_tx;
       pending_tx test_ptx;
 
-      needed_fee = estimate_fee(use_per_byte_fee, use_rct, tx.selected_transfers.size(), fake_outs_count, tx.dsts.size()+1, extra.size(), bulletproof, base_fee, fee_multiplier, fee_quantization_mask);
+      needed_fee += estimate_fee(use_per_byte_fee, use_rct, tx.selected_transfers.size(), fake_outs_count, tx.dsts.size()+1, extra.size(), bulletproof, base_fee, fee_multiplier, fee_quantization_mask);
 
       // add N - 1 outputs for correct initial fee estimation
       for (size_t i = 0; i < ((outputs > 1) ? outputs - 1 : outputs); ++i)
