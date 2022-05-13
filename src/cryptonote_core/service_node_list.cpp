@@ -567,53 +567,31 @@ namespace service_nodes
 			return false;
 		}
 
-		std::cout << "past reg_tx_extra_fields" << std::endl;
-
 		if (service_node_portions.size() != service_node_addresses.size() || service_node_portions.empty()) {
 			return false;
 		}
-
-		std::cout << "1.3" << std::endl;
 
 		// check the portions
 		if (!check_service_node_portions(service_node_portions)) {
 			return false;
 		}
 
-		std::cout << "1.6" << std::endl;
-
 		if (portions_for_operator > STAKING_PORTIONS){
 			return false;
 		}
-
-		std::cout << "2" << std::endl;
-
-		// check the signature is all good
-
-		std::cout << "Operator Portions: " << portions_for_operator << std::endl;
 
 		crypto::hash hash;
 		if (!get_registration_hash(service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, hash)) {
 			return false;
 		}
 
-		std::cout << epee::string_tools::pod_to_hex(signature) << std::endl;
-		std::cout << epee::string_tools::pod_to_hex(service_node_key) << std::endl;
-		std::cout << epee::string_tools::pod_to_hex(hash) << std::endl;
-
-		std::cout << "2.3" << std::endl;
 		if (!crypto::check_key(service_node_key) || !crypto::check_signature(hash, service_node_key, signature)) {
-			std::cout << "SIG FAIL" << std::endl;
 			return false;
 		}
-		std::cout << "2.6" << std::endl;
 
 		if (expiration_timestamp < block_timestamp) {
 			return false;
 		}
-
-
-		std::cout << "3" << std::endl;
 
 		// check the initial contribution exists
 		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
@@ -636,8 +614,6 @@ namespace service_nodes
 			is_this_a_new_address = 1;
 		if (service_node_addresses.size() + is_this_a_new_address > max_contribs)
 			return false;
-
-			std::cout << "4" << std::endl;
 
 
 		if(hf_version >= 12)
@@ -669,8 +645,6 @@ namespace service_nodes
 		info.total_contributed = 0;
 		info.total_reserved = 0;
 
-		std::cout << "5" << std::endl;
-
 		if (hf_version >= 5) {
 			info.version = service_node_info::version_1_swarms;
 			info.swarm_id = QUEUE_SWARM_ID; /// new nodes go into a "queue swarm"
@@ -697,7 +671,6 @@ namespace service_nodes
 			info.contributors.push_back(service_node_info::contribution(resultlo, service_node_addresses[i]));
 			info.total_reserved += resultlo;
 		}
-		std::cout << "6" << std::endl;
 
 		return true;
 	}
@@ -1733,8 +1706,6 @@ namespace service_nodes
 		}
 
 		uint64_t exp_timestamp = time(nullptr) + STAKING_AUTHORIZATION_EXPIRATION_WINDOW;
-
-		std::cout << "Operator Portions: " << operator_portions << std::endl;
 
 		crypto::hash hash;
 		bool hashed = cryptonote::get_registration_hash(addresses, operator_portions, portions, exp_timestamp, hash);
