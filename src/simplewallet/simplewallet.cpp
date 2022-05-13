@@ -7432,7 +7432,7 @@ bool simple_wallet::stake_main(
 
   std::cout << get_burned_amount_from_tx_extra(extra) << std::endl;
 
-  std::cout << get_burned_amount_from_tx_extra(extra); << std::endl;
+  std::cout << get_burned_amount_from_tx_extra(extra) << std::endl;
 
 
   vector<cryptonote::tx_destination_entry> dsts;
