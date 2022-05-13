@@ -9966,7 +9966,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
   accumulated_change = 0;
   adding_fee = false;
 
-  uint64_t burning_amount = get_burned_amount_from_tx_extra(tx.extra);
+  uint64_t burning_amount = get_burned_amount_from_tx_extra(extra);
 
   needed_fee = 0 + burning_amount;
   std::vector<std::vector<tools::wallet2::get_outs_entry>> outs;
