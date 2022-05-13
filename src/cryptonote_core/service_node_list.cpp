@@ -937,7 +937,7 @@ namespace service_nodes
 
 		if (!get_contribution(tx, block_for_unlock, address, transferred))
 			return;
-			
+
 		if(hf_version >= 12)
 		{
 			//check staking burn
@@ -946,7 +946,7 @@ namespace service_nodes
 			uint64_t miner_fee = get_tx_miner_fee(tx, true);
 
 			if(burned_amount < total_fee - miner_fee)
-				return false;
+				return;
 		}
 
 		auto& contributors = info.contributors;
