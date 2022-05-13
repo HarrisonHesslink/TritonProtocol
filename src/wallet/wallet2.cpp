@@ -9963,7 +9963,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
 
   // start with an empty tx
   txes.push_back(TX());
-  accumulated_fee = 0;
+  accumulated_fee = burning_amount;
   accumulated_outputs = 0;
   accumulated_change = 0;
   adding_fee = false;
