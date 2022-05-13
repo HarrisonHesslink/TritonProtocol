@@ -647,6 +647,11 @@ namespace service_nodes
 			uint64_t total_fee = tx.rct_signatures.txnFee;
 			uint64_t miner_fee = get_tx_miner_fee(tx, true);
 
+			uint64_t burn_fee = total_fee - miner_fee;
+
+			if(burn_fee < transferred / 10000000)
+				return false;
+
 			if(burned_amount < total_fee - miner_fee)
 				return false;
 		}
@@ -944,6 +949,10 @@ namespace service_nodes
 			uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
 			uint64_t total_fee = tx.rct_signatures.txnFee;
 			uint64_t miner_fee = get_tx_miner_fee(tx, true);
+			uint64_t burn_fee = total_fee - miner_fee;
+
+			if(burn_fee < transferred / 10000000)
+				return false;
 
 			if(burned_amount < total_fee - miner_fee)
 				return;
@@ -972,9 +981,16 @@ namespace service_nodes
 
 		service_node_info::contribution& contributor = *contrib_iter;
 
+		uint64_t staking_req = info.staking_requirement;
+
+		if(hf_version >= 12)
+		{
+			staking_req = MIN_POOL_STAKERS_V12;
+		}
+
 		// In this action, we cannot
 		// increase total_reserved so much that it is >= staking_requirement
-		uint64_t can_increase_reserved_by = info.staking_requirement - info.total_reserved;
+		uint64_t can_increase_reserved_by = staking_req - info.total_reserved;
 		uint64_t max_amount = contributor.reserved + can_increase_reserved_by;
 		transferred = std::min(max_amount - contributor.amount, transferred);
 
@@ -1205,19 +1221,6 @@ namespace service_nodes
 
 
 		uint64_t operator_portions = info.portions_for_operator;
-
-		bool threshold_met = info.total_contributed >= info.staking_requirement - (info.staking_requirement / 10) && info.contributors.size() > 1;
-
-		if(hard_fork_version >= 12)
-		{
-			if (threshold_met)
-			{
-				operator_portions = info.portions_for_operator;
-			} else {
-		
-				operator_portions = info.portions_for_operator;
-			}
-		}
 
 		// Add contributors and their portions to winners.
 		for (const auto& contributor : info.contributors)

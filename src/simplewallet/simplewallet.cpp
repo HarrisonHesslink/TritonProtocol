@@ -7332,17 +7332,24 @@ bool simple_wallet::stake_main(
     }
 
     const auto& snode_info = response.service_node_states.front();
+    uint64_t staking_req = snode_info.staking_requirement;
+
+    if(m_wallet->use_fork_rules(12, 0))
+    {
+      staking_req = MAX_POOL_STAKERS_V12 * COIN;
+    }
+
     const uint64_t DUST = m_wallet->use_fork_rules(10, 0) ? MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
     
     if (amount == 0)
-      amount = snode_info.staking_requirement * amount_fraction;
+      amount = staking_req * amount_fraction;
 
     const bool full = m_wallet->use_fork_rules(10, 0) ? m_wallet->use_fork_rules(12,0) ? snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS_V3:  snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS_V2 : snode_info.contributors.size() >= MAX_NUMBER_OF_CONTRIBUTORS;
     uint64_t can_contrib_total = 0;
     uint64_t must_contrib_total = 0;
     if (!full)
     {
-      can_contrib_total = snode_info.staking_requirement - snode_info.total_reserved;
+      can_contrib_total = staking_req - snode_info.total_reserved;
       must_contrib_total = m_wallet->use_fork_rules(10, 0) ? m_wallet->use_fork_rules(12,0) ? MIN_POOL_STAKERS_V12 * COIN : std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS_V2) : std::min(snode_info.staking_requirement - snode_info.total_reserved, snode_info.staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS);
     }
 
@@ -7357,7 +7364,7 @@ bool simple_wallet::stake_main(
 
       if (info.address == parse_info.address)
       {
-        uint64_t max_increase_reserve = snode_info.staking_requirement - snode_info.total_reserved;
+        uint64_t max_increase_reserve = staking_req - snode_info.total_reserved;
         uint64_t max_increase_amount_to = contributor.reserved + max_increase_reserve;
         can_contrib_total = max_increase_amount_to - contributor.amount;
         must_contrib_total = contributor.reserved - contributor.amount;
