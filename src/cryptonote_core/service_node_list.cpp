@@ -952,7 +952,7 @@ namespace service_nodes
 			uint64_t burn_fee = total_fee - miner_fee;
 
 			if(burn_fee < transferred / 10000000)
-				return false;
+				return;
 
 			if(burned_amount < total_fee - miner_fee)
 				return;
