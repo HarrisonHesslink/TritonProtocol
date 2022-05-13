@@ -9861,11 +9861,12 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
     for (const auto& i : balance_per_subaddr)
       subaddr_indices.insert(i.first);
   }
+  uint64_t burning_amount = get_burned_amount_from_tx_extra(extra);
 
   // early out if we know we can't make it anyway
   // we could also check for being within FEE_PER_KB, but if the fee calculation
   // ever changes, this might be missed, so let this go through
-  const uint64_t min_fee = (fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof));
+  const uint64_t min_fee = (fee_multiplier * base_fee * estimate_tx_size(use_rct, 1, fake_outs_count, 2, extra.size(), bulletproof)) + burning_amount;
   uint64_t balance_subtotal = 0;
   uint64_t unlocked_balance_subtotal = 0;
   for (uint32_t index_minor : subaddr_indices)
@@ -9965,8 +9966,6 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
   accumulated_outputs = 0;
   accumulated_change = 0;
   adding_fee = false;
-
-  uint64_t burning_amount = get_burned_amount_from_tx_extra(extra);
 
   needed_fee = 0;
   std::vector<std::vector<tools::wallet2::get_outs_entry>> outs;
@@ -10184,7 +10183,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
             print_money(needed_fee) << " fee");
           dsts[0].amount += i->amount - new_paid_amount;
           i->amount = new_paid_amount;
-          test_ptx.fee = needed_fee + burning_amount;
+          test_ptx.fee = needed_fee;
           available_for_fee = needed_fee;
         }
       }
