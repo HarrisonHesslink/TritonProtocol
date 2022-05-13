@@ -9965,7 +9965,10 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_2(std::vector<cryp
   accumulated_outputs = 0;
   accumulated_change = 0;
   adding_fee = false;
-  needed_fee = 0;
+
+  uint64_t burning_amount = get_burned_amount_from_tx_extra(tx.extra);
+
+  needed_fee = 0 + burning_amount;
   std::vector<std::vector<tools::wallet2::get_outs_entry>> outs;
 
   // for rct, since we don't see the amounts, we will try to make all transactions

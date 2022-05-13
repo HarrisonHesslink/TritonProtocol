@@ -640,10 +640,16 @@ namespace service_nodes
 			std::cout << "4" << std::endl;
 
 
-		//check staking burn
-		uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
-		if(transferred / 10000000 < burned_amount)
-			return false;
+		if(hf_version >= 12)
+		{
+			//check staking burn
+			uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
+			uint64_t total_fee = tx.rct_signatures.txnFee;
+			uint64_t miner_fee = get_tx_miner_fee(tx, true);
+
+			if(burned_amount < total_fee - miner_fee)
+				return false;
+		}
 
 		// don't actually process this contribution now, do it when we fall through later.
 
@@ -931,11 +937,17 @@ namespace service_nodes
 
 		if (!get_contribution(tx, block_for_unlock, address, transferred))
 			return;
+			
+		if(hf_version >= 12)
+		{
+			//check staking burn
+			uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
+			uint64_t total_fee = tx.rct_signatures.txnFee;
+			uint64_t miner_fee = get_tx_miner_fee(tx, true);
 
-		//check staking burn
-		uint64_t burned_amount = cryptonote::get_burned_amount_from_tx_extra(tx.extra);
-		if(transferred / 10000000 < burned_amount)
-			return;
+			if(burned_amount < total_fee - miner_fee)
+				return false;
+		}
 
 		auto& contributors = info.contributors;
 		const auto max_contribs = hf_version > 9 ? hf_version > 11 ? MAX_NUMBER_OF_CONTRIBUTORS_V3 : MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
