@@ -7428,7 +7428,7 @@ bool simple_wallet::stake_main(
 
   add_service_node_contributor_to_tx_extra(extra, parse_info.address);
 
-  add_burned_amount_to_tx_extra(extra, amount / 10000000);
+  add_burned_amount_to_tx_extra(extra, (amount / 1000));
 
   std::cout << get_burned_amount_from_tx_extra(extra) << std::endl;
 
