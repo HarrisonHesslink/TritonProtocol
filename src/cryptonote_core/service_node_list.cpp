@@ -697,11 +697,8 @@ namespace service_nodes
 		crypto::public_key key;
 		service_node_info info = {};
 		if (!is_registration_tx(tx, block_timestamp, block_height, index, key, info))
-		{
-			std::cout << "Is Not Reg" << std::endl;
 			return false;
-		}
-
+		
 		// NOTE: A node doesn't expire until registration_height + lock blocks excess now which acts as the grace period
 		// So it is possible to find the node still in our list.
 		bool registered_during_grace_period = false;

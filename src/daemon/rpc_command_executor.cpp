@@ -2402,10 +2402,10 @@ static void print_service_node_list_state(cryptonote::network_type nettype, int 
 		// Print reward status
 		if (is_registered)
 		{
-			tools::msg_writer() << indent2 << "Last Reward At (Block Height/TX Index): " << entry.last_reward_block_height << " / " << entry.last_reward_transaction_index;
+			tools::msg_writer() << indent2 << "Last Reward At (Block Height): " << entry.last_reward_block_height;
 		}
 
-		tools::msg_writer() << indent2 << "Operator Cut (\% Of Reward): " << ((entry.portions_for_operator / (double)STAKING_PORTIONS) * 100.0) << "%";
+		tools::msg_writer() << indent2 << "Operator Percentage (\% Of Reward): " << ((entry.portions_for_operator / (double)STAKING_PORTIONS) * 100.0) << "%";
 		tools::msg_writer() << indent2 << "Operator Address: " << entry.operator_address;
 
 		// Print service node tests
