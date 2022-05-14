@@ -111,7 +111,6 @@ namespace cryptonote
 
   uint64_t get_transaction_weight_clawback(const transaction &tx, size_t n_padded_outputs)
   {
-    const rct::rctSig &rv = tx.rct_signatures;
     const uint64_t bp_base = 368;
     const size_t n_outputs = tx.vout.size();
     if (n_padded_outputs <= 2)
@@ -629,6 +628,7 @@ namespace cryptonote
     if (!pick<tx_extra_service_node_contributor>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR)) return false;
     if (!pick<tx_extra_service_node_pubkey>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_PUBKEY)) return false;
     if (!pick<tx_extra_tx_secret_key>(nar, tx_extra_fields, TX_EXTRA_TAG_TX_SECRET_KEY)) return false;
+    if (!pick<tx_extra_service_node_recontribution>(nar, tx_extra_fields, TX_EXTRA_TAG_SERVICE_NODE_CONTRIBUTOR)) return false;
 
     if (!pick<tx_extra_burn>                        (nar, tx_extra_fields, TX_EXTRA_TAG_BURN)) return false;
     if (!pick<tx_extra_contract_info>                        (nar, tx_extra_fields, TX_EXTRA_CONTRACT_INFO)) return false;
@@ -826,6 +826,25 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
    address.m_view_public_key = contributor.m_view_public_key;
    return true;
  }
+  //---------------------------------------------------------------
+ bool get_service_node_recontribution_from_tx_extra(const std::vector<uint8_t>& tx_extra, crypto::hash& txid, uint64_t &stake_height, crypto::public_key &new_pubkey)
+ {
+   std::vector<tx_extra_field> tx_extra_fields;
+   parse_tx_extra(tx_extra, tx_extra_fields);
+   tx_extra_service_node_recontribution recontribution;
+   bool result = find_tx_extra_field_by_type(tx_extra_fields, recontribution);
+   if (!result)
+     return false;
+   txid = recontribution.stake_transaction_hash;
+   stake_height = recontribution.stake_transaction_height;
+    new_pubkey = recontribution.new_pubkey;
+   return true;
+ }
+  //---------------------------------------------------------------
+  void add_service_node_recontribution_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto::hash& service_node_recontribution)
+ {
+   add_data_to_tx_extra(tx_extra, reinterpret_cast<const char *>(&service_node_recontribution), sizeof(service_node_recontribution), TX_EXTRA_TAG_SERVICE_NODE_RECONTRIBUTION);
+ }
  //---------------------------------------------------------------
   bool get_service_node_register_from_tx_extra(const std::vector<uint8_t>& tx_extra, tx_extra_service_node_register &registration)
   {
@@ -857,6 +876,7 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
       public_view_keys[i] = addresses[i].m_view_public_key;
       public_spend_keys[i] = addresses[i].m_spend_public_key;
     }
+
     // convert to variant
     tx_extra_field field =
       tx_extra_service_node_register{
