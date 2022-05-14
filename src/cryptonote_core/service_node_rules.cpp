@@ -18,7 +18,7 @@ namespace service_nodes {
 		uint64_t base = 0, variable = 0;
 		
 
-		if(true)
+		if(height >= 828893)
 		{
 			return 100000 * COIN;
 		}
