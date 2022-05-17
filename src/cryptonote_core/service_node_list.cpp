@@ -675,7 +675,6 @@ namespace service_nodes
 		return true;
 	}
 
-
 	bool service_node_list::process_registration_tx(const cryptonote::transaction& tx, uint64_t block_timestamp, uint64_t block_height, uint32_t index)
 	{
 		crypto::public_key key;
@@ -726,56 +725,6 @@ namespace service_nodes
 
 		m_rollback_events.push_back(std::unique_ptr<rollback_event>(new rollback_new(block_height, key)));
 		m_service_nodes_infos[key] = info;
-
-		return true;
-	}
-
-	bool service_node_list::process_recontribution(const cryptonote::transaction& tx, uint64_t block_height, uint32_t index)
-	{
-		//reregister data
-		cryptonote::block stake_block;
-		crypto::hash stake_hash;
-		uint64_t stake_height;
-		crypto::public_key new_pubkey;
-		cryptonote::transaction stake_tx;
-
-		//actual stake transaction
-		cryptonote::account_public_address address;
-		uint64_t transferred;
-
-		//get data from reregister tx
-		if(!cryptonote::get_service_node_recontribution_from_tx_extra(tx.extra, stake_hash, stake_height, new_pubkey))
-			return false;
-
-		const crypto::hash block_hash = m_blockchain.get_block_id_by_height(stake_height);
-		//get stake block data
-		if(!m_blockchain.get_block_by_hash(block_hash, stake_block))
-			return false;
-
-		//get transactions from stake block height
-		std::vector<cryptonote::transaction> txs;
-		std::vector<crypto::hash> missed_txs;
-		if (!m_blockchain.get_transactions(stake_block.tx_hashes, txs, missed_txs))
-		{
-			LOG_ERROR("Unable to get transactions for block " << stake_block.hash);
-			return false;
-		}
-
-
-		uint32_t _index = 0;
-		//loop through every tx in block until stake tx is found
-		for(auto tx : txs)
-		{
-			if(tx.hash == stake_hash)
-			{
-				stake_tx = tx;
-				break;
-			}
-			_index++;
-		}
-
-		//pass tx to process_contributuon_tx with the new node key
-		process_contribution_tx(stake_tx, stake_height, _index, new_pubkey);
 
 		return true;
 	}
@@ -1061,7 +1010,6 @@ namespace service_nodes
 			}
 
 			process_swap_tx(tx_pair.first, block_height, index);
-			// process_recontribution(tx_pair.first,block_height,index);
 
 			index++;
 		}
