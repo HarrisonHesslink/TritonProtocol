@@ -256,9 +256,6 @@ namespace service_nodes
 		for (size_t i = 0; i < registration.m_public_spend_keys.size(); i++)
 			addresses.push_back(cryptonote::account_public_address{ registration.m_public_spend_keys[i], registration.m_public_view_keys[i] });
 
-		if(registration.m_portions_for_operator <= 0)
-			return false;
-
 		portions_for_operator = registration.m_portions_for_operator;
 		portions = registration.m_portions;
 		expiration_timestamp = registration.m_expiration_timestamp;
@@ -602,12 +599,9 @@ namespace service_nodes
 		cryptonote::account_public_address address;
 		uint64_t transferred = 0;
 
-		if(service_node_addresses.size() > 1 && hf_version >= 12)
-			return false;
-
 		if (!get_contribution(tx, block_height, address, transferred))
 			return false;
-		if ((transferred < info.staking_requirement / max_contribs && hf_version < 12) || (transferred < MIN_OPERATOR_V12 && hf_version >= 12))
+		if (transferred < info.staking_requirement / max_contribs)
 			return false;
 		int is_this_a_new_address = 0;
 		if (std::find(service_node_addresses.begin(), service_node_addresses.end(), address) == service_node_addresses.end())
@@ -659,7 +653,7 @@ namespace service_nodes
 			if (iter != service_node_addresses.begin() + i)
 				return false;
 			uint64_t hi, lo, resulthi, resultlo;
-			if(hf_version >= 12 && service_node_addresses.size() == 1)
+			if(hf_version >= 12)
 			{
 				lo = mul128(MAX_OPERATOR_V12 * COIN, service_node_portions[i], &hi);
 				div128_64(hi, lo, STAKING_PORTIONS, &resulthi, &resultlo);
@@ -726,56 +720,6 @@ namespace service_nodes
 
 		m_rollback_events.push_back(std::unique_ptr<rollback_event>(new rollback_new(block_height, key)));
 		m_service_nodes_infos[key] = info;
-
-		return true;
-	}
-
-	bool service_node_list::process_recontribution(const cryptonote::transaction& tx, uint64_t block_height, uint32_t index)
-	{
-		//reregister data
-		cryptonote::block stake_block;
-		crypto::hash stake_hash;
-		uint64_t stake_height;
-		crypto::public_key new_pubkey;
-		cryptonote::transaction stake_tx;
-
-		//actual stake transaction
-		cryptonote::account_public_address address;
-		uint64_t transferred;
-
-		//get data from reregister tx
-		if(!cryptonote::get_service_node_recontribution_from_tx_extra(tx.extra, stake_hash, stake_height, new_pubkey))
-			return false;
-
-		const crypto::hash block_hash = m_blockchain.get_block_id_by_height(stake_height);
-		//get stake block data
-		if(!m_blockchain.get_block_by_hash(block_hash, stake_block))
-			return false;
-
-		//get transactions from stake block height
-		std::vector<cryptonote::transaction> txs;
-		std::vector<crypto::hash> missed_txs;
-		if (!m_blockchain.get_transactions(stake_block.tx_hashes, txs, missed_txs))
-		{
-			LOG_ERROR("Unable to get transactions for block " << stake_block.hash);
-			return false;
-		}
-
-
-		uint32_t _index = 0;
-		//loop through every tx in block until stake tx is found
-		for(auto tx : txs)
-		{
-			if(tx.hash == stake_hash)
-			{
-				stake_tx = tx;
-				break;
-			}
-			_index++;
-		}
-
-		//pass tx to process_contributuon_tx with the new node key
-		process_contribution_tx(stake_tx, stake_height, _index, new_pubkey);
 
 		return true;
 	}
@@ -887,33 +831,17 @@ namespace service_nodes
 
 		auto iter = m_service_nodes_infos.find(pubkey);
 		if (iter == m_service_nodes_infos.end())
-		{
-			//run check for if new pubkey
-			if(new_pubkey != crypto::null_pkey)
-			{
-				//second lopp through to set new pubkey and check if valid;
-				iter = m_service_nodes_infos.find(new_pubkey);
-				if(iter == m_service_nodes_infos.end())
-					return;
-			}
-		}
+			return;
 
 		service_node_info& info = iter->second;
 		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
 
 		const uint64_t block_for_unlock = hf_version >= 12 ? info.registration_height : block_height;
-
-		if(new_pubkey != crypto::null_pkey)
-		{
-			//check if new pubkey and old pubkey aren't the same (shouldn't happen)
-			if(pubkey == new_pubkey)
-				return;
-		}
-
-		if (info.is_fully_funded())
+		
+		if (!get_contribution(tx, block_for_unlock, address, transferred))
 			return;
 
-		if (!get_contribution(tx, block_for_unlock, address, transferred))
+		if (info.is_fully_funded())
 			return;
 
 		if(hf_version >= 12)
@@ -1068,7 +996,6 @@ namespace service_nodes
 			}
 
 			process_swap_tx(tx_pair.first, block_height, index);
-			// process_recontribution(tx_pair.first,block_height,index);
 
 			index++;
 		}
@@ -1232,10 +1159,9 @@ namespace service_nodes
 		std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
 		auto oldest_waiting = std::pair<uint64_t, uint32_t>(std::numeric_limits<uint64_t>::max(), std::numeric_limits<uint32_t>::max());
 		crypto::public_key key = crypto::null_pkey;
-
 		for (const auto& info : m_service_nodes_infos)
 		{
-			if (((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded()))
+			if ((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded())
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)

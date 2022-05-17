@@ -119,12 +119,8 @@ namespace service_nodes
 		swarm_id_t swarm_id;
 		cryptonote::account_public_address operator_address;
 
-		bool is_valid() const { 
-			return total_contributed >= total_reserved; 
-		}
-		bool is_fully_funded() const { 
-			return total_contributed >= staking_requirement; 
-		}
+		bool is_valid() const { return total_contributed >= total_reserved; }
+		bool is_fully_funded() const { return total_contributed >= staking_requirement; }
 
 		// the minimum contribution to start a new contributor
 		uint64_t get_min_contribution(uint64_t hf_version) const;
@@ -315,7 +311,6 @@ namespace service_nodes
 
 		// Note(maxim): private methods don't have to be protected the mutex
 		bool get_contribution(const cryptonote::transaction& tx, uint64_t block_height, cryptonote::account_public_address& address, uint64_t& transferred) const;
-	    bool process_recontribution(const cryptonote::transaction& tx, uint64_t block_height, uint32_t index);
 
 		bool process_registration_tx(const cryptonote::transaction& tx, uint64_t block_timestamp, uint64_t block_height, uint32_t index);
 		void process_contribution_tx(const cryptonote::transaction& tx, uint64_t block_height, uint32_t index, const crypto::public_key &new_pubkey = crypto::null_pkey);
