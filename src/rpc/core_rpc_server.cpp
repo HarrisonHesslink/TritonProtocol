@@ -3784,9 +3784,9 @@ namespace cryptonote
         return false;
       }
 
-      avg_unlock_time = avg_unlock_time / total_nodes_staked_to;
-      avg_reg_height = avg_reg_height / total_nodes_staked_to;
-      avg_staking_req = avg_staking_req / total_nodes_staked_to;
+      avg_unlock_time = avg_unlock_time / res.total_nodes_staked_to;
+      avg_reg_height = avg_reg_height / res.total_nodes_staked_to;
+      avg_staking_req = avg_staking_req / res.total_nodes_staked_to;
       uint64_t top_height = m_core.get_current_blockchain_height() - 1;
 
       block blk;
@@ -3807,11 +3807,11 @@ namespace cryptonote
       {
         staker_portion = ((reward / 4) * 3) / 2;
       } else {
-        staker_portion = ((reward /2)) * ((res.total_staked_amount / total_nodes_staked_to) / avg_staking_req);
+        staker_portion = ((reward /2)) * ((res.total_staked_amount / res.total_nodes_staked_to) / avg_staking_req);
       }
 
-      res.estimated_earnings_for_staking_period_end = (720/pubkey_info_list.size()) * (staker_portion) * (avg_unlock_time - avg_reg_height) * total_nodes_staked_to;
-      res.estimated_earnings_daily = (720/pubkey_info_list.size()) * (staker_portion) * total_nodes_staked_to;
+      res.estimated_earnings_for_staking_period_end = (720/pubkey_info_list.size()) * (staker_portion) * (avg_unlock_time - avg_reg_height) * res.total_nodes_staked_to;
+      res.estimated_earnings_daily = (720/pubkey_info_list.size()) * (staker_portion) * res.total_nodes_staked_to;
   }
 
   //------------------------------------------------------------------------------------------------------------------------------
