@@ -3736,8 +3736,9 @@ namespace cryptonote
       res.total_nodes_staked_to = 0;
       res.highest_unlock_time_by_block = 0;
       res.lowest_unlock_time_by_block = 0;
-      res.estimated_earnings_for_staking_period_end = 0;
-      res.estimated_earnings_daily = 0;
+      res.avg_reg_height = 0;
+      res.avg_staking_req = 0;
+      res.avg_unlock_time = 0;
 
       uint64_t avg_unlock_time = 0;
       uint64_t avg_reg_height = 0;
