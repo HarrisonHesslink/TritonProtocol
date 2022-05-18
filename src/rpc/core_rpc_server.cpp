@@ -3724,7 +3724,7 @@ namespace cryptonote
       cryptonote::address_parse_info info;
       if (!get_account_address_from_str(info, nettype(), req.address))
       {
-        res.Error = "Invalid staker address: " << req.address;
+        res.Error = "Invalid staker address: " + req.address;
         return true;
       }
 
