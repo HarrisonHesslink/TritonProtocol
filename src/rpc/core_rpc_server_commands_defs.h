@@ -3404,11 +3404,11 @@ namespace cryptonote
       uint64_t total_nodes_staked_to;
       uint64_t highest_unlock_time_by_block;
       uint64_t lowest_unlock_time_by_block;
-      uint64_t estimated_earnings_for_staking_period_end;
-      uint64_t estimated_earnings_daily;
+      uint64_t avg_reg_height;
+      uint64_t avg_staking_req;
+      uint64_t avg_unlock_time;
       std::vector<std::string> nodes_staked_to;
       std::string Error;
-      uint64_t staker_pool_portion;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(is_staked)
@@ -3416,11 +3416,10 @@ namespace cryptonote
         KV_SERIALIZE(total_nodes_staked_to)
         KV_SERIALIZE(highest_unlock_time_by_block)
         KV_SERIALIZE(lowest_unlock_time_by_block)
-        KV_SERIALIZE(estimated_earnings_for_staking_period_end)
-        KV_SERIALIZE(estimated_earnings_daily)
+        KV_SERIALIZE(avg_reg_height)
+        KV_SERIALIZE(avg_staking_req)
         KV_SERIALIZE(nodes_staked_to)
-        KV_SERIALIZE(staker_pool_portion)
-
+        KV_SERIALIZE(avg_unlock_time)
         KV_SERIALIZE(Error)
       END_KV_SERIALIZE_MAP()
     };
