@@ -1142,7 +1142,9 @@ namespace service_nodes
 
 			if(hard_fork_version >= 12)
 			{
-				if(info.second.m_portions_for_operator == STAKING_PORTIONS && !info.second.is_fully_funded())
+				uint64_t amount_operator_needs_to_stake = cryptonote::portions_to_amount(info.second.portions_for_operator, info.staking_requirement);
+
+				if(info.second.total_contributed < amount_operator_needs_to_stake)
 				{
 					overPortioned = true;
 				}
