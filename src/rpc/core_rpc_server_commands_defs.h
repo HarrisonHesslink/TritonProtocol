@@ -3423,6 +3423,10 @@ namespace cryptonote
         KV_SERIALIZE(avg_staking_req)
         KV_SERIALIZE(nodes_staked_to)
         KV_SERIALIZE(avg_unlock_time)
+        KV_SERIALIZE(reward)
+        KV_SERIALIZE(reward_divisor)
+        KV_SERIALIZE(total_nodes)
+
         KV_SERIALIZE(Error)
       END_KV_SERIALIZE_MAP()
     };
