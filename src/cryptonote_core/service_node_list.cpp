@@ -632,7 +632,6 @@ namespace service_nodes
 
 		info.operator_address = service_node_addresses[0];
 		info.portions_for_operator = portions_for_operator;
-		info.portions_for_operator_no_fee = 0;
 		info.registration_height = block_height;
 		info.last_reward_block_height = block_height;
 		info.last_reward_transaction_index = index;
@@ -674,7 +673,6 @@ namespace service_nodes
 	{
 		crypto::public_key key;
 		service_node_info info = {};
-		std::cout << "Hello" << std::endl;
 		if (!is_registration_tx(tx, block_timestamp, block_height, index, key, info))
 			return false;
 		
@@ -1605,7 +1603,6 @@ namespace service_nodes
     	if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, err_msg))
 		{
 			MERROR(tr("Could not convert registration args"));
-			MERROR(err_msg);
 			return false;
 		}
 

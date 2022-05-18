@@ -114,7 +114,6 @@ namespace service_nodes
 		uint64_t total_reserved;
 		uint64_t staking_requirement;
 		uint64_t portions_for_operator;
-		uint64_t portions_for_operator_no_fee;
 
 		swarm_id_t swarm_id;
 		cryptonote::account_public_address operator_address;
@@ -137,7 +136,6 @@ namespace service_nodes
 			VARINT_FIELD(total_reserved)
 			VARINT_FIELD(staking_requirement)
 			VARINT_FIELD(portions_for_operator)
-			VARINT_FIELD(portions_for_operator_no_fee)
 			if (version >= service_node_info::version_1_swarms) {
 				VARINT_FIELD(swarm_id)
 			}

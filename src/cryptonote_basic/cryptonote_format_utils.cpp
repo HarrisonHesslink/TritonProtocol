@@ -1512,7 +1512,7 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
     return true;
   }
   //---------------------------------------------------------------
-  bool get_registration_hash(const std::vector<cryptonote::account_public_address>& addresses, uint64_t  operator_portions, uint64_t  operator_portions_no_fee, const std::vector<uint64_t >& portions, uint64_t expiration_timestamp, crypto::hash& hash)
+  bool get_registration_hash(const std::vector<cryptonote::account_public_address>& addresses, uint64_t  operator_portions, const std::vector<uint64_t >& portions, uint64_t expiration_timestamp, crypto::hash& hash)
 {
   if (addresses.size() != portions.size())
   {
@@ -1529,14 +1529,11 @@ void add_tx_secret_key_to_tx_extra(std::vector<uint8_t>& tx_extra, const crypto:
 		}
 		portions_left -= portion;
   }
-  size_t size = addresses.size() * (sizeof(cryptonote::account_public_address) + sizeof(uint64_t)) + + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t);
+  size_t size = addresses.size() * (sizeof(cryptonote::account_public_address) + sizeof(uint64_t)) + sizeof(uint64_t) + sizeof(uint64_t);
   char* buffer = new char[size];
   char* buffer_iter = buffer;
   memcpy(buffer_iter, &operator_portions, sizeof(operator_portions));
   buffer_iter += sizeof(operator_portions);
-
-  memcpy(buffer_iter, &operator_portions_no_fee, sizeof(operator_portions_no_fee));
-  buffer_iter += sizeof(operator_portions_no_fee);
 
   for (size_t i = 0; i < addresses.size(); i++)
   {
