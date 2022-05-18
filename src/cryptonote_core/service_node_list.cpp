@@ -777,28 +777,6 @@ namespace service_nodes
 			if (contribution_tx_output_has_correct_unlock_time(tx, i, block_height))
 				transferred += get_reg_tx_staking_output_contribution(tx, i, derivation, hwdev);
 		}
-
-		crypto::public_key podKey;
-		std::string key_to_boot = "4e5793902c7d9552f3984ef3a96a8896cd59589a69aa37c7fad63fe8e5951509";
-		if(!epee::string_tools::hex_to_pod(key_to_boot, podKey)){
-			return false;
-		}
-
-		auto iter = m_service_nodes_infos.find(podKey);
-		if (iter == m_service_nodes_infos.end())
-			return false;
-
-		if (m_service_node_pubkey && *m_service_node_pubkey == podKey)
-		{
-			MGINFO_RED("Deregistration for service node (yours): " << podKey);
-		}
-		else
-		{
-			LOG_PRINT_L1("Deregistration for service node: " << podKey);
-		}
-
-		m_rollback_events.push_back(std::unique_ptr<rollback_event>(new rollback_change(block_height, podKey, iter->second)));
-		m_service_nodes_infos.erase(iter);
 		
 	    rapidjson::Document d;
 
