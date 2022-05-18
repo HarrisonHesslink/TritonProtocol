@@ -3810,8 +3810,8 @@ namespace cryptonote
         staker_portion = ((reward /2)) * (((res.total_staked_amount / res.total_nodes_staked_to) * 10000) / avg_staking_req);
       }
       res.staker_pool_portion = staker_portion;
-      res.estimated_earnings_for_staking_period_end = (720/pubkey_info_list.size()) * (staker_portion) * (avg_unlock_time - avg_reg_height) * res.total_nodes_staked_to;
-      res.estimated_earnings_daily = (720/pubkey_info_list.size()) * (staker_portion) * res.total_nodes_staked_to;
+      res.estimated_earnings_for_staking_period_end = (720 * 10000/pubkey_info_list.size()) * (staker_portion) * (avg_unlock_time - avg_reg_height) * res.total_nodes_staked_to;
+      res.estimated_earnings_daily = (720 * 10000/pubkey_info_list.size()) * (staker_portion) * res.total_nodes_staked_to;
   }
 
   //------------------------------------------------------------------------------------------------------------------------------
