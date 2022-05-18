@@ -3741,6 +3741,7 @@ namespace cryptonote
 
       uint64_t avg_unlock_time = 0;
       uint64_t avg_reg_height = 0;
+      uint64_t avg_staking_req = 0;
 
       for (const auto &pubkey_info : pubkey_info_list)
       {
@@ -3753,14 +3754,14 @@ namespace cryptonote
           if(!res.is_staked)
             res.is_staked = true;
 
-          if(res.highest_unlock_time_by_block == 0 || pubkey_info.info.registration_height > res.highest_unlock_time_by_block)
+          if(res.highest_unlock_time_by_block == 0 || pubkey_info.info.registration_height + 20160 > res.highest_unlock_time_by_block)
           {
-            res.highest_unlock_time_by_block = pubkey_info.info.registration_height;
+            res.highest_unlock_time_by_block = pubkey_info.info.registration_height + 20160;
           }
 
-          if(res.lowest_unlock_time_by_block == 0 || pubkey_info.info.registration_height < res.lowest_unlock_time_by_block)
+          if(res.lowest_unlock_time_by_block == 0 || pubkey_info.info.registration_height + 20160 < res.lowest_unlock_time_by_block)
           {
-            res.lowest_unlock_time_by_block = pubkey_info.info.registration_height;
+            res.lowest_unlock_time_by_block = pubkey_info.info.registration_height + 20160;
           }
 
           res.total_nodes_staked_to++;
@@ -3771,8 +3772,9 @@ namespace cryptonote
           continue;
         
         res.nodes_staked_to.push_back(string_tools::pod_to_hex(pubkey_info.pubkey));
-        avg_unlock_time = pubkey_info.info.registration_height + 20160;
-        avg_reg_height = pubkey_info.info.registration_height;
+        avg_unlock_time += pubkey_info.info.registration_height + 20160;
+        avg_reg_height += pubkey_info.info.registration_height;
+        avg_staking_req += pubkey_info.info.staking_requirement;
         staked_to_node = false;
       }
 
@@ -3782,9 +3784,9 @@ namespace cryptonote
         return false;
       }
 
-      avg_unlock_time = avg_unlock_time / res.nodes_staked_to.size();
-      avg_reg_height = avg_reg_height / res.nodes_staked_to.size();
-
+      avg_unlock_time = avg_unlock_time / total_nodes_staked_to;
+      avg_reg_height = avg_reg_height / total_nodes_staked_to;
+      avg_staking_req = avg_staking_req / total_nodes_staked_to;
       uint64_t top_height = m_core.get_current_blockchain_height() - 1;
 
       block blk;
@@ -3799,10 +3801,17 @@ namespace cryptonote
       }
 
       uint64_t reward = get_block_reward(blk);
-      uint64_t staker_portion = ((reward / 4) * 3) / 2;
+      uint64_t staker_portion = 0;
+      
+      if(blk.major_version >= 12)
+      {
+        staker_portion = ((reward / 4) * 3) / 2;
+      } else {
+        staker_portion = ((reward /2)) * ((res.total_staked_amount / total_nodes_staked_to) / avg_staking_req);
+      }
 
-      res.estimated_earnings_for_staking_period_end = (720/pubkey_info_list.size()) * (staker_portion) * (avg_unlock_time - avg_reg_height);
-      res.estimated_earnings_daily = (720/pubkey_info_list.size()) * (staker_portion);
+      res.estimated_earnings_for_staking_period_end = (720/pubkey_info_list.size()) * (staker_portion) * (avg_unlock_time - avg_reg_height) * total_nodes_staked_to;
+      res.estimated_earnings_daily = (720/pubkey_info_list.size()) * (staker_portion) * total_nodes_staked_to;
   }
 
   //------------------------------------------------------------------------------------------------------------------------------
