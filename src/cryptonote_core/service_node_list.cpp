@@ -1142,7 +1142,7 @@ namespace service_nodes
 
 			if(hard_fork_version >= 12)
 			{
-				uint64_t amount_operator_needs_to_stake = cryptonote::portions_to_amount(info.second.portions_for_operator, info.staking_requirement);
+				uint64_t amount_operator_needs_to_stake = cryptonote::portions_to_amount(info.second.portions_for_operator, info.second.staking_requirement);
 
 				if(info.second.total_contributed < amount_operator_needs_to_stake)
 				{
