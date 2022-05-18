@@ -3724,8 +3724,8 @@ namespace cryptonote
       cryptonote::address_parse_info info;
       if (!get_account_address_from_str(info, nettype(), req.address))
       {
-        MFATAL("Invalid staker address: " << req.address);
-        return false;
+        res.Error = "Invalid staker address: " << req.address;
+        return true;
       }
 
       std::vector<service_nodes::service_node_pubkey_info> pubkey_info_list = m_core.get_service_node_list_state({});
@@ -3776,6 +3776,12 @@ namespace cryptonote
         staked_to_node = false;
       }
 
+      if(!staked_to_node)
+      {
+        res.Error("Not staked to any nodes!");
+        return false;
+      }
+
       avg_unlock_time = avg_unlock_time / res.nodes_staked_to.size();
       avg_reg_height = avg_reg_height / res.nodes_staked_to.size();
 
@@ -3788,8 +3794,8 @@ namespace cryptonote
       }
       catch (...)
       {
-        res.status = "Error retrieving block at height " + std::to_string(top_height);
-        return false;
+        res.Error = "Error retrieving block at height " + std::to_string(top_height);
+        return true;
       }
 
       uint64_t reward = get_block_reward(blk);

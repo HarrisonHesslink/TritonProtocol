@@ -3406,7 +3406,8 @@ namespace cryptonote
       uint64_t estimated_earnings_for_staking_period_end;
       uint64_t estimated_earnings_daily;
       std::vector<std::string> nodes_staked_to;
-      
+      std::string Error;
+
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(is_staked)
         KV_SERIALIZE(total_staked_amount)
@@ -3416,6 +3417,7 @@ namespace cryptonote
         KV_SERIALIZE(estimated_earnings_for_staking_period_end)
         KV_SERIALIZE(estimated_earnings_daily)
         KV_SERIALIZE(nodes_staked_to)
+        KV_SERIALIZE(Error)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;
