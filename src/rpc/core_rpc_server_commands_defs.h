@@ -3407,6 +3407,9 @@ namespace cryptonote
       uint64_t avg_reg_height;
       uint64_t avg_staking_req;
       uint64_t avg_unlock_time;
+      uint64_t reward;
+      uint64_t reward_divisor;
+      uint64_t total_nodes;
       std::vector<std::string> nodes_staked_to;
       std::string Error;
 

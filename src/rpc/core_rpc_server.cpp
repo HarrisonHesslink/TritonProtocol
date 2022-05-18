@@ -3739,6 +3739,9 @@ namespace cryptonote
       res.avg_reg_height = 0;
       res.avg_staking_req = 0;
       res.avg_unlock_time = 0;
+      res.reward = 0;
+      res.reward_divisor = 0;
+      res.total_nodes = 0;
 
       uint64_t avg_unlock_time = 0;
       uint64_t avg_reg_height = 0;
@@ -3802,6 +3805,9 @@ namespace cryptonote
       }
 
       uint64_t reward = get_block_reward(blk);
+      res.reward = blk.major_version >= 12 ? ((reward / 4) * 3) / 2 : (reward / 2);
+      res.reward_divisor = blk.major_version >= 12 ? 65000 : avg_staking_req;
+      res.total_nodes = pubkey_info_list.size();
       res.avg_unlock_time = avg_unlock_time;
       res.avg_reg_height = avg_reg_height;
       res.avg_staking_req = avg_staking_req;
