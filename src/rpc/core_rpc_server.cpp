@@ -3776,7 +3776,7 @@ namespace cryptonote
         staked_to_node = false;
       }
 
-      if(!staked_to_node)
+      if(!res.is_staked)
       {
         res.Error("Not staked to any nodes!");
         return false;
