@@ -3411,6 +3411,8 @@ namespace cryptonote
       uint64_t reward_divisor;
       uint64_t total_nodes;
       std::vector<std::string> nodes_staked_to;
+      std::vector<uint64_t> nodes_staked_to_amounts;
+
       std::string Error;
 
       BEGIN_KV_SERIALIZE_MAP()
@@ -3426,6 +3428,7 @@ namespace cryptonote
         KV_SERIALIZE(reward)
         KV_SERIALIZE(reward_divisor)
         KV_SERIALIZE(total_nodes)
+        KV_SERIALIZE(nodes_staked_to_amounts)
 
         KV_SERIALIZE(Error)
       END_KV_SERIALIZE_MAP()

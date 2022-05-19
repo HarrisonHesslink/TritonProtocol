@@ -3770,6 +3770,7 @@ namespace cryptonote
 
           res.total_nodes_staked_to++;
           res.total_staked_amount += contributor.amount;
+          res.nodes_staked_to_amounts.push_back(contributor.amount);
           staked_to_node = true;
         }
         if(!staked_to_node)
