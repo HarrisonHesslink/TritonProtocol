@@ -560,6 +560,8 @@ namespace service_nodes
 		crypto::signature signature;
 		uint64_t portions_for_operator;
 
+		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
+
 		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key)) {
 			return false;
 		}
@@ -591,7 +593,6 @@ namespace service_nodes
 		}
 
 		// check the initial contribution exists
-		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
 		info.staking_requirement = get_staking_requirement(m_blockchain.nettype(), block_height);
 	
 		const auto max_contribs = MAX_NUMBER_OF_CONTRIBUTORS;
@@ -623,6 +624,12 @@ namespace service_nodes
 				return false;
 
 			if(burned_amount < total_fee - miner_fee)
+				return false;
+
+			if(transferred > MAX_OPERATOR_V12 * COIN)
+				return false;
+			
+			if(transferred < MIN_OPERATOR_V12 * COIN)
 				return false;
 		}
 
@@ -834,6 +841,12 @@ namespace service_nodes
 
 			if(burned_amount < total_fee - miner_fee)
 				return;
+
+			if(transferred > MAX_POOL_STAKERS_V12 * COIN)
+				return;
+			
+			if(transferred < MIN_POOL_STAKERS_V12 * COIN)
+				return;
 		}
 
 		auto& contributors = info.contributors;
@@ -863,7 +876,7 @@ namespace service_nodes
 
 		if(hf_version >= 12)
 		{
-			staking_req = MIN_POOL_STAKERS_V12;
+			staking_req = MIN_POOL_STAKERS_V12 * COIN;
 		}
 
 		// In this action, we cannot
