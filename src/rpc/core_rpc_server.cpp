@@ -3785,7 +3785,7 @@ namespace cryptonote
       if(!res.is_staked)
       {
         res.Error = "Not staked to any nodes!";
-        return false;
+        return true;
       }
 
       avg_unlock_time = avg_unlock_time / res.total_nodes_staked_to;
