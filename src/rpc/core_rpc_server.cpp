@@ -3750,6 +3750,7 @@ namespace cryptonote
       for (const auto &pubkey_info : pubkey_info_list)
       {
         bool staked_to_node = false;
+        uint64_t contribute_amount = 0;
         for (service_nodes::service_node_info::contribution const &contributor : pubkey_info.info.contributors)
         {
           if(contributor.address != info.address)
@@ -3770,17 +3771,20 @@ namespace cryptonote
 
           res.total_nodes_staked_to++;
           res.total_staked_amount += contributor.amount;
-          res.nodes_staked_to_amounts.push_back(contributor.amount);
+          contribute_amount = contributor.amount
           staked_to_node = true;
         }
         if(!staked_to_node)
           continue;
         
+
+        res.nodes_staked_to_amounts.push_back(contribute_amount);
         res.nodes_staked_to.push_back(string_tools::pod_to_hex(pubkey_info.pubkey));
         avg_unlock_time += pubkey_info.info.registration_height + 20160;
         avg_reg_height += pubkey_info.info.registration_height;
         avg_staking_req += pubkey_info.info.staking_requirement;
         staked_to_node = false;
+        contribute_amount = 0;
       }
 
       if(!res.is_staked)
