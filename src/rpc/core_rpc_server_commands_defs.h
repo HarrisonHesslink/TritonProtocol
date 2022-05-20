@@ -3406,7 +3406,7 @@ namespace cryptonote
         KV_SERIALIZE(staker_contribution)
       END_KV_SERIALIZE_MAP()
 
-    }
+    };
 
     struct response_t: public rpc_response_base
     {
