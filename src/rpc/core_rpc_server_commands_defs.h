@@ -3433,7 +3433,7 @@ namespace cryptonote
         KV_SERIALIZE(lowest_unlock_time_by_block)
         KV_SERIALIZE(avg_reg_height)
         KV_SERIALIZE(avg_staking_req)
-        KV_SERIALIZE(nodes_staked_to)
+        // KV_SERIALIZE(nodes_staked_to)
         KV_SERIALIZE(avg_unlock_time)
         KV_SERIALIZE(reward)
         KV_SERIALIZE(reward_divisor)
