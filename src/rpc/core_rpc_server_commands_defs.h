@@ -3398,8 +3398,14 @@ namespace cryptonote
     typedef epee::misc_utils::struct_init<request_t> request;
 
     struct node {
-      std::string node_address,
-      uint64_t staker_contribution,
+      std::string node_address;
+      uint64_t staker_contribution;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(node_address)
+        KV_SERIALIZE(staker_contribution)
+      END_KV_SERIALIZE_MAP()
+
     }
 
     struct response_t: public rpc_response_base
