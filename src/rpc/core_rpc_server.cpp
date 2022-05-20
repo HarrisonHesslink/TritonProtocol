@@ -3776,10 +3776,11 @@ namespace cryptonote
         }
         if(!staked_to_node)
           continue;
-        
 
-        res.nodes_staked_to_amounts.push_back(contribute_amount);
-        res.nodes_staked_to.push_back(string_tools::pod_to_hex(pubkey_info.pubkey));
+          
+        COMMAND_RPC_GET_STAKER::node = {string_tools::pod_to_hex(pubkey_info.pubkey), contribute_amount}
+        res.nodes_staked_to.push_back(node);
+
         avg_unlock_time += pubkey_info.info.registration_height + 20160;
         avg_reg_height += pubkey_info.info.registration_height;
         avg_staking_req += pubkey_info.info.staking_requirement;

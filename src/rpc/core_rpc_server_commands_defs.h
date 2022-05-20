@@ -3397,6 +3397,11 @@ namespace cryptonote
     };
     typedef epee::misc_utils::struct_init<request_t> request;
 
+    struct node {
+      std::string node_address,
+      uint64_t staker_contribution,
+    }
+
     struct response_t: public rpc_response_base
     {
       bool is_staked;
@@ -3410,8 +3415,7 @@ namespace cryptonote
       uint64_t reward;
       uint64_t reward_divisor;
       uint64_t total_nodes;
-      std::vector<std::string> nodes_staked_to;
-      std::vector<uint64_t> nodes_staked_to_amounts;
+      std::vector<COMMAND_RPC_GET_STAKER::node> nodes_staked_to;
 
       std::string Error;
 
@@ -3428,7 +3432,6 @@ namespace cryptonote
         KV_SERIALIZE(reward)
         KV_SERIALIZE(reward_divisor)
         KV_SERIALIZE(total_nodes)
-        KV_SERIALIZE(nodes_staked_to_amounts)
 
         KV_SERIALIZE(Error)
       END_KV_SERIALIZE_MAP()
