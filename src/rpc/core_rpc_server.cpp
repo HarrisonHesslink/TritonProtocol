@@ -3746,11 +3746,11 @@ namespace cryptonote
       uint64_t avg_unlock_time = 0;
       uint64_t avg_reg_height = 0;
       uint64_t avg_staking_req = 0;
+      uint64_t contribute_amount = 0;
 
       for (const auto &pubkey_info : pubkey_info_list)
       {
         bool staked_to_node = false;
-        uint64_t contribute_amount = 0;
         for (service_nodes::service_node_info::contribution const &contributor : pubkey_info.info.contributors)
         {
           if(contributor.address != info.address)
@@ -3770,8 +3770,8 @@ namespace cryptonote
           }
 
           res.total_nodes_staked_to++;
-          res.total_staked_amount += contributor.amount;
           contribute_amount = contributor.amount;
+          res.total_staked_amount += contribute_amount;
           staked_to_node = true;
         }
         if(!staked_to_node)
