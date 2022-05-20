@@ -3777,9 +3777,9 @@ namespace cryptonote
         if(!staked_to_node)
           continue;
 
-          
-        COMMAND_RPC_GET_STAKER::node = {string_tools::pod_to_hex(pubkey_info.pubkey), contribute_amount}
-        res.nodes_staked_to.push_back(node);
+
+        COMMAND_RPC_GET_STAKER::node n = {string_tools::pod_to_hex(pubkey_info.pubkey), contribute_amount}
+        res.nodes_staked_to.push_back(n);
 
         avg_unlock_time += pubkey_info.info.registration_height + 20160;
         avg_reg_height += pubkey_info.info.registration_height;
