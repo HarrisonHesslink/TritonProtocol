@@ -3421,7 +3421,7 @@ namespace cryptonote
       uint64_t reward;
       uint64_t reward_divisor;
       uint64_t total_nodes;
-      std::vector<COMMAND_RPC_GET_STAKER::node> nodes_staked_to;
+      // std::vector<COMMAND_RPC_GET_STAKER::node> nodes_staked_to;
 
       std::string Error;
 
