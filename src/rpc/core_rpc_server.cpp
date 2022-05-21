@@ -3815,8 +3815,8 @@ namespace cryptonote
 
       uint64_t reward = get_block_reward(blk);
       res.reward = blk.major_version >= 12 ? ((reward / 4) * 3) / 2 : (reward / 2);
-      res.reward_divisor = blk.major_version >= 12 ? 65000 : avg_staking_req;
-      res.total_nodes = pubkey_info_list.size();
+      res.reward_divisor = blk.major_version >= 12 ? 65000 : res.avg_staking_req;
+      res.total_nodes = 0;
   }
 
   //------------------------------------------------------------------------------------------------------------------------------
