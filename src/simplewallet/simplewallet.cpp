@@ -7016,6 +7016,8 @@ bool simple_wallet::register_service_node_main(
 		return true;
 	}
 
+  add_burned_amount_to_tx_extra(extra, (amount / 1000));
+
 	vector<cryptonote::tx_destination_entry> dsts;
 	cryptonote::tx_destination_entry de;
 	de.addr = address;
