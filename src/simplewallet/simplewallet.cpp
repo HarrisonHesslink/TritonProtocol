@@ -6911,7 +6911,7 @@ bool simple_wallet::register_service_node_main(
 	const cryptonote::account_public_address& address,
 	uint32_t priority,
 	const std::vector<uint64_t>& portions,
-	const std::vector<uint8_t>& extra,
+	std::vector<uint8_t>& extra,
 	std::set<uint32_t>& subaddr_indices)
 {
 
