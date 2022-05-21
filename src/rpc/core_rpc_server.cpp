@@ -3744,18 +3744,6 @@ namespace cryptonote
       res.reward_divisor = 0;
       res.total_nodes = 0;
 
-      bool is_staked;
-      uint64_t total_staked_amount;
-      uint64_t total_nodes_staked_to;
-      uint64_t highest_unlock_time_by_block;
-      uint64_t lowest_unlock_time_by_block;
-      uint64_t avg_reg_height;
-      uint64_t avg_staking_req;
-      uint64_t avg_unlock_time;
-      uint64_t reward;
-      uint64_t reward_divisor;
-      uint64_t total_nodes;
-
       uint64_t avg_unlock_time = 0;
       uint64_t avg_reg_height = 0;
       uint64_t avg_staking_req = 0;
