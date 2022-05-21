@@ -3744,6 +3744,18 @@ namespace cryptonote
       res.reward_divisor = 0;
       res.total_nodes = 0;
 
+      bool is_staked;
+      uint64_t total_staked_amount;
+      uint64_t total_nodes_staked_to;
+      uint64_t highest_unlock_time_by_block;
+      uint64_t lowest_unlock_time_by_block;
+      uint64_t avg_reg_height;
+      uint64_t avg_staking_req;
+      uint64_t avg_unlock_time;
+      uint64_t reward;
+      uint64_t reward_divisor;
+      uint64_t total_nodes;
+
       uint64_t avg_unlock_time = 0;
       uint64_t avg_reg_height = 0;
       uint64_t avg_staking_req = 0;
@@ -3796,9 +3808,11 @@ namespace cryptonote
         return true;
       }
 
-      avg_unlock_time = avg_unlock_time / res.total_nodes_staked_to;
-      avg_reg_height = avg_reg_height / res.total_nodes_staked_to;
-      avg_staking_req = avg_staking_req / res.total_nodes_staked_to;
+      if()
+
+      res.avg_unlock_time = avg_unlock_time / res.total_nodes_staked_to;
+      res.vg_reg_height = avg_reg_height / res.total_nodes_staked_to;
+      res.avg_staking_req = avg_staking_req / res.total_nodes_staked_to;
       uint64_t top_height = m_core.get_current_blockchain_height() - 1;
 
       block blk;
@@ -3817,9 +3831,6 @@ namespace cryptonote
       res.reward = blk.major_version >= 12 ? ((reward / 4) * 3) / 2 : (reward / 2);
       res.reward_divisor = blk.major_version >= 12 ? 65000 : avg_staking_req;
       res.total_nodes = pubkey_info_list.size();
-      res.avg_unlock_time = avg_unlock_time;
-      res.avg_reg_height = avg_reg_height;
-      res.avg_staking_req = avg_staking_req;
   }
 
   //------------------------------------------------------------------------------------------------------------------------------
