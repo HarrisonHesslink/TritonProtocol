@@ -3724,6 +3724,7 @@ namespace cryptonote
       cryptonote::address_parse_info info;
       if (!get_account_address_from_str(info, nettype(), req.address))
       {
+        res.status = CORE_RPC_STATUS_OK;
         res.Error = "Invalid staker address: " + req.address;
         return true;
       }
@@ -3790,6 +3791,7 @@ namespace cryptonote
 
       if(!res.is_staked)
       {
+        res.status = CORE_RPC_STATUS_OK;
         res.Error = "Not staked to any nodes!";
         return true;
       }
@@ -3806,6 +3808,7 @@ namespace cryptonote
       }
       catch (...)
       {
+        res.status = CORE_RPC_STATUS_OK;
         res.Error = "Error retrieving block at height " + std::to_string(top_height);
         return true;
       }
