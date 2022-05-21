@@ -3795,9 +3795,7 @@ namespace cryptonote
         res.Error = "Not staked to any nodes!";
         return true;
       }
-
-      if()
-
+      
       res.avg_unlock_time = avg_unlock_time / res.total_nodes_staked_to;
       res.avg_reg_height = avg_reg_height / res.total_nodes_staked_to;
       res.avg_staking_req = avg_staking_req / res.total_nodes_staked_to;
