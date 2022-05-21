@@ -2794,13 +2794,27 @@ bool t_rpc_command_executor::prepare_sn()
     min_portions = MIN_PORTIONS_V2;
   }
 
-  const uint64_t min_contribution = MIN_OPERATOR_V12 * COIN;
-  const uint64_t max_contribution = MAX_OPERATOR_V12 * COIN;
+  uint64_t min_contribution = MIN_OPERATOR_V12 * COIN;
+  uint64_t max_contribution = MAX_OPERATOR_V12 * COIN;
+
+  uint64_t staking_requirement =
+  std::max(service_nodes::get_staking_requirement(nettype, block_height),
+            service_nodes::get_staking_requirement(nettype, block_height + 30 * 24)); // allow 1 day
 
   if(hf_version >= 12)
   {
     max_num_stakers = MAX_NUMBER_OF_CONTRIBUTORS_V3;
     min_portions = service_nodes::get_portions_to_make_amount(max_contribution, min_contribution);
+    staking_requirement = MIN_OPERATOR_V12 * COIN;
+  } else {
+    if(hf_version >= 9)
+    {
+      min_contribution = service_nodes::portions_to_amount(MIN_PORTIONS_V2, staking_requirement);
+      max_contribution = service_nodes::portions_to_amount(STAKING_PORTIONS, staking_requirement);
+    } else {
+      min_contribution = service_nodes::portions_to_amount(MIN_PORTIONS, staking_requirement);
+      max_contribution = service_nodes::portions_to_amount(STAKING_PORTIONS, staking_requirement);
+    }
   }
 
   bool is_solo_stake = false;
@@ -2808,14 +2822,11 @@ bool t_rpc_command_executor::prepare_sn()
   std::vector<std::string> addresses;
   std::vector<uint64_t> contributions;
 
-  const uint64_t staking_requirement =
-    std::max(service_nodes::get_staking_requirement(nettype, block_height),
-             service_nodes::get_staking_requirement(nettype, block_height + 30 * 24)); // allow 1 day
   uint64_t total_reserved_contributions = 0;
   uint64_t portions_remaining = STAKING_PORTIONS;
   // anything less than DUST will be added to operator stake
 
-  std::cout << "Current operator staking requirement: " << cryptonote::print_money(MIN_OPERATOR_V12 * COIN) << " " << cryptonote::get_unit() << std::endl;
+  std::cout << "Current operator staking requirement: " << cryptonote::print_money(staking_requirement) << " " << cryptonote::get_unit() << std::endl;
   
   const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
 

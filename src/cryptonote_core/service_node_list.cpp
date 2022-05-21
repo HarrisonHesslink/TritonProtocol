@@ -560,6 +560,8 @@ namespace service_nodes
 		crypto::signature signature;
 		uint64_t portions_for_operator;
 
+		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
+
 		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key)) {
 			return false;
 		}
@@ -591,7 +593,6 @@ namespace service_nodes
 		}
 
 		// check the initial contribution exists
-		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
 		info.staking_requirement = get_staking_requirement(m_blockchain.nettype(), block_height);
 	
 		const auto max_contribs = MAX_NUMBER_OF_CONTRIBUTORS;
@@ -623,6 +624,12 @@ namespace service_nodes
 				return false;
 
 			if(burned_amount < total_fee - miner_fee)
+				return false;
+
+			if(transferred > MAX_OPERATOR_V12 * COIN)
+				return false;
+			
+			if(transferred < MIN_OPERATOR_V12 * COIN)
 				return false;
 		}
 
@@ -834,6 +841,12 @@ namespace service_nodes
 
 			if(burned_amount < total_fee - miner_fee)
 				return;
+
+			if(transferred > MAX_POOL_STAKERS_V12 * COIN)
+				return;
+			
+			if(transferred < MIN_POOL_STAKERS_V12 * COIN)
+				return;
 		}
 
 		auto& contributors = info.contributors;
@@ -863,7 +876,7 @@ namespace service_nodes
 
 		if(hf_version >= 12)
 		{
-			staking_req = MIN_POOL_STAKERS_V12;
+			staking_req = MIN_POOL_STAKERS_V12 * COIN;
 		}
 
 		// In this action, we cannot
@@ -1136,9 +1149,21 @@ namespace service_nodes
 		std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
 		auto oldest_waiting = std::pair<uint64_t, uint32_t>(std::numeric_limits<uint64_t>::max(), std::numeric_limits<uint32_t>::max());
 		crypto::public_key key = crypto::null_pkey;
+		bool overPortioned = false;
 		for (const auto& info : m_service_nodes_infos)
 		{
-			if ((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded())
+
+			if(hard_fork_version >= 12)
+			{
+				uint64_t amount_operator_needs_to_stake = portions_to_amount(info.second.portions_for_operator, info.second.staking_requirement);
+
+				if(info.second.total_contributed < amount_operator_needs_to_stake)
+				{
+					overPortioned = true;
+				}
+			}
+
+			if ((info.second.is_valid() && hard_fork_version > 9) || (info.second.is_fully_funded() && !overPortioned))
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)
