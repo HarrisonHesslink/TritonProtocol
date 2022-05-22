@@ -2805,7 +2805,6 @@ bool t_rpc_command_executor::prepare_sn()
   {
     max_num_stakers = MAX_NUMBER_OF_CONTRIBUTORS_V3;
     min_portions = service_nodes::get_portions_to_make_amount(max_contribution, min_contribution);
-    staking_requirement = MIN_OPERATOR_V12 * COIN;
   } else {
     if(hf_version >= 9)
     {
@@ -2826,7 +2825,7 @@ bool t_rpc_command_executor::prepare_sn()
   uint64_t portions_remaining = STAKING_PORTIONS;
   // anything less than DUST will be added to operator stake
 
-  std::cout << "Current operator staking requirement: " << cryptonote::print_money(staking_requirement) << " " << cryptonote::get_unit() << std::endl;
+  std::cout << "Current staking requirement: " << cryptonote::print_money(staking_requirement) << " " << cryptonote::get_unit() << std::endl;
   
   const uint64_t min_contribution_portions = std::min(portions_remaining, min_portions);
 
