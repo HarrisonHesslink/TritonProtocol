@@ -2879,7 +2879,7 @@ bool t_rpc_command_executor::prepare_sn()
   }
 
   const uint64_t amount_left = staking_requirement - total_reserved_contributions;
-
+  const uint64_t amount_left_stakers = staking_requirement - MAX_OPERATOR_V12 * COIN;
   if (!is_solo_stake)
   {
     std::cout << "Total staking contributions reserved: " << cryptonote::print_money(total_reserved_contributions) << " " << cryptonote::get_unit() << std::endl;
@@ -2908,21 +2908,21 @@ bool t_rpc_command_executor::prepare_sn()
   }
 
   std::cout << "Summary:" << std::endl;
-  printf("%-16s%-9s%-19s%-s\n", "Contributor", "Address", "Contribution", "Contribution(%)");
-  printf("%-16s%-9s%-19s%-s\n", "___________", "_______", "____________", "_______________");
+  printf("%-16s%-9s%-19s%-s\n", "Contributor", "Address", "Contribution");
+  printf("%-16s%-9s%-19s%-s\n", "___________", "_______", "____________");
 
   for (size_t i = 0; i < number_participants; ++i)
   {
     const std::string participant_name = (i==0) ? "Operator" : "Contributor " + std::to_string(i);
-    uint64_t amount = get_actual_amount(staking_requirement, contributions[i]);
+    uint64_t amount = get_actual_amount( (i==0) ? MAX_OPERATOR_V12 * COIN : MAX_POOL_STAKERS_V12 * COIN, contributions[i]);
     if (amount_left <= DUST && i == 0)
       amount += amount_left; // add dust to the operator.
-    printf("%-16s%-9s%-19s%-.9f\n", participant_name.c_str(), addresses[i].substr(0,6).c_str(), cryptonote::print_money(amount).c_str(), (double)contributions[i] * 100 / STAKING_PORTIONS);
+    printf("%-16s%-9s%-19s%-.9f\n", participant_name.c_str(), addresses[i].substr(0,6).c_str(), cryptonote::print_money(amount).c_str());
   }
 
   if (amount_left > DUST)
   {
-    printf("%-16s%-9s%-19s%-.2f\n", "(open)", "", cryptonote::print_money(amount_left).c_str(), amount_left * 100.0 / staking_requirement);
+    printf("%-16s%-9s%-19s%-.2f\n", "(open)", "", cryptonote::print_money(amount_left_stakers).c_str());
   }
   else if (amount_left > 0)
   {
