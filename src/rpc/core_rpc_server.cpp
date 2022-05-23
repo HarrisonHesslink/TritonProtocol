@@ -3760,14 +3760,14 @@ namespace cryptonote
           if(!res.is_staked)
             res.is_staked = true;
 
-          if(res.highest_unlock_time_by_block == 0 || pubkey_info.info.registration_height > res.highest_unlock_time_by_block)
+          if(res.highest_unlock_time_by_block == 0 || pubkey_info.info.registration_height + 20160 > res.highest_unlock_time_by_block)
           {
-            res.highest_unlock_time_by_block = pubkey_info.info.registration_height;
+            res.highest_unlock_time_by_block = pubkey_info.info.registration_height + 20160;
           }
 
-          if(res.lowest_unlock_time_by_block == 0 || pubkey_info.info.registration_height < res.lowest_unlock_time_by_block)
+          if(res.lowest_unlock_time_by_block == 0 || pubkey_info.info.registration_height + 20160 < res.lowest_unlock_time_by_block)
           {
-            res.lowest_unlock_time_by_block = pubkey_info.info.registration_height;
+            res.lowest_unlock_time_by_block = pubkey_info.info.registration_height + 20160;
           }
 
           res.total_nodes_staked_to++;
