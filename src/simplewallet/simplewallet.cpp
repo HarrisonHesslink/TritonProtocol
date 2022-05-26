@@ -6911,7 +6911,7 @@ bool simple_wallet::register_service_node_main(
 	const cryptonote::account_public_address& address,
 	uint32_t priority,
 	const std::vector<uint64_t>& portions,
-	const std::vector<uint8_t>& extra,
+	std::vector<uint8_t>& extra,
 	std::set<uint32_t>& subaddr_indices)
 {
 
@@ -7015,6 +7015,8 @@ bool simple_wallet::register_service_node_main(
 		fail_msg_writer() << tr("Please send at least: ") << print_money(expected_staking_requirement / MAX_NUMBER_OF_CONTRIBUTORS);
 		return true;
 	}
+
+  add_burned_amount_to_tx_extra(extra, (amount_payable_by_operator / 1000));
 
 	vector<cryptonote::tx_destination_entry> dsts;
 	cryptonote::tx_destination_entry de;
@@ -7429,8 +7431,6 @@ bool simple_wallet::stake_main(
   add_service_node_contributor_to_tx_extra(extra, parse_info.address);
 
   add_burned_amount_to_tx_extra(extra, (amount / 1000));
-
-  std::cout << get_burned_amount_from_tx_extra(extra) << std::endl;
 
   vector<cryptonote::tx_destination_entry> dsts;
   cryptonote::tx_destination_entry de;

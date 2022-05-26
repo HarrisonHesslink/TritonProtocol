@@ -82,12 +82,6 @@ namespace cryptonote
     LOG_PRINT_L2("destinations include " << num_stdaddresses << " standard addresses and " << num_subaddresses << " subaddresses");
   }
 
-  uint64_t get_governance_reward(uint64_t height, uint64_t base_reward)
-  {
-    return base_reward / 10;
-  }
-
-  
 	bool get_deterministic_output_key(const account_public_address& address, const keypair& tx_key, size_t output_index, crypto::public_key& output_key)
 	{
 		crypto::key_derivation derivation = AUTO_VAL_INIT(derivation);
@@ -181,7 +175,7 @@ namespace cryptonote
       } else if(height == 663269)
       {
         return MINT_BRIDGE;
-      } else if(height == 833277)
+      } else if(height == 835437)
       {
         return BURN_2;
       }

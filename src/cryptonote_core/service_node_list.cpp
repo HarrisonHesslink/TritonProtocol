@@ -256,9 +256,6 @@ namespace service_nodes
 		for (size_t i = 0; i < registration.m_public_spend_keys.size(); i++)
 			addresses.push_back(cryptonote::account_public_address{ registration.m_public_spend_keys[i], registration.m_public_view_keys[i] });
 
-		if(registration.m_portions_for_operator <= 0)
-			return false;
-
 		portions_for_operator = registration.m_portions_for_operator;
 		portions = registration.m_portions;
 		expiration_timestamp = registration.m_expiration_timestamp;
@@ -563,6 +560,8 @@ namespace service_nodes
 		crypto::signature signature;
 		uint64_t portions_for_operator;
 
+		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
+
 		if (!reg_tx_extract_fields(tx, service_node_addresses, portions_for_operator, service_node_portions, expiration_timestamp, service_node_key, signature, tx_pub_key)) {
 			return false;
 		}
@@ -594,7 +593,6 @@ namespace service_nodes
 		}
 
 		// check the initial contribution exists
-		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
 		info.staking_requirement = get_staking_requirement(m_blockchain.nettype(), block_height);
 	
 		const auto max_contribs = MAX_NUMBER_OF_CONTRIBUTORS;
@@ -602,12 +600,7 @@ namespace service_nodes
 		cryptonote::account_public_address address;
 		uint64_t transferred = 0;
 
-		if(service_node_addresses.size() > 1 && hf_version >= 12)
-			return false;
-
 		if (!get_contribution(tx, block_height, address, transferred))
-			return false;
-		if ((transferred < info.staking_requirement / max_contribs && hf_version < 12) || (transferred < MIN_OPERATOR_V12 && hf_version >= 12))
 			return false;
 		int is_this_a_new_address = 0;
 		if (std::find(service_node_addresses.begin(), service_node_addresses.end(), address) == service_node_addresses.end())
@@ -625,10 +618,25 @@ namespace service_nodes
 
 			uint64_t burn_fee = total_fee - miner_fee;
 
-			if(burn_fee < transferred / 10000000)
+			if(burned_amount < burn_fee)
+			{
+				std::cout << "burned_amount < burn_fee" << std::endl;
 				return false;
+			}
+			if(transferred > MAX_OPERATOR_V12 * COIN)
+			{
+				std::cout << "transferred > MAX_OPERATOR_V12 * COIN" << std::endl;
+				return false;
+			}			
 
-			if(burned_amount < total_fee - miner_fee)
+			if(transferred < MIN_OPERATOR_V12 * COIN)
+			{
+				std::cout << transferred << " " << MIN_OPERATOR_V12 << std::endl;
+				std::cout << "transferred < MIN_OPERATOR_V12 * COIN)" << std::endl;
+				return false;
+			}
+		} else {
+			if (transferred < info.staking_requirement / max_contribs)
 				return false;
 		}
 
@@ -638,7 +646,6 @@ namespace service_nodes
 
 		info.operator_address = service_node_addresses[0];
 		info.portions_for_operator = portions_for_operator;
-		info.portions_for_operator_no_fee = 0;
 		info.registration_height = block_height;
 		info.last_reward_block_height = block_height;
 		info.last_reward_transaction_index = index;
@@ -747,8 +754,10 @@ namespace service_nodes
 		transferred = 0;
 		for (size_t i = 0; i < tx.vout.size(); i++)
 		{
-			if (contribution_tx_output_has_correct_unlock_time(tx, i, block_height))
+			if (contribution_tx_output_has_correct_unlock_time(tx, i, block_height)) {
+				std::cout << get_reg_tx_staking_output_contribution(tx, i, derivation, hwdev) << std::endl;
 				transferred += get_reg_tx_staking_output_contribution(tx, i, derivation, hwdev);
+			}
 		}
 
 		return true;
@@ -781,28 +790,6 @@ namespace service_nodes
 			if (contribution_tx_output_has_correct_unlock_time(tx, i, block_height))
 				transferred += get_reg_tx_staking_output_contribution(tx, i, derivation, hwdev);
 		}
-
-		crypto::public_key podKey;
-		std::string key_to_boot = "4e5793902c7d9552f3984ef3a96a8896cd59589a69aa37c7fad63fe8e5951509";
-		if(!epee::string_tools::hex_to_pod(key_to_boot, podKey)){
-			return false;
-		}
-
-		auto iter = m_service_nodes_infos.find(podKey);
-		if (iter == m_service_nodes_infos.end())
-			return false;
-
-		if (m_service_node_pubkey && *m_service_node_pubkey == podKey)
-		{
-			MGINFO_RED("Deregistration for service node (yours): " << podKey);
-		}
-		else
-		{
-			LOG_PRINT_L1("Deregistration for service node: " << podKey);
-		}
-
-		m_rollback_events.push_back(std::unique_ptr<rollback_event>(new rollback_change(block_height, podKey, iter->second)));
-		m_service_nodes_infos.erase(iter);
 		
 	    rapidjson::Document d;
 
@@ -836,16 +823,7 @@ namespace service_nodes
 
 		auto iter = m_service_nodes_infos.find(pubkey);
 		if (iter == m_service_nodes_infos.end())
-		{
-			//run check for if new pubkey
-			if(new_pubkey != crypto::null_pkey)
-			{
-				//second lopp through to set new pubkey and check if valid;
-				iter = m_service_nodes_infos.find(new_pubkey);
-				if(iter == m_service_nodes_infos.end())
-					return;
-			}
-		}
+			return;
 
 		service_node_info& info = iter->second;
 		const auto hf_version = m_blockchain.get_hard_fork_version(block_height);
@@ -866,15 +844,21 @@ namespace service_nodes
 			uint64_t miner_fee = get_tx_miner_fee(tx, true);
 			uint64_t burn_fee = total_fee - miner_fee;
 
-			if(burn_fee < transferred / 10000000)
+			if(burn_fee < transferred / 1000)
 				return;
 
 			if(burned_amount < total_fee - miner_fee)
 				return;
+
+			if(transferred > MAX_POOL_STAKERS_V12 * COIN)
+				return;
+			
+			if(transferred < MIN_POOL_STAKERS_V12 * COIN)
+				return;
 		}
 
 		auto& contributors = info.contributors;
-		const auto max_contribs = hf_version > 9 ? hf_version > 11 ? MAX_NUMBER_OF_CONTRIBUTORS_V3 : MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
+		const auto max_contribs = hf_version > 9 ? hf_version >= 11 ? MAX_NUMBER_OF_CONTRIBUTORS_V3 : MAX_NUMBER_OF_CONTRIBUTORS_V2 : MAX_NUMBER_OF_CONTRIBUTORS;
 
 		// Only create a new contributor if they stake at least a quarter
 		// and if we don't already have the maximum
@@ -900,7 +884,7 @@ namespace service_nodes
 
 		if(hf_version >= 12)
 		{
-			staking_req = MIN_POOL_STAKERS_V12;
+			staking_req = MAX_POOL_STAKERS_V12 * COIN;
 		}
 
 		// In this action, we cannot
@@ -1173,9 +1157,21 @@ namespace service_nodes
 		std::lock_guard<boost::recursive_mutex> lock(m_sn_mutex);
 		auto oldest_waiting = std::pair<uint64_t, uint32_t>(std::numeric_limits<uint64_t>::max(), std::numeric_limits<uint32_t>::max());
 		crypto::public_key key = crypto::null_pkey;
+		bool overPortioned = false;
 		for (const auto& info : m_service_nodes_infos)
 		{
-			if ((info.second.is_valid() && hard_fork_version > 9) || info.second.is_fully_funded())
+
+			if(hard_fork_version >= 12)
+			{
+				uint64_t amount_operator_needs_to_stake = portions_to_amount(info.second.portions_for_operator, info.second.staking_requirement);
+
+				if(info.second.total_contributed < amount_operator_needs_to_stake)
+				{
+					overPortioned = true;
+				}
+			}
+
+			if ((info.second.is_valid() && hard_fork_version > 9) || (info.second.is_fully_funded() && !overPortioned))
 			{
 				auto waiting_since = std::make_pair(info.second.last_reward_block_height, info.second.last_reward_transaction_index);
 				if (waiting_since < oldest_waiting)
