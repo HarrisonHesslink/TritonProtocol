@@ -439,9 +439,7 @@ namespace cryptonote
 		  return false;
 	  }
     
-    if (hard_fork_version >= 12) {
-      result.governance = get_governance_reward(miner_context.height, base_reward);
-    } else if(hard_fork_version >= 7 && hard_fork_version < 12)
+    if(hard_fork_version >= 7)
     {
       result.governance = allow_governance(miner_context.height, nettype);
     }
