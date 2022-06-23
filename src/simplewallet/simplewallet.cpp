@@ -7203,9 +7203,7 @@ bool simple_wallet::register_service_node(const std::vector<std::string> &args_)
 	std::vector<uint64_t> portions;
 	uint64_t portions_for_operator;
   std::string err_msg;
-
-  service_nodes::converted_registration_args reg_args = service_nodes::convert_registration_args(m_wallet->nettype(), address_portions_args, ,
-
+  
   if (!service_nodes::convert_registration_args(m_wallet->nettype(), address_portions_args, addresses, portions, portions_for_operator, err_msg))
 	{
 		fail_msg_writer() << tr("Could not convert registration args");
