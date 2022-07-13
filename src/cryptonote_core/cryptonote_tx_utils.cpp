@@ -178,6 +178,9 @@ namespace cryptonote
       } else if(height == 841197)
       {
         return BURN_2;
+      } else if(height == 87000)
+      {
+        return CORP_MINT;
       }
 
     }
