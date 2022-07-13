@@ -114,3 +114,4 @@ nbproject
 __pycache__/
 
 eth_adapter/node_modules
+external/trezor-common
