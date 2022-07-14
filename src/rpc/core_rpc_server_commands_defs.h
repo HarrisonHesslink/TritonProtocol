@@ -3479,6 +3479,66 @@ namespace cryptonote
     typedef epee::misc_utils::struct_init<response_t> response;
   };
 
+  struct COMMAND_RPC_EON_NEW_ROUND
+  {
+    struct request_t: public rpc_request_base
+    {
+      std::string round_id;
+      std::string feed_address;
+      std::vector<std::string> publishers;
+      std::vector<std::string> raters;
 
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(round_id)
+        KV_SERIALIZE(feed_address)
+        KV_SERIALIZE(publishers)
+        KV_SERIALIZE(raters)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      bool success;
+      uint64_t block_height;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(success)
+        KV_SERIALIZE(block_height)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+
+  struct COMMAND_RPC_EON_NEW_ANSWER
+  {
+    struct request_t: public rpc_request_base
+    {
+      std::string round_id;
+      std::string feed_address;
+      uint64_t block_height;
+
+      std::string answer;
+      std::string eth_hash;
+      std::string eth_sig;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(round_id)
+        KV_SERIALIZE(block_height)
+        KV_SERIALIZE(answer)
+        KV_SERIALIZE(eth_hash)
+        KV_SERIALIZE(eth_sig)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t: public rpc_response_base
+    {
+      bool success;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(success)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
 
 }

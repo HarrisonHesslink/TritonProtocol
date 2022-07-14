@@ -400,7 +400,148 @@ namespace cryptonote
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;
+  };
+
+  struct EON_NEW_ROUND
+  {
+    const static int ID = BC_COMMANDS_POOL_BASE + 13;
+
+    struct request_t
+    {
+		uint16_t round_id;
+    uint64_t block_height;
+		std::string feed_address;
+		std::string[] publishers;
+		std::string[] raters;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(round_id)
+        KV_SERIALIZE(block_height)
+        KV_SERIALIZE(publishers)
+        KV_SERIALIZE(raters)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+  };
+
+  struct EON_NEW_ANSWER
+  {
+    const static int ID = BC_COMMANDS_POOL_BASE + 14;
+
+    struct request_t
+    {
+
+      uint16_t round_id;
+      uint64_t block_height;
+      std::string feed_address;
+
+      std::string answer;
+      std::string xeq_hash;
+      std::string eth_hash;
+
+      std::string xeq_sig;
+      std::string eth_sig;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(round_id)
+        KV_SERIALIZE(block_height)
+        KV_SERIALIZE(feed_address)
+        KV_SERIALIZE(answer)
+        KV_SERIALIZE(xeq_hash)
+        KV_SERIALIZE(eth_hash)
+        KV_SERIALIZE(xeq_sig)
+        KV_SERIALIZE(eth_sig)
+
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+  };
+
+    struct EON_PREPARE_ANSWER
+  {
+    const static int ID = BC_COMMANDS_POOL_BASE + 14;
+
+    struct answer {
+      uint16_t round_id;
+      uint64_t block_height;
+      std::string feed_address;
+
+      std::string answer;
+      std::string xeq_hash;
+      std::string eth_hash;
+
+      std::string xeq_sig;
+      std::string eth_sig;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(round_id)
+        KV_SERIALIZE(block_height)
+        KV_SERIALIZE(feed_address)
+        KV_SERIALIZE(answer)
+        KV_SERIALIZE(xeq_hash)
+        KV_SERIALIZE(eth_hash)
+        KV_SERIALIZE(xeq_sig)
+        KV_SERIALIZE(eth_sig)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct request_t
+    {
+      crypto::public_key target_winner;
+      uint16_t round_id;
+      uint64_t block_height;
+      std::string feed_address;
+
+      std::vector<answer> answers;
+      uint64_t height_winner;
+      std::string xeq_hash;
+      std::string eth_hash;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(target_winner)
+        KV_SERIALIZE(round_id)
+        KV_SERIALIZE(block_height)
+        KV_SERIALIZE(feed_address)
+        KV_SERIALIZE(answers)
+        KV_SERIALIZE(height_winner)
+        KV_SERIALIZE(xeq_hash)
+        KV_SERIALIZE(eth_hash)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
   }; 
+
+  struct EON_NEW_SIG
+  {
+    const static int ID = BC_COMMANDS_POOL_BASE + 15;
+
+    struct request_t
+    {
+
+      crypto::public_key target_winner;
+      uint16_t round_id;
+      uint64_t block_height;
+      std::string feed_address;
+
+      std::string xeq_hash;
+      std::string eth_hash;
+
+      std::string xeq_sig;
+      std::string eth_sig;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(target_winner)
+        KV_SERIALIZE(round_id)
+        KV_SERIALIZE(block_height)
+        KV_SERIALIZE(feed_address)
+        KV_SERIALIZE(xeq_hash)
+        KV_SERIALIZE(eth_hash)
+        KV_SERIALIZE(xeq_sig)
+        KV_SERIALIZE(eth_sig)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+  };
 
   /************************************************************************/
   /*                                                                      */

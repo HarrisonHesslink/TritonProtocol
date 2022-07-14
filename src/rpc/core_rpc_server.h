@@ -199,7 +199,10 @@ namespace cryptonote
         MAP_JON_RPC_WE("on_get_signature",  on_get_signature,         COMMAND_RPC_GET_SIGNATURE)
         MAP_JON_RPC_WE("on_verify_signature",  on_verify_signature,         COMMAND_RPC_VERIFY_SIGNATURE)
         MAP_JON_RPC_WE("on_get_staked_txs", on_get_staked_txs, COMMAND_RPC_ON_GET_STAKED_TXS)
-              MAP_JON_RPC_WE("on_get_staker", on_get_staker, COMMAND_RPC_ON_GET_STAKER)
+        MAP_JON_RPC_WE("on_get_staker", on_get_staker, COMMAND_RPC_ON_GET_STAKER)
+
+        MAP_JON_RPC_WE("eon_new_round", eon_new_round, COMMAND_RPC_EON_NEW_ROUND)
+        MAP_JON_RPC_WE("eon_new_answer", eon_new_answer, COMMAND_RPC_EON_NEW_ANSWER)
 
       END_JSON_RPC_MAP()
     END_URI_MAP2()
@@ -284,8 +287,10 @@ namespace cryptonote
 
     bool on_verify_signature(const COMMAND_RPC_VERIFY_SIGNATURE::request& req, COMMAND_RPC_VERIFY_SIGNATURE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_get_signature(const COMMAND_RPC_GET_SIGNATURE::request& req, COMMAND_RPC_GET_SIGNATURE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
-        bool on_get_staked_txs(const COMMAND_RPC_ON_GET_STAKED_TXS::request& req, COMMAND_RPC_ON_GET_STAKED_TXS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
-        bool on_get_staker(const COMMAND_RPC_ON_GET_STAKER::request& req, COMMAND_RPC_ON_GET_STAKER::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+    bool on_get_staked_txs(const COMMAND_RPC_ON_GET_STAKED_TXS::request& req, COMMAND_RPC_ON_GET_STAKED_TXS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+    bool on_get_staker(const COMMAND_RPC_ON_GET_STAKER::request& req, COMMAND_RPC_ON_GET_STAKER::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+    bool eon_new_round(const COMMAND_RPC_EON_NEW_ROUND::request& req, COMMAND_RPC_EON_NEW_ROUND::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+    bool eon_new_answer(const COMMAND_RPC_EON_NEW_ANSWER::request& req, COMMAND_RPC_EON_NEW_ANSWER::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
 
     bool on_flush_cache(const COMMAND_RPC_FLUSH_CACHE::request& req, COMMAND_RPC_FLUSH_CACHE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_rpc_access_info(const COMMAND_RPC_ACCESS_INFO::request& req, COMMAND_RPC_ACCESS_INFO::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);

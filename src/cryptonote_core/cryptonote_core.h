@@ -948,6 +948,14 @@ namespace cryptonote
       */
      bool get_txpool_complement(const std::vector<crypto::hash> &hashes, std::vector<cryptonote::blobdata> &txes);
 
+
+     /**
+      * @brief checks whether block weights are known for the given range
+      */
+    bool eon_new_round(uint64_t round_id, uint64_t block_height, std::string feed_address, std::vector<std::string> publishers, std::vector<std::string> raters) const;
+
+    bool eon_new_answer(uint64_t round_id, uint64_t block_height, std::string feed_address, std::string answer, std:string eth_hash, std::string eth_sig) const;
+
    private:
 
      /**

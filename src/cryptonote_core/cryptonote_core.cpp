@@ -2225,6 +2225,16 @@ bool core::get_service_node_keys(crypto::public_key &pub_key, crypto::secret_key
   {
     return get_blockchain_storage().has_block_weights(height, nblocks);
   }
+    //-----------------------------------------------------------------------------------------------
+  bool core::eon_new_round(uint64_t round_id, uint64_t block_height, std::string feed_address, std::vector<std::string> publishers, std::vector<std::string> raters) const;
+  {
+    return get_blockchain_storage().has_block_weights(height, nblocks);
+  }
+  
+  bool core::eon_new_answer(uint64_t round_id, uint64_t block_height, std::string feed_address, std::string answer, std:string eth_hash, std::string eth_sig) const;
+  {
+    return get_blockchain_storage().has_block_weights(height, nblocks);
+  }
   //-----------------------------------------------------------------------------------------------
   std::time_t core::get_start_time() const
   {

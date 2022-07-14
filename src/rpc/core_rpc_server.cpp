@@ -3757,7 +3757,7 @@ namespace cryptonote
 
   }
   //------------------------------------------------------------------------------------------------------------------------------
-    bool core_rpc_server::on_get_staked_txs(const COMMAND_RPC_ON_GET_STAKED_TXS::request& req, COMMAND_RPC_ON_GET_STAKED_TXS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
+  bool core_rpc_server::on_get_staked_txs(const COMMAND_RPC_ON_GET_STAKED_TXS::request& req, COMMAND_RPC_ON_GET_STAKED_TXS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
 
     block blk;
@@ -3843,6 +3843,30 @@ namespace cryptonote
 
     return true;
   }
+
+
+  bool core_rpc_server::eon_new_round(const COMMAND_RPC_EON_NEW_ROUND::request& req, COMMAND_RPC_EON_NEW_ROUND::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
+
+    uint64_t block_height = m_core.get_current_blockchain_height();
+
+    bool complete = m_core.eon_new_round(req.round_id, block_height, req.feed_address, req.publishers, req.raters);
+
+    res.success = complete;
+    res.block_height = block_height;
+    return true;
+  }
+
+  bool core_rpc_server::eon_new_round(const COMMAND_RPC_EON_NEW_ROUND::request& req, COMMAND_RPC_EON_NEW_ROUND::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
+
+    uint64_t block_height = m_core.get_current_blockchain_height();
+
+    bool complete = m_core.eon_new_round(req.round_id, block_height, req.feed_address, req.publishers, req.raters);
+
+    res.success = complete;
+
+    return true;
+  }
+
   const command_line::arg_descriptor<std::string, false, true, 2> core_rpc_server::arg_rpc_bind_port = {
       "rpc-bind-port"
     , "Port for RPC server"
