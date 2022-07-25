@@ -2619,6 +2619,22 @@ skip:
     bool result = relay_to_synchronized_peers<NOTIFY_UPTIME_PROOF>(arg, exclude_context);
     return result;
   }
+
+   //------------------------------------------------------------------------------------------------------------------------
+ template<class t_core>
+ bool t_cryptonote_protocol_handler<t_core>::relay_eon_answer(EON_NEW_ANSWER::request& arg, cryptonote_connection_context& exclude_context)
+ {
+    bool result = relay_to_synchronized_peers<EON_NEW_ANSWER>(arg, exclude_context);
+    return result;
+  }
+
+     //------------------------------------------------------------------------------------------------------------------------
+ template<class t_core>
+ bool t_cryptonote_protocol_handler<t_core>::relay_eon_new_round(EON_NEW_ROUND::request& arg, cryptonote_connection_context& exclude_context)
+ {
+    bool result = relay_to_synchronized_peers<EON_NEW_ROUND>(arg, exclude_context);
+    return result;
+  }
  //------------------------------------------------------------------------------------------------------------------------
  template<class t_core>
   bool t_cryptonote_protocol_handler<t_core>::request_txpool_complement(cryptonote_connection_context &context)

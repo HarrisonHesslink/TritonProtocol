@@ -243,7 +243,9 @@ namespace cryptonote
               m_disable_dns_checkpoints(false),
               m_update_download(0),
               m_nettype(UNDEFINED),
-              m_update_available(false)
+              m_update_available(false),
+              m_eon_manager(*this),
+
   {
     m_checkpoints_updating.clear();
     set_cryptonote_protocol(pprotocol);
@@ -2228,13 +2230,39 @@ bool core::get_service_node_keys(crypto::public_key &pub_key, crypto::secret_key
     //-----------------------------------------------------------------------------------------------
   bool core::eon_new_round(uint64_t round_id, uint64_t block_height, std::string feed_address, std::vector<std::string> publishers, std::vector<std::string> raters) const;
   {
-    return get_blockchain_storage().has_block_weights(height, nblocks);
+
+    return m_eon_manager.eon_new_round(round_id, block_height, feed_address, publishers, raters);
   }
   
   bool core::eon_new_answer(uint64_t round_id, uint64_t block_height, std::string feed_address, std::string answer, std:string eth_hash, std::string eth_sig) const;
   {
-    return get_blockchain_storage().has_block_weights(height, nblocks);
+    return m_eon_manager.handle_my_new_answer(round_id, block_height, feed_address, answer, eth_hash, eth_sig);
   }
+
+  void core::relay_new_round(service_nodes::new_round& round) const;
+  {
+    EON_NEW_ROUND::request r;
+    r.round_id = round.round_id;
+    r.block_height = round.block_height;
+    r.feed_address = round.feed_address;
+    r.publishers = round.publishers;
+    r.raters = round.raters;
+    get_protocol()->relay_eon_new_round(r, fake_context);
+  }
+
+  void core::relay_my_eon_answer(service_nodes::answer& answer) const;
+  {
+    EON_NEW_ANSWER::request r;
+    r.round_id = answer.round_id;
+    r.block_height = answer.block_height;
+    r.feed_address = answer.feed_address;
+    r.answer = answer.answer;
+    r.xeq_hash = answer.xeq_hash;
+    r.xeq_sig = answer.xeq_sig;
+    r.eth_sig = answer.eth_sig;
+    get_protocol()->relay_eon_new_round(r, fake_context);
+  }
+
   //-----------------------------------------------------------------------------------------------
   std::time_t core::get_start_time() const
   {

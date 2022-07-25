@@ -29,7 +29,6 @@ namespace service_nodes
         if(m_round_answers[feed_address][round_id] == nullptr)
             m_round_answers[feed_address][round_id] = round;
             m_core.relay_new_round(round);
-        
     }
 
     static crypto::hash make_hash(crypto::public_key const &pubkey, uint64_t& round_id, uint64_t& block_height, std::string& feed_address, std::string& answer)
@@ -37,9 +36,11 @@ namespace service_nodes
 		char buf[44] = "SUP"; // Meaningless magic bytes
 		crypto::hash result;
 		memcpy(buf + 4, reinterpret_cast<const void *>(&pubkey), sizeof(pubkey));
-		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&timestamp), sizeof(timestamp));
+		memcpy(buf + 4 + sizeof(pubkey), reinterpret_cast<const void *>(&round_id), sizeof(round_id));
+        memcpy(buf + 4 + sizeof(round_id), reinterpret_cast<const void *>(&block_height), sizeof(block_height));
+        memcpy(buf + 4 + sizeof(block_height), reinterpret_cast<const void *>(&feed_address), sizeof(feed_address));
+        memcpy(buf + 4 + sizeof(feed_address), reinterpret_cast<const void *>(&answer), sizeof(answer));
 		crypto::cn_fast_hash(buf, sizeof(buf), result);
-
 		return result;
 	}
     
@@ -52,7 +53,6 @@ namespace service_nodes
             return false;
 
         service_nodes::new_round r = m_round_answers[ans.feed_address][ans.round_id];
-
 
         //round is closed but shouldn't happen
         if(block_height >= r.height + 100)
@@ -92,7 +92,5 @@ namespace service_nodes
 
         return true;
     }
-
-
 
 }

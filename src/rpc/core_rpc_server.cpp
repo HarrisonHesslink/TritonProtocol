@@ -3856,11 +3856,11 @@ namespace cryptonote
     return true;
   }
 
-  bool core_rpc_server::eon_new_round(const COMMAND_RPC_EON_NEW_ROUND::request& req, COMMAND_RPC_EON_NEW_ROUND::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
+  bool core_rpc_server::eon_new_answer(const COMMAND_RPC_EON_NEW_ANSWER::request& req, COMMAND_RPC_EON_NEW_ANSWER::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
 
     uint64_t block_height = m_core.get_current_blockchain_height();
 
-    bool complete = m_core.eon_new_round(req.round_id, block_height, req.feed_address, req.publishers, req.raters);
+    bool complete = m_core.handle_my_new_answer(req.round_id, block_height, req.feed_address, req.answer, req.eth_hash, std::string eth_sig);
 
     res.success = complete;
 

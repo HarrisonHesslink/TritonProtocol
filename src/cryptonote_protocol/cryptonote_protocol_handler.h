@@ -169,6 +169,12 @@ namespace cryptonote
 		//----------------- uptime proof ---------------------------------------
     virtual bool relay_uptime_proof(NOTIFY_UPTIME_PROOF::request& arg, cryptonote_connection_context& exclude_context);
     virtual bool relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg, const boost::uuids::uuid& source, epee::net_utils::zone zone, relay_method tx_relay);
+    
+    //----eon
+    virtual bool relay_eon_new_round(EON_NEW_ROUND::request& arg, cryptonote_connection_context& exclude_context);
+    virtual bool relay_eon_answer(EON_NEW_ANSWER::request& arg, cryptonote_connection_context& exclude_context);
+
+    
     //----------------------------------------------------------------------------------
     //bool get_payload_sync_data(HANDSHAKE_DATA::request& hshd, cryptonote_connection_context& context);
     bool should_drop_connection(cryptonote_connection_context& context, uint32_t next_stripe);

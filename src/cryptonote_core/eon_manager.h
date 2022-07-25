@@ -60,7 +60,7 @@ namespace service_nodes
             bool handle_new_round(uint64_t round_id, uint64_t block_height, std::string feed_address, std::vector<std::string> publishers, std::vector<std::string> raters);
             bool handle_my_new_answer(uint64_t round_id, uint64_t block_height, std::string feed_address, std::string answer, std:string eth_hash, std::string eth_sig);
             bool handle_new_answer(service_nodes::answer& ans, uint64_t& block_height);
-            bool handle_chain_transaction_reporting();
+            // bool handle_chain_transaction_reporting();
 
             service_nodes::answer generate_answer();
             service_nodes::prepare_answer prepare_flow_answer();
