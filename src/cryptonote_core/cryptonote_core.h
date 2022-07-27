@@ -51,6 +51,7 @@
 #include "warnings.h"
 #include "crypto/hash.h"
 #include "span.h"
+#include "eon_manager.h"
 
 PUSH_WARNINGS
 DISABLE_VS_WARNINGS(4355)
@@ -1203,6 +1204,8 @@ namespace cryptonote
 
      bool m_fluffy_blocks_enabled;
      bool m_offline;
+
+     eon_manager m_eon_manager;
 
      std::shared_ptr<tools::Notify> m_block_rate_notify;
    };

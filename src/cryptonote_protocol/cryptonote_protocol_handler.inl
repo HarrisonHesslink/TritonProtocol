@@ -790,6 +790,20 @@ namespace cryptonote
   }
   //------------------------------------------------------------------------------------------------------------------------
   template<class t_core>
+  int t_cryptonote_protocol_handler<t_core>::handle_eon_new_answer(int command, EON_NEW_ANSWER::request& arg, cryptonote_connection_context& context)
+  {
+    MLOG_P2P_MESSAGE("Received EON NEW ANSWER");
+
+  }
+  //------------------------------------------------------------------------------------------------------------------------
+  template<class t_core>
+  int t_cryptonote_protocol_handler<t_core>::handle_eon_new_round(int command, EON_NEW_ROUND::request& arg, cryptonote_connection_context& context)
+  {
+    MLOG_P2P_MESSAGE("Received EON NEW ROUND");
+
+  }
+  //------------------------------------------------------------------------------------------------------------------------
+  template<class t_core>
   int t_cryptonote_protocol_handler<t_core>::handle_uptime_proof(int command, NOTIFY_UPTIME_PROOF::request& arg, cryptonote_connection_context& context)
  {
     MLOG_P2P_MESSAGE("Received NOTIFY_UPTIME_PROOF");

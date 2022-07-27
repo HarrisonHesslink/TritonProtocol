@@ -64,7 +64,7 @@ namespace service_nodes
         return true;
     }
 
-    bool eon_manager::handle_my_new_answer(uint64_t round_id, uint64_t block_height, std::string feed_address, std::string answer, std:string eth_hash, std::string eth_sig)
+    service_nodess::answer eon_manager::handle_my_new_answer(uint64_t round_id, uint64_t block_height, std::string feed_address, std::string answer, std:string eth_hash, std::string eth_sig)
     {
 		crypto::public_key my_pubkey;
 		crypto::secret_key my_seckey;

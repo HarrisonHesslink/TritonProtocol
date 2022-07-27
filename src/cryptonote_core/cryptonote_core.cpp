@@ -1404,6 +1404,17 @@ namespace cryptonote
   {
 	  return m_quorum_cop.handle_uptime_proof(proof, my_uptime_proof_confirmation);
   }
+
+  //-----------------------------------------------------------------------------------------------
+  bool core::handle_eon_new_round(const EON_NEW_ROUND::request &round, bool &my_uptime_proof_confirmation)
+  {
+	  return m_eon_manager.handle_eon_new_round(round, my_uptime_proof_confirmation);
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::handle_eon_new_answer(const EON_NEW_ANSWER::request &answer, bool &my_uptime_proof_confirmation)
+  {
+	  return m_eon_manager.handle_new_answer(answer, my_uptime_proof_confirmation);
+  }
   //-----------------------------------------------------------------------------------------------
   void core::on_transactions_relayed(const epee::span<const cryptonote::blobdata> tx_blobs, const relay_method tx_relay)
   {

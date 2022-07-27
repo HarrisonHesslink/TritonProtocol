@@ -95,6 +95,8 @@ namespace cryptonote
       HANDLE_NOTIFY_T2(NOTIFY_NEW_FLUFFY_BLOCK, &cryptonote_protocol_handler::handle_notify_new_fluffy_block)			
       HANDLE_NOTIFY_T2(NOTIFY_REQUEST_FLUFFY_MISSING_TX, &cryptonote_protocol_handler::handle_request_fluffy_missing_tx)						
       HANDLE_NOTIFY_T2(NOTIFY_GET_TXPOOL_COMPLEMENT, &cryptonote_protocol_handler::handle_notify_get_txpool_complement)
+      HANDLE_NOTIFY_T2(EON_NEW_ANSWER, &cryptonote_protocol_handler::handle_eon_new_answer)
+      HANDLE_NOTIFY_T2(EON_NEW_ROUND, &cryptonote_protocol_handler::handle_eon_new_round)
 
     END_INVOKE_MAP2()
 
@@ -133,6 +135,8 @@ namespace cryptonote
 		int handle_notify_new_deregister_vote(int command, NOTIFY_NEW_DEREGISTER_VOTE::request& arg, cryptonote_connection_context& context);
 		int handle_uptime_proof(int command, NOTIFY_UPTIME_PROOF::request& arg, cryptonote_connection_context& context);
 
+		int handle_new_round(int command, EON_NEW_ROUND::request& arg, cryptonote_connection_context& context);
+		int handle_new_answer(int command, EON_NEW_ANSWER::request& arg, cryptonote_connection_context& context);
 
     int handle_notify_get_txpool_complement(int command, NOTIFY_GET_TXPOOL_COMPLEMENT::request& arg, cryptonote_connection_context& context);
 
